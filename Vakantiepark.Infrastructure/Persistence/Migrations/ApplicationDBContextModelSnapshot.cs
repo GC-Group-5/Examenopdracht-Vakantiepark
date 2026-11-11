@@ -419,7 +419,6 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
-            modelBuilder.Entity("Vakantiepark.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -489,6 +488,38 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date")
                         .HasColumnName("start_date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_seasons");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seasons_name");
+
+                    b.HasIndex("StartDate", "EndDate")
+                        .HasDatabaseName("ix_seasons_start_date_end_date");
+
+                    b.ToTable("seasons", (string)null);
+                });
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -529,16 +560,6 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_seasons");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("ix_seasons_name");
-
-                    b.HasIndex("StartDate", "EndDate")
-                        .HasDatabaseName("ix_seasons_start_date_end_date");
-
-                    b.ToTable("seasons", (string)null);
                         .HasName("pk_users");
 
                     b.HasIndex("Email")
@@ -547,7 +568,6 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.ToTable("users", (string)null);
                 });
-
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.AccommodationType", "Type")
