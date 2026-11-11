@@ -25,6 +25,7 @@ namespace Vakantiepark.Infrastructure
         private static IServiceCollection RegisterRepositories(this IServiceCollection services)
         {
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            services.AddScoped<IBookingRepository, BookingRepository>();
 
             return services;
         }

@@ -279,6 +279,86 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("accommodation_types", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AccommodationPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("accommodation_price");
+
+                    b.Property<Guid>("AccommodationUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodation_unit_id");
+
+                    b.Property<DateOnly>("ArrivalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("arrival_date");
+
+                    b.Property<TimeOnly>("ArrivalTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("arrival_time");
+
+                    b.Property<decimal>("CleaningFee")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cleaning_fee");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateOnly>("DepartureDate")
+                        .HasColumnType("date")
+                        .HasColumnName("departure_date");
+
+                    b.Property<TimeOnly>("DepartureTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("departure_time");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int>("NumberOfGuests")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_guests");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_price");
+
+                    b.Property<decimal>("TouristTax")
+                        .HasColumnType("numeric")
+                        .HasColumnName("tourist_tax");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bookings");
+
+                    b.ToTable("bookings", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.AccommodationType", "Type")
