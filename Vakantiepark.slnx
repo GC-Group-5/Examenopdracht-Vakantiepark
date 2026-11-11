@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".github/workflows/ci-build-test.yml" />
+    <File Path="AGENTS.md" />
+    <File Path="README.md" />
+    <File Path="SETUP.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="Vakantiepark.AppHost/Vakantiepark.AppHost.csproj" />
+    <Project Path="Vakantiepark.API/Vakantiepark.API.csproj" />
+    <Project Path="Vakantiepark.Application/Vakantiepark.Application.csproj" />
+    <Project Path="Vakantiepark.Domain/Vakantiepark.Domain.csproj" />
+    <Project Path="Vakantiepark.Infrastructure/Vakantiepark.Infrastructure.csproj" />
+    <Project Path="Vakantiepark.Shared/Vakantiepark.Shared.csproj" />
+    <Project Path="Vakantiepark.UI/Vakantiepark.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="Vakantiepark.UnitTests/Vakantiepark.UnitTests.csproj" />
+  </Folder>
+</Solution>

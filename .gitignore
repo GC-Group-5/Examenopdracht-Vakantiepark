@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.slnLaunch.user
+*.csproj.user
+
+# OS
+Thumbs.db
+.DS_Store
