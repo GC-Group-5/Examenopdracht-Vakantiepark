@@ -19,8 +19,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
         [
             ("Laagseizoen", 0, 1, 1, 3, 31),
             ("Middenseizoen", 1, 4, 1, 6, 30),
-            ("Hoogseizoen", 2, 7, 1, 8, 31),
-            ("Najaarseizoen", 3, 9, 1, 12, 31),
+            ("Hoogseizoen", 2, 7, 1, 9, 31),
+            ("Najaarseizoen", 3, 10, 1, 12, 31),
         ];
 
         public static async Task SeedParkConfigurationAsync(this ApplicationDBContext context)
