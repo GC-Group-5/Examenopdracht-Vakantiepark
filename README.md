@@ -18,6 +18,20 @@ Het Aspire-dashboard opent en start PostgreSQL, de API en de frontend.
 | Website   | https://localhost:4200 |
 | API (Swagger) | https://localhost:5001/api |
 
+## Testaccounts
+
+In de ontwikkelomgeving maakt de API bij de eerste start automatisch deze accounts aan
+(alleen in Development, nooit in productie):
+
+| Rol | E-mailadres | Wachtwoord |
+|-----|-------------|------------|
+| Medewerker | `medewerker@dropuut.example` | `Medewerker123!` |
+| Beheerder | `beheerder@dropuut.example` | `Beheerder123!` |
+
+Inloggen als medewerker: https://localhost:4200/beheer/inloggen.
+Een **gast** heeft geen account, maar logt in met het boekingsnummer (bijv. `DOU-7KQ3M9XP`) en het
+e-mailadres van een boeking via `POST /Auth/Guest`.
+
 ## Werkafspraken
 
 - **Nooit direct op `main` pushen.** `main` is beveiligd; alles gaat via een eigen branch.

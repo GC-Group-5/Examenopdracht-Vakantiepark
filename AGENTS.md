@@ -204,6 +204,7 @@ Vakantiepark.slnx
 |----------------------------------------|------------------------------|--------------------|
 | Business rule broken / bad input       | `ArgumentException(message)` | `400 BadRequest`   |
 | Requested item does not exist          | `KeyNotFoundException(message)` | `404 NotFound`  |
+| Login failed (wrong credentials, locked out, stay ended) | `UnauthorizedAccessException(message)` | `401 Unauthorized` |
 | Programming / config error             | `InvalidOperationException`  | falls through to `/Error` → `500` |
 
 - The exception **message is shown to the end user**, so it must be a complete, friendly sentence in
@@ -211,15 +212,26 @@ Vakantiepark.slnx
 - Never catch `Exception` in services or controllers. Unexpected errors go to the global handler.
 
 ### Authentication and authorisation
-- JWT bearer tokens. The user id is read from `ClaimTypes.NameIdentifier`, the email from
-  `ClaimTypes.Email`, the name from `ClaimTypes.Name`.
-- Role checks use `[Authorize(Roles = "Medewerker,Beheerder")]` or `[Authorize(Roles = "Beheerder")]` on controller actions.
-- Never trust ids, emails or roles sent in the request body when they are available from the token;
-  overwrite them from the claims in the controller.
-- An anonymous caller is represented in services by `Guid.Empty` as `userId`.
-- Deactivated users are rejected on every request in `OnTokenValidated`.
-- Passwords are hashed through `IPassword` (BCrypt). Never store or log plain passwords or tokens.
-- A global rate limiter applies (fixed window per user / IP). Keep it on.
+- JWT bearer tokens, created by `TokenService`. The signing key comes from the AppHost (`JWT__Key`),
+  never from `appsettings.json`.
+- Three roles, as constants in `Vakantiepark.Shared.Constants.Roles` (never type the strings by hand):
+
+  | Role | Who | Token |
+  |------|-----|-------|
+  | `Medewerker` | Staff | `/Auth/Login`, email + password; id in `ClaimTypes.NameIdentifier` |
+  | `Beheerder` | Staff with extra rights (prices, park settings, pool capacity) | same as above |
+  | `Gast` | Guest, no account | `/Auth/Guest`, booking number + email; booking id in `ClaimNames.BookingId` |
+
+- Role checks: `[Authorize(Roles = Roles.Staff)]`, `[Authorize(Roles = Roles.Beheerder)]` or
+  `[Authorize(Roles = Roles.Gast)]` on controller actions and Blazor pages.
+- **A guest only ever sees their own data:** read the booking id with `User.GetBookingId()` and
+  never accept a booking id from the route or body for guest endpoints. Staff ids come from `User.GetUserId()`.
+- Never trust ids, emails or roles sent in the request body when they are available from the token.
+- Deactivated users and bookings whose stay has ended are rejected on every request in `OnTokenValidated`.
+- Passwords are hashed through `IPasswordHasher` (BCrypt). Never store or log plain passwords or tokens.
+- After 5 wrong passwords an account is locked for 15 minutes; the login endpoints also have their own
+  rate limit (`RateLimitPolicies.Login`, 10 per minute per IP) on top of the global one.
+- Login error messages never reveal whether an email address or booking number exists.
 
 ---
 

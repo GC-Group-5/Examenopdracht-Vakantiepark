@@ -10,6 +10,9 @@ namespace Vakantiepark.Infrastructure.Repositories
         public BookingRepository(ApplicationDBContext context)
             : base(context) { }
 
+        public async Task<Booking?> GetByBookingNumberAsync(string bookingNumber)
+            => await Set.SingleOrDefaultAsync(x => x.BookingNumber == bookingNumber && x.DeletedAt == null);
+
         // Departure dates are exclusive: a guest may arrive on the day the previous guest leaves.
         public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate)
             => await Set

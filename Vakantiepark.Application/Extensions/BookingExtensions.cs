@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Helpers;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
@@ -9,6 +10,7 @@ namespace Vakantiepark.Application.Extensions
         public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, PriceSpecificationResponse price)
             => new Booking()
             {
+                BookingNumber = BookingNumberGenerator.Create(),
                 Name = request.Name,
                 Email = request.Email,
                 PhoneNumber = request.PhoneNumber,
@@ -27,6 +29,7 @@ namespace Vakantiepark.Application.Extensions
         public static BookingResponse ToResponse(this Booking booking)
             => new BookingResponse()
             {
+                BookingNumber = booking.BookingNumber,
                 Name = booking.Name,
                 Email = booking.Email,
                 PhoneNumber = booking.PhoneNumber,

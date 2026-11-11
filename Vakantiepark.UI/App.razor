@@ -1,6 +1,28 @@
 <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(PageNotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <section class="page-head">
+                        <div class="container">
+                            <div class="eyebrow">Geen toegang</div>
+                            <h1 class="page-title mt-2">Deze pagina is niet voor jou.</h1>
+                            <p class="page-intro mt-4">Je bent ingelogd, maar je account heeft geen rechten voor deze pagina.</p>
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div class="container py-5 text-center">
+                    <div class="spinner-border text-success" role="status"><span class="visually-hidden">Bezig met laden…</span></div>
+                </div>
+            </Authorizing>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
