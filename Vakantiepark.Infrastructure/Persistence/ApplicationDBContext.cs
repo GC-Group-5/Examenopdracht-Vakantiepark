@@ -1,11 +1,16 @@
 using Vakantiepark.Infrastructure.Persistence.Configurations;
 using Vakantiepark.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Vakantiepark.Domain.Entities;
+using Vakantiepark.Infrastructure.Persistence.Configurations;
 
 namespace Vakantiepark.Infrastructure.Persistence
 {
     public class ApplicationDBContext : DbContext
     {
+        public DbSet<AccommodationType> AccommodationTypes => Set<AccommodationType>();
+        public DbSet<Accommodation> Accommodations => Set<Accommodation>();
+
         public ApplicationDBContext(DbContextOptions<ApplicationDBContext> options)
             : base(options) { }
 
@@ -15,7 +20,8 @@ namespace Vakantiepark.Infrastructure.Persistence
         {
             base.OnModelCreating(builder);
 
-            builder.Entity<Booking>(options => options.Configure());
+            builder.Entity<AccommodationType>(options => options.Configure());
+            builder.Entity<Accommodation>(options => options.Configure());
         }
     }
 }

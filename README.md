@@ -18,6 +18,15 @@ Het Aspire-dashboard opent en start PostgreSQL, de API en de frontend.
 | Website   | https://localhost:4200 |
 | API (Swagger) | https://localhost:5001/api |
 
+## Werkafspraken
+
+- **Nooit direct op `main` pushen.** `main` is beveiligd; alles gaat via een eigen branch.
+- Per userstory of fix maak je een branch vanaf `main`, bijvoorbeeld `zoeken-beschikbaarheid`.
+- Je opent een pull request naar `main` met de issue erin (`Closes #6`).
+- **Eén ander teamlid moet de pull request goedkeuren**, en de CI-build moet groen zijn, voordat hij gemerged kan worden.
+
+De volledige afspraken staan in [AGENTS.md](AGENTS.md) (hoofdstuk 11) en [SETUP.md](SETUP.md) (hoofdstuk 6).
+
 ## Documentatie
 
 - [SETUP.md](SETUP.md) – installeren, starten, migraties en database.
