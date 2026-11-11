@@ -1,0 +1,10 @@
+@inject NavigationManager NavigationManager
+
+@code {
+    // Sends a visitor who is not logged in to the login page and back to where they were going afterwards.
+    protected override void OnInitialized()
+    {
+        string returnUrl = Uri.EscapeDataString("/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+        NavigationManager.NavigateTo($"beheer/inloggen?returnUrl={returnUrl}", replace: true);
+    }
+}

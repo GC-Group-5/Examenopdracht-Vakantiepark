@@ -14,6 +14,7 @@ namespace Vakantiepark.Infrastructure.Persistence
         public DbSet<ParkSettings> ParkSettings => Set<ParkSettings>();
         public DbSet<Season> Seasons => Set<Season>();
         public DbSet<AccommodationTypePrice> AccommodationTypePrices => Set<AccommodationTypePrice>();
+        public DbSet<User> Users => Set<User>();
 
         public ApplicationDBContext(DbContextOptions<ApplicationDBContext> options)
             : base(options) { }
@@ -28,6 +29,7 @@ namespace Vakantiepark.Infrastructure.Persistence
             builder.Entity<ParkSettings>(options => options.Configure());
             builder.Entity<Season>(options => options.Configure());
             builder.Entity<AccommodationTypePrice>(options => options.Configure());
+            builder.Entity<User>(options => options.Configure());
         }
     }
 }
