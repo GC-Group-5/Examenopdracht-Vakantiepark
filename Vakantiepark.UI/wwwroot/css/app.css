@@ -1,13 +1,4 @@
-/* Global styles. The colours from the logo are added as CSS variables in US-03. */
-
-html, body {
-    margin: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-}
-
-.layout-content {
-    padding: 1.5rem;
-}
+/* Blazor framework styles: loading indicator and error bar. Site styling lives in theme.css. */
 
 #blazor-error-ui {
     display: none;
@@ -47,7 +38,7 @@ html, body {
     }
 
         .loading-progress circle:last-child {
-            stroke: #0b8a50;
+            stroke: #0b5d3b;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
             transition: stroke-dasharray 0.05s ease-in-out;
         }

@@ -1,5 +1,18 @@
 @inherits LayoutComponentBase
 
-<main class="layout-content">
+<a class="skip-link" href="#inhoud">Naar de inhoud</a>
+
+<div class="topbar py-2">
+    <div class="container d-flex justify-content-between align-items-center">
+        <span>Achterhoek · rust · ruimte</span>
+        <span class="d-none d-sm-inline">@ParkInfo.Name</span>
+    </div>
+</div>
+
+<NavMenu />
+
+<main id="inhoud" tabindex="-1">
     @Body
 </main>
+
+<SiteFooter />

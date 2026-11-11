@@ -1,0 +1,33 @@
+<footer class="footer-main mt-5">
+    <div class="container py-5">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <img class="footer-logo mb-3" src="img/logo.webp" alt="@ParkInfo.Name" width="82" height="80" />
+                <p class="text-muted-du mb-0" style="max-width:520px">
+                    Rust, natuur en samen genieten. Vakantiehuizen en kampeerplaatsen tussen bomen en water in de Achterhoek.
+                </p>
+            </div>
+            <div class="col-6 col-lg-3">
+                <h2 class="h5">Ontdek</h2>
+                <ul class="list-unstyled d-grid gap-2 mt-3">
+                    <li><a class="text-decoration-none" href="accommodaties">Verblijven</a></li>
+                    <li><a class="text-decoration-none" href="zwembad">Subtropisch zwembad</a></li>
+                    <li><a class="text-decoration-none" href="zoek-en-boek">Zoek &amp; boek</a></li>
+                    <li><a class="text-decoration-none" href="contact">Contact</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-lg-4">
+                <h2 class="h5">Receptie</h2>
+                <p class="text-muted-du mt-3 mb-0">
+                    @ParkInfo.Street<br />
+                    @ParkInfo.Region<br />
+                    <a class="text-decoration-none" href="tel:@ParkInfo.PhoneLink">@ParkInfo.Phone</a><br />
+                    <a class="text-decoration-none" href="mailto:@ParkInfo.Email">@ParkInfo.Email</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom py-3">
+        <div class="container small text-center">© @DateTime.UtcNow.Year @ParkInfo.Name</div>
+    </div>
+</footer>
