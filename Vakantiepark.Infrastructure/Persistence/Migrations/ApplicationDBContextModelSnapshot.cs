@@ -241,6 +241,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("category");
 
+                    b.Property<decimal>("CleaningFee")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cleaning_fee");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -277,6 +281,51 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_accommodation_types_slug");
 
                     b.ToTable("accommodation_types", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.AccommodationTypePrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccommodationTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodation_type_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<decimal>("PricePerNight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price_per_night");
+
+                    b.Property<Guid>("SeasonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("season_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accommodation_type_prices");
+
+                    b.HasIndex("SeasonId")
+                        .HasDatabaseName("ix_accommodation_type_prices_season_id");
+
+                    b.HasIndex("AccommodationTypeId", "SeasonId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accommodation_type_prices_accommodation_type_id_season_id");
+
+                    b.ToTable("accommodation_type_prices", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
@@ -359,6 +408,94 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("bookings", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<TimeOnly>("ArrivalTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("arrival_time");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<TimeOnly>("DepartureTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("departure_time");
+
+                    b.Property<int>("HighSeasonMinimumNights")
+                        .HasColumnType("integer")
+                        .HasColumnName("high_season_minimum_nights");
+
+                    b.Property<decimal>("TouristTaxPerPersonPerNight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tourist_tax_per_person_per_night");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_park_settings");
+
+                    b.ToTable("park_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Season", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("name");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_seasons");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seasons_name");
+
+                    b.HasIndex("StartDate", "EndDate")
+                        .HasDatabaseName("ix_seasons_start_date_end_date");
+
+                    b.ToTable("seasons", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.AccommodationType", "Type")
@@ -371,9 +508,37 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Type");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.AccommodationTypePrice", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.AccommodationType", "AccommodationType")
+                        .WithMany("Prices")
+                        .HasForeignKey("AccommodationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_accommodation_type_prices_accommodation_types_accommodation");
+
+                    b.HasOne("Vakantiepark.Domain.Entities.Season", "Season")
+                        .WithMany("Prices")
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_accommodation_type_prices_seasons_season_id");
+
+                    b.Navigation("AccommodationType");
+
+                    b.Navigation("Season");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.AccommodationType", b =>
                 {
                     b.Navigation("Accommodations");
+
+                    b.Navigation("Prices");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Season", b =>
+                {
+                    b.Navigation("Prices");
                 });
 #pragma warning restore 612, 618
         }

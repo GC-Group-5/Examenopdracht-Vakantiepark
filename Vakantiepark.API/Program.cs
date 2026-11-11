@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Vakantiepark.API.Middlewares;
 using Vakantiepark.Infrastructure;
+using Vakantiepark.Infrastructure.Persistence.Seeders;
 using Vakantiepark.Application;
 using System.Globalization;
 
@@ -10,7 +11,7 @@ namespace Vakantiepark.API
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,10 @@ namespace Vakantiepark.API
             {
                 ApplicationDBContext context = scope.ServiceProvider.GetRequiredService<ApplicationDBContext>();
                 context.Database.Migrate();
+
+                // Seeddata first (units + types), then park settings, seasons and prices.
+                await context.SeedAccommodationsAsync();
+                await context.SeedParkConfigurationAsync();
             }
 
             app.UseExceptionHandler("/error");

@@ -1,5 +1,7 @@
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
+using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.UnitTests
 {
@@ -38,6 +40,34 @@ namespace Vakantiepark.UnitTests
 
             configure?.Invoke(price);
             return price;
+        }
+
+        public static Season CreateSeason(Action<Season>? configure = null)
+        {
+            Season season = new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Hoogseizoen testjaar",
+                StartDate = new DateOnly(2026, 7, 1),
+                EndDate = new DateOnly(2026, 8, 31),
+            };
+
+            configure?.Invoke(season);
+            return season;
+        }
+
+        public static AccommodationType CreateAccommodationType(Action<AccommodationType>? configure = null)
+        {
+            AccommodationType type = new()
+            {
+                Id = Guid.NewGuid(),
+                Slug = "berk-4",
+                Name = "Berk 4",
+                Category = AccommodationCategory.HolidayHome,
+            };
+
+            configure?.Invoke(type);
+            return type;
         }
     }
 }
