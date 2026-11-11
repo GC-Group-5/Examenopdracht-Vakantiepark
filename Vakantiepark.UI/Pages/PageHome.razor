@@ -2,5 +2,144 @@
 
 <PageTitle>Vakantiepark D'r op Uut</PageTitle>
 
-<h1>Vakantiepark D'r op Uut</h1>
-<p>De website wordt opgebouwd in US-03 (huisstijl en template).</p>
+<section class="hero-home py-5 py-lg-0">
+    <div class="container">
+        <div class="row align-items-center min-vh-75 py-5">
+            <div class="col-lg-6 py-lg-5">
+                <div class="eyebrow mb-3">Achterhoek · rust · ruimte</div>
+                <h1 class="hero-title">D'r op Uut.<br /><span class="hero-accent">En dan lekker niks.</span></h1>
+                <p class="lead text-muted-du mt-4" style="max-width:620px">
+                    Vakantie vieren tussen bomen, water en Achterhoekse gezelligheid. Van knus huisje tot ruime bosvilla
+                    en van tentplaats tot camperplek.
+                </p>
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="zoek-en-boek" class="btn btn-du">Zoek &amp; boek een verblijf</a>
+                    <a href="accommodaties" class="btn btn-du-light">Bekijk alle verblijven</a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="hero-image-wrap">
+                    <img class="hero-image-main" src="img/accommodaties/eik-luxe-6/1.webp"
+                         alt="Vakantiewoning Eik Luxe 6 met terras en tuin in de zon" />
+                    <img class="hero-image-small" src="img/accommodaties/bosvilla-10/1.webp"
+                         alt="Bosvilla 10 met rieten dak tussen de bomen" />
+                    <div class="booking-peek">
+                        <div class="eyebrow">Zoek &amp; boek</div>
+                        <h2 class="h4 mt-2">Wanneer kom je?</h2>
+                        <p class="small text-muted-du">Kies je data en reisgezelschap en zie direct welke verblijven vrij zijn.</p>
+                        <div class="row g-2">
+                            <div class="col-6"><a class="fake-input" href="zoek-en-boek">Aankomst<br /><b>Kies datum</b></a></div>
+                            <div class="col-6"><a class="fake-input" href="zoek-en-boek">Vertrek<br /><b>Kies datum</b></a></div>
+                            <div class="col-6"><a class="fake-input" href="zoek-en-boek">Personen<br /><b>Kies aantal</b></a></div>
+                            <div class="col-6">
+                                <a class="btn btn-du w-100 h-100 d-flex align-items-center justify-content-center" href="zoek-en-boek">Zoeken →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+            <div>
+                <div class="eyebrow">Verblijven</div>
+                <h2 class="section-title mb-0">Van knus tot royaal</h2>
+            </div>
+            <a class="fw-bold text-decoration-none" href="accommodaties">Alle 12 verblijfstypes bekijken →</a>
+        </div>
+        <div class="row g-4">
+            @foreach (Highlight highlight in Highlights)
+            {
+                <div class="col-md-6 col-xl-3">
+                    <a class="text-decoration-none" href="@($"accommodaties/{highlight.Slug}")">
+                        <article class="type-card">
+                            <img src="@($"img/accommodaties/{highlight.Slug}/1.webp")" alt="@highlight.ImageAlt" loading="lazy" />
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between gap-3 align-items-start">
+                                    <div>
+                                        <div class="eyebrow">@highlight.Category · @highlight.Count stuks</div>
+                                        <h3 class="h3 mt-2 mb-0">@highlight.Name</h3>
+                                    </div>
+                                    <span class="count-pill text-nowrap">tot @highlight.MaxPersons pers.</span>
+                                </div>
+                                <p class="text-muted-du mt-3">@highlight.Description</p>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (string feature in highlight.Features)
+                                    {
+                                        <span class="feature-chip">@feature</span>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="section-soft section-pad">
+    <div class="container">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-6">
+                <div class="eyebrow">D'r is van alles</div>
+                <h2 class="section-title">Een park waar je ook zonder planning een dag vult.</h2>
+                <p class="text-muted-du mt-4">
+                    Begin met een duik, haal verse broodjes, schuif aan op het terras of loop gewoon het groen in.
+                    Tijdens je verblijf vind je alle parkinformatie in de park-app, en daar reserveer je ook je zwemmoment.
+                </p>
+                <div class="row g-3 mt-3">
+                    <div class="col-6"><div class="info-block"><div class="info-symbol mb-3" aria-hidden="true">≈</div><strong>Subtropisch zwembad</strong><div class="small text-muted-du">Reserveer je zwemmoment in de app</div></div></div>
+                    <div class="col-6"><div class="info-block"><div class="info-symbol mb-3" aria-hidden="true">☕</div><strong>Horeca</strong><div class="small text-muted-du">Van koffie tot diner</div></div></div>
+                    <div class="col-6"><div class="info-block"><div class="info-symbol mb-3" aria-hidden="true">▣</div><strong>Parkwinkel</strong><div class="small text-muted-du">Voor broodjes en vergeten spullen</div></div></div>
+                    <div class="col-6"><div class="info-block"><div class="info-symbol mb-3" aria-hidden="true">↟</div><strong>Activiteiten</strong><div class="small text-muted-du">Voor jong en oud</div></div></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="pool-wave" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="cta-card p-4 p-md-5">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-8">
+                    <div class="eyebrow text-white-50">Zwemmen op het park</div>
+                    <h2 class="section-title mt-2 mb-3">Van wildwaterbaan tot rustig dobberen.</h2>
+                    <p class="mb-0 text-white-50">Logeer je op het park? Dan reserveer je je zwemmoment eenvoudig in de park-app, voor jezelf en je reisgezelschap.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <a class="btn btn-light rounded-pill fw-bold px-4 py-3" href="zwembad">Bekijk het zwembad</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Static selection for the homepage; the full overview with data from the API is built in US-04.
+    private static readonly List<Highlight> Highlights =
+    [
+        new("berk-4", "Berk 4", "Vakantiewoning", 32, 4,
+            "Compact en sfeervol voor een ontspannen verblijf met z'n tweeën of met het gezin.",
+            ["2 slaapkamers", "1 badkamer", "Huisdieren mogelijk"], "Vakantiewoning Berk 4 van rode baksteen met terras"),
+        new("eik-luxe-6", "Eik Luxe 6", "Vakantiewoning", 18, 6,
+            "Onze luxe zespersoons woning met extra comfort en vaak een eigen wellness.",
+            ["3 slaapkamers", "2 badkamers", "Sauna mogelijk"], "Vakantiewoning Eik Luxe 6 met terras en tuin"),
+        new("bosvilla-10", "Bosvilla 10", "Vakantiewoning", 18, 10,
+            "Een royale villa voor grote gezelschappen, rustig gelegen met veel binnen- en buitenruimte.",
+            ["5 slaapkamers", "2–3 badkamers", "Sauna mogelijk"], "Bosvilla 10 met rieten dak en grote tuin"),
+        new("tentplaats-comfort", "Tentplaats Comfort", "Kampeerplaats", 10, 6,
+            "Kamperen met nét wat meer gemak, zoals stroom en op veel plaatsen een wateraansluiting.",
+            ["Stroom 10/16A", "Water mogelijk", "Auto bij de plaats mogelijk"], "Tentplaats Comfort met tent en stroomkast op het gras"),
+    ];
+
+    private sealed record Highlight(string Slug, string Name, string Category, int Count, int MaxPersons, string Description, string[] Features, string ImageAlt);
+}

@@ -1,0 +1,82 @@
+@page "/contact"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Contact | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Contact</div>
+        <h1 class="page-title mt-2">Effek bellen of mailen?</h1>
+        <p class="page-intro mt-4">Vragen over het park, een verblijf of de voorzieningen? De receptie helpt je graag.</p>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-lg-5">
+                <div class="contact-panel h-100">
+                    <div class="eyebrow text-white-50">Receptie</div>
+                    <h2 class="h2 mt-2">@ParkInfo.Name</h2>
+                    <p class="mb-5 text-white-50">@ParkInfo.Street<br />@ParkInfo.Region</p>
+                    <div class="mini-rule bg-white mb-4"></div>
+                    <div class="eyebrow text-white-50">Bereikbaar</div>
+                    <h2 class="h3 mt-2">Elke dag</h2>
+                    <p class="text-white-50 mb-0">
+                        @ParkInfo.ReceptionHours<br />
+                        <a href="mailto:@ParkInfo.Email">@ParkInfo.Email</a><br />
+                        <a href="tel:@ParkInfo.PhoneLink">@ParkInfo.Phone</a>
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <EditForm Model="message" OnValidSubmit="OpenMailClient" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                    <DataAnnotationsValidator />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="contact-name">Naam</label>
+                            <InputText id="contact-name" class="form-control" @bind-Value="message.Name" placeholder="Voor- en achternaam" autocomplete="name" />
+                            <ValidationMessage For="() => message.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="contact-email">E-mailadres</label>
+                            <InputText id="contact-email" type="email" class="form-control" @bind-Value="message.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+                            <ValidationMessage For="() => message.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="contact-subject">Onderwerp</label>
+                            <InputSelect id="contact-subject" class="form-select" @bind-Value="message.Subject">
+                                @foreach (string subject in Subjects)
+                                {
+                                    <option value="@subject">@subject</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" for="contact-message">Bericht</label>
+                            <InputTextArea id="contact-message" class="form-control" rows="6" @bind-Value="message.Message" placeholder="Waar kunnen we mee helpen?" />
+                            <ValidationMessage For="() => message.Message" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-du mt-4">Bericht opstellen</button>
+                    <p class="small text-muted-du mt-3 mb-0">Je mailprogramma opent met je bericht klaar om te versturen naar @ParkInfo.Email.</p>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private static readonly string[] Subjects = ["Algemene vraag", "Vraag over een verblijf", "Vraag over het zwembad"];
+
+    private readonly ContactMessage message = new ContactMessage();
+
+    // There is no mail endpoint yet, so the message is handed to the visitor's own mail client.
+    private void OpenMailClient()
+    {
+        string subject = Uri.EscapeDataString($"{message.Subject} – {message.Name}");
+        string body = Uri.EscapeDataString($"{message.Message}\n\n{message.Name}\n{message.Email}");
+
+        NavigationManager.NavigateTo($"mailto:{ParkInfo.Email}?subject={subject}&body={body}", forceLoad: true);
+    }
+}

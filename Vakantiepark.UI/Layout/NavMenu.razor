@@ -1,0 +1,49 @@
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<nav class="navbar navbar-expand-lg sticky-top py-2" aria-label="Hoofdmenu">
+    <div class="container">
+        <a class="navbar-brand" href="">
+            <img src="img/logo.webp" alt="@($"{ParkInfo.Name}, naar de homepage")" width="70" height="68" />
+        </a>
+
+        <button class="navbar-toggler border-0" type="button" aria-controls="hoofdmenu"
+                aria-expanded="@(isOpen ? "true" : "false")" aria-label="@(isOpen ? "Menu sluiten" : "Menu openen")"
+                @onclick="ToggleMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse @(isOpen ? "show" : null)" id="hoofdmenu">
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+                <li class="nav-item"><NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink></li>
+                <li class="nav-item"><NavLink class="nav-link" href="accommodaties">Verblijven</NavLink></li>
+                <li class="nav-item"><NavLink class="nav-link" href="zwembad">Zwembad</NavLink></li>
+                <li class="nav-item"><NavLink class="nav-link" href="contact">Contact</NavLink></li>
+            </ul>
+            <NavLink class="btn btn-du ms-lg-3 mt-3 mt-lg-0" href="zoek-en-boek">Zoek &amp; boek</NavLink>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private bool isOpen;
+
+    protected override void OnInitialized()
+        => NavigationManager.LocationChanged += OnLocationChanged;
+
+    private void ToggleMenu()
+        => isOpen = !isOpen;
+
+    // Without this the opened menu stays over the new page on a phone after tapping a link.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (!isOpen)
+            return;
+
+        isOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+        => NavigationManager.LocationChanged -= OnLocationChanged;
+}
