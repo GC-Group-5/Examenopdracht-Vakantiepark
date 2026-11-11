@@ -450,12 +450,25 @@ public static IServiceCollection RegisterApplication(this IServiceCollection ser
 
 ## 11. Git and CI
 
-- `main` is protected. All work happens on a feature branch and goes in through a pull request.
+- **Never commit or push directly to `main`.** It is protected on GitHub and a direct push is rejected.
+- Every change, however small, goes through this flow:
+  1. Update `main` locally (`git checkout main` → `git pull`).
+  2. Create a branch from `main`: `git checkout -b <branch-name>`.
+  3. Commit on that branch and push it (`git push -u origin <branch-name>`).
+  4. Open a pull request into `main` and link the issue it finishes (`Closes #6`).
+  5. **One other team member must approve** the pull request. You cannot approve your own.
+  6. Merge only when the approval is there **and** CI is green. Delete the branch after merging.
+- New commits pushed to a pull request after an approval need a fresh look from the reviewer.
+- Resolve merge conflicts on your own branch (merge or rebase `main` into it), never on `main`.
 - Branch names: kebab-case, describing the change: `zoeken-beschikbaarheid`, `fix-prijs-seizoensgrens`.
+  One branch per user story or fix; keep pull requests small enough to review in one sitting.
 - Commit messages: imperative, short subject, optionally a conventional prefix:
   `feat(boeken): add booking confirmation email`, `fix(prijs): use season of each night`.
 - CI (`.github/workflows/ci-build-test.yml`) runs on every PR to `main`:
-  restore → build (Release) → test. **A PR is only mergeable when CI is green.**
+  restore → build (Release) → test. **A PR is only mergeable when CI is green and one team member
+  has approved it.**
+- Agents: never push to `main`, never merge a pull request and never approve one. Work on a branch,
+  push it, and leave the pull request and its review to the team.
 - CI does not need Docker: unit tests never touch a real database.
 - Before you consider a change done, run locally:
   ```bash
