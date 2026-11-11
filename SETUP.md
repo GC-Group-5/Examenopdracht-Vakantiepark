@@ -183,7 +183,8 @@ resource in the dashboard.
 
 ### Branches and pull requests
 
-`main` is protected: everything goes through a pull request.
+`main` is protected on GitHub: **nobody can push to it directly**. Every change goes through a
+branch and a pull request that **one other team member approves** before it can be merged.
 
 ```powershell
 git checkout main
@@ -193,8 +194,14 @@ git checkout -b zoeken-beschikbaarheid      # kebab-case, describes the change
 git push -u origin zoeken-beschikbaarheid
 ```
 
-Open a pull request on GitHub and mention the issue it closes (`Closes #6`), so the board moves it
-to Done when it's merged.
+Open a pull request into `main` on GitHub and mention the issue it closes (`Closes #6`), so the
+board moves it to Done when it's merged. Then:
+
+1. Ask a teammate to review. They approve it, or request changes.
+2. Merge when it's **approved** and **CI is green**. GitHub blocks the merge button until both are true.
+3. Delete the branch after merging (GitHub offers a button for this).
+
+You can't approve your own pull request. If you push new commits after an approval, ask for another look.
 
 ### CI
 
