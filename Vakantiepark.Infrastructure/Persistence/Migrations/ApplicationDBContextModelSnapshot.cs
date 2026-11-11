@@ -30,8 +30,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<decimal>("AccommodationPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
+                        .HasColumnType("numeric")
                         .HasColumnName("accommodation_price");
 
                     b.Property<Guid>("AccommodationUnitId")
@@ -42,15 +41,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("arrival_date");
 
-                    b.Property<string>("BookingNumber")
-                        .IsRequired()
-                        .HasMaxLength(12)
-                        .HasColumnType("character varying(12)")
-                        .HasColumnName("booking_number");
+                    b.Property<TimeOnly>("ArrivalTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("arrival_time");
 
                     b.Property<decimal>("CleaningFee")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
+                        .HasColumnType("numeric")
                         .HasColumnName("cleaning_fee");
 
                     b.Property<DateTime>("CreatedAt")
@@ -65,16 +61,18 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("departure_date");
 
+                    b.Property<TimeOnly>("DepartureTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("departure_time");
+
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(254)
-                        .HasColumnType("character varying(254)")
+                        .HasColumnType("text")
                         .HasColumnName("email");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<int>("NumberOfGuests")
@@ -83,24 +81,15 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasColumnType("text")
                         .HasColumnName("phone_number");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
                     b.Property<decimal>("TotalPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
+                        .HasColumnType("numeric")
                         .HasColumnName("total_price");
 
                     b.Property<decimal>("TouristTax")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
+                        .HasColumnType("numeric")
                         .HasColumnName("tourist_tax");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -110,19 +99,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_bookings");
 
-                    b.HasIndex("BookingNumber")
-                        .IsUnique()
-                        .HasDatabaseName("ix_bookings_booking_number");
-
-                    b.HasIndex("AccommodationUnitId", "ArrivalDate", "DepartureDate")
-                        .HasDatabaseName("ix_bookings_accommodation_unit_id_arrival_date_departure_date");
-
-                    b.ToTable("bookings", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_bookings_departure_after_arrival", "departure_date > arrival_date");
-
-                            t.HasCheckConstraint("ck_bookings_number_of_guests_positive", "number_of_guests > 0");
-                        });
+                    b.ToTable("bookings", (string)null);
                 });
 #pragma warning restore 612, 618
         }

@@ -7,8 +7,8 @@ namespace Vakantiepark.Infrastructure.Repositories
 {
     public class Repository<TEntity> : IRepository<TEntity> where TEntity : class, IEntity
     {
-        private readonly ApplicationDBContext Context;
-        private readonly DbSet<TEntity> Set;
+        protected readonly ApplicationDBContext Context;
+        protected readonly DbSet<TEntity> Set;
 
         public Repository(ApplicationDBContext context)
         {
