@@ -11,6 +11,8 @@ namespace Vakantiepark.Infrastructure.Persistence
 
         public DbSet<Booking> Bookings => Set<Booking>();
 
+        public DbSet<User> Users => Set<User>();
+
         public ApplicationDBContext(DbContextOptions<ApplicationDBContext> options)
             : base(options) { }
 
@@ -21,6 +23,7 @@ namespace Vakantiepark.Infrastructure.Persistence
             builder.Entity<AccommodationType>(options => options.Configure());
             builder.Entity<Accommodation>(options => options.Configure());
             builder.Entity<Booking>(options => options.Configure());
+            builder.Entity<User>(options => options.Configure());
         }
     }
 }

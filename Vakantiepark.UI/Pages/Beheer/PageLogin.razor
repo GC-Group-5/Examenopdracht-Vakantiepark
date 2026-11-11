@@ -1,0 +1,77 @@
+@page "/beheer/inloggen"
+@inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+
+<PageTitle>Inloggen medewerkers | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <h1 class="page-title mt-2">Inloggen</h1>
+        <p class="page-intro mt-4">Voor medewerkers van @ParkInfo.Name.</p>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container" style="max-width:560px">
+        <EditForm Model="request" OnValidSubmit="LoginAsync" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+            <DataAnnotationsValidator />
+
+            @if (errorMessage is not null)
+            {
+                <div class="alert alert-danger" role="alert">@errorMessage</div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="login-email">E-mailadres</label>
+                <InputText id="login-email" type="email" class="form-control" @bind-Value="request.Email" autocomplete="username" />
+                <ValidationMessage For="() => request.Email" />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold" for="login-password">Wachtwoord</label>
+                <InputText id="login-password" type="password" class="form-control" @bind-Value="request.Password" autocomplete="current-password" />
+                <ValidationMessage For="() => request.Password" />
+            </div>
+
+            <button type="submit" class="btn btn-du w-100" disabled="@isBusy">
+                @(isBusy ? "Bezig met inloggen…" : "Inloggen")
+            </button>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private readonly LoginRequest request = new LoginRequest();
+    private string? errorMessage;
+    private bool isBusy;
+
+    private async Task LoginAsync()
+    {
+        isBusy = true;
+        errorMessage = null;
+
+        ApiResponse<TokenResponse> response = await AuthService.LoginAsync(request);
+
+        isBusy = false;
+        if (!response.Succeeded)
+        {
+            errorMessage = response.Message;
+            request.Password = string.Empty;
+            return;
+        }
+
+        NavigationManager.NavigateTo(GetSafeReturnUrl());
+    }
+
+    // Only redirect within this site, so a link with a foreign returnUrl can't send someone to another website.
+    private string GetSafeReturnUrl()
+    {
+        if (string.IsNullOrWhiteSpace(ReturnUrl) || !ReturnUrl.StartsWith('/') || ReturnUrl.StartsWith("//") || ReturnUrl.StartsWith("/\\"))
+            return "beheer";
+
+        return ReturnUrl.TrimStart('/');
+    }
+}

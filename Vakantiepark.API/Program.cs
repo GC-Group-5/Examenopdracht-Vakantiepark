@@ -1,4 +1,5 @@
 using Vakantiepark.Infrastructure.Persistence;
+using Vakantiepark.Application.Settings;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Vakantiepark.API.Middlewares;
@@ -14,11 +15,18 @@ namespace Vakantiepark.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.RegisterAPI();
-            builder.Services.RegisterApplication();
+            JwtSettings jwtSettings = builder.Configuration.GetSection("JWT").Get<JwtSettings>()
+                ?? throw new InvalidOperationException("The 'JWT' settings were not found.");
+
+            if (jwtSettings.Key.Length < JwtSettings.MinimumKeyLength)
+                throw new InvalidOperationException("The setting 'JWT:Key' is missing or too short. Start the application through Vakantiepark.AppHost.");
+
+            builder.Services.RegisterAPI(jwtSettings);
+            builder.Services.RegisterApplication(jwtSettings);
             builder.Services.RegisterInfrastructure(
                 builder.Configuration.GetConnectionString("vakantiepark")
-                    ?? throw new InvalidOperationException("The connection string 'vakantiepark' was not found. Start the application through Vakantiepark.AppHost."));
+                    ?? throw new InvalidOperationException("The connection string 'vakantiepark' was not found. Start the application through Vakantiepark.AppHost."),
+                seedTestData: builder.Environment.IsDevelopment());
 
             builder.Services.AddCors(options =>
             {
@@ -66,6 +74,8 @@ namespace Vakantiepark.API
 
             app.UseCors();
             app.UseHttpsRedirection();
+            app.UseAuthentication();
+            app.UseAuthorization();
             app.UseRateLimiter();
             app.MapControllers();
 
