@@ -1,4 +1,5 @@
 using Vakantiepark.Infrastructure.Persistence;
+using Vakantiepark.Infrastructure.Settings;
 using Vakantiepark.Application.Settings;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using Vakantiepark.API.Middlewares;
 using Vakantiepark.Infrastructure;
 using Vakantiepark.Application;
 using System.Globalization;
+using System.Data.Common;
 
 namespace Vakantiepark.API
 {
@@ -21,11 +23,14 @@ namespace Vakantiepark.API
             if (jwtSettings.Key.Length < JwtSettings.MinimumKeyLength)
                 throw new InvalidOperationException("The setting 'JWT:Key' is missing or too short. Start the application through Vakantiepark.AppHost.");
 
+            EmailSettings emailSettings = CreateEmailSettings(builder.Configuration);
+
             builder.Services.RegisterAPI(jwtSettings);
             builder.Services.RegisterApplication(jwtSettings);
             builder.Services.RegisterInfrastructure(
                 builder.Configuration.GetConnectionString("vakantiepark")
                     ?? throw new InvalidOperationException("The connection string 'vakantiepark' was not found. Start the application through Vakantiepark.AppHost."),
+                emailSettings,
                 seedTestData: builder.Environment.IsDevelopment());
 
             builder.Services.AddCors(options =>
@@ -80,6 +85,42 @@ namespace Vakantiepark.API
             app.MapControllers();
 
             app.Run();
+        }
+
+        // Default: Mailpit, supplied by Vakantiepark.AppHost as "Endpoint=smtp://host:port".
+        // Optional: an external test SMTP server (e.g. Mailtrap) set in this project's user-secrets under "Email:Smtp".
+        private static EmailSettings CreateEmailSettings(IConfiguration configuration)
+        {
+            string fromAddress = configuration["Email:FromAddress"]
+                ?? throw new InvalidOperationException("The setting 'Email:FromAddress' was not found.");
+
+            IConfigurationSection smtp = configuration.GetSection("Email:Smtp");
+            if (!string.IsNullOrWhiteSpace(smtp["Host"]))
+            {
+                return new EmailSettings()
+                {
+                    Host = smtp["Host"]!,
+                    Port = smtp.GetValue<int?>("Port")
+                        ?? throw new InvalidOperationException("The setting 'Email:Smtp:Port' was not found."),
+                    Username = smtp["Username"] ?? string.Empty,
+                    Password = smtp["Password"] ?? string.Empty,
+                    UseTls = true,
+                    FromAddress = fromAddress
+                };
+            }
+
+            string connectionString = configuration.GetConnectionString("mailpit")
+                ?? throw new InvalidOperationException("The connection string 'mailpit' was not found. Start the application through Vakantiepark.AppHost.");
+
+            DbConnectionStringBuilder parts = new DbConnectionStringBuilder() { ConnectionString = connectionString };
+            Uri endpoint = new Uri((string)parts["Endpoint"]);
+
+            return new EmailSettings()
+            {
+                Host = endpoint.Host,
+                Port = endpoint.Port,
+                FromAddress = fromAddress
+            };
         }
     }
 }

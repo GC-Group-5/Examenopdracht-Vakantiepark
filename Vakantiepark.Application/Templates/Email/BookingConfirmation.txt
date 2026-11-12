@@ -1,0 +1,21 @@
+Vakantiepark D'r op Uut
+
+Bedankt voor je boeking, {{Name}}!
+
+Je boekingsnummer is: {{BookingNumber}}
+
+JE VERBLIJF
+Verblijf:       {{AccommodationType}}
+Aankomst:       {{ArrivalDate}} vanaf {{ArrivalTime}}
+Vertrek:        {{DepartureDate}} vóór {{DepartureTime}}
+Reisgezelschap: {{NumberOfGuests}} personen
+
+PRIJSSPECIFICATIE
+Verblijf:           {{AccommodationPrice}}
+Eindschoonmaak:     {{CleaningFee}}
+Toeristenbelasting: {{TouristTax}}
+Totaal:             {{TotalPrice}}
+
+Bewaar je boekingsnummer goed. Met je boekingsnummer en dit e-mailadres ({{Email}}) log je in op Mijn boeking.
+
+We zien je graag op het park!

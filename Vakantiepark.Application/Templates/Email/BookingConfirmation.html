@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <title>Bevestiging van je boeking</title>
+</head>
+<body style="margin:0; padding:24px; background-color:#f4f6f5; font-family:Arial, Helvetica, sans-serif; color:#222222;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background-color:#ffffff; border-radius:8px;">
+        <tr>
+            <td style="padding:24px; background-color:#0b5d3b; border-radius:8px 8px 0 0; color:#ffffff;">
+                <h1 style="margin:0; font-size:22px;">Vakantiepark D'r op Uut</h1>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:24px;">
+                <h2 style="margin:0 0 16px; font-size:20px; color:#073d2b;">Bedankt voor je boeking, {{Name}}!</h2>
+                <p style="margin:0 0 8px;">Je boekingsnummer is:</p>
+                <p style="margin:0 0 24px; font-size:24px; font-weight:bold; color:#0b5d3b;">{{BookingNumber}}</p>
+
+                <h3 style="margin:0 0 8px; font-size:16px; color:#073d2b;">Je verblijf</h3>
+                <table role="presentation" width="100%" cellpadding="4" cellspacing="0" style="margin-bottom:24px;">
+                    <tr><td style="color:#666666;">Verblijf</td><td>{{AccommodationType}}</td></tr>
+                    <tr><td style="color:#666666;">Aankomst</td><td>{{ArrivalDate}} vanaf {{ArrivalTime}}</td></tr>
+                    <tr><td style="color:#666666;">Vertrek</td><td>{{DepartureDate}} vóór {{DepartureTime}}</td></tr>
+                    <tr><td style="color:#666666;">Reisgezelschap</td><td>{{NumberOfGuests}} personen</td></tr>
+                </table>
+
+                <h3 style="margin:0 0 8px; font-size:16px; color:#073d2b;">Prijsspecificatie</h3>
+                <table role="presentation" width="100%" cellpadding="4" cellspacing="0" style="margin-bottom:24px;">
+                    <tr><td>Verblijf</td><td align="right">{{AccommodationPrice}}</td></tr>
+                    <tr><td>Eindschoonmaak</td><td align="right">{{CleaningFee}}</td></tr>
+                    <tr><td>Toeristenbelasting</td><td align="right">{{TouristTax}}</td></tr>
+                    <tr><td style="border-top:1px solid #dddddd; font-weight:bold;">Totaal</td><td align="right" style="border-top:1px solid #dddddd; font-weight:bold;">{{TotalPrice}}</td></tr>
+                </table>
+
+                <p style="margin:0 0 8px;">Bewaar je boekingsnummer goed. Met je boekingsnummer en dit e-mailadres ({{Email}}) log je in op <strong>Mijn boeking</strong>.</p>
+                <p style="margin:0;">We zien je graag op het park!</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
