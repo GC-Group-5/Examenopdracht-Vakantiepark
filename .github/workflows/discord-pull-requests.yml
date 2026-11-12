@@ -1,0 +1,64 @@
+name: Discord - pull requests
+
+# Posts to #pull-requests: a new PR that waits for review, reviews, and merges.
+# Draft PRs stay quiet until they are marked ready for review.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.event_name == 'pull_request_review' || github.event.action == 'closed' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PULL_REQUESTS }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          SENDER: ${{ github.event.sender.login }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_URL: ${{ github.event.review.html_url }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "Secret DISCORD_WEBHOOK_PULL_REQUESTS is not set; skipping."; exit 0; fi
+
+          LINK="$URL"
+          EXTRA=""
+          case "$EVENT:$ACTION" in
+            pull_request:opened|pull_request:reopened|pull_request:ready_for_review)
+              HEADLINE="🔍 Nieuwe PR wacht op review"; COLOR=5793266 ;;
+            pull_request:closed)
+              if [ "$MERGED" = "true" ]; then
+                HEADLINE="🎉 Gemerged naar $BASE door $SENDER"; COLOR=10181046
+              else
+                HEADLINE="🚫 PR gesloten zonder merge"; COLOR=9807270
+              fi ;;
+            pull_request_review:submitted)
+              LINK="$REVIEW_URL"
+              case "$REVIEW_STATE" in
+                approved) HEADLINE="✅ Goedgekeurd door $SENDER"; COLOR=3066993 ;;
+                changes_requested) HEADLINE="✏️ Wijzigingen gevraagd door $SENDER"; COLOR=15105570 ;;
+                *) echo "Review state '$REVIEW_STATE' is not posted."; exit 0 ;;
+              esac
+              if [ -n "$REVIEW_BODY" ]; then EXTRA=$'\n\n> '"${REVIEW_BODY:0:300}"; fi ;;
+            *) exit 0 ;;
+          esac
+
+          DESC="**#$NUMBER $TITLE**"$'\n'"\`$HEAD\` → \`$BASE\` · door **$AUTHOR**$EXTRA"
+
+          jq -n --arg title "$HEADLINE" --arg url "$LINK" --arg desc "$DESC" --argjson color "$COLOR" \
+            '{username: "Pull Requests", embeds: [{title: $title, url: $url, description: $desc, color: $color, timestamp: (now | todate)}]}' \
+            | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"
