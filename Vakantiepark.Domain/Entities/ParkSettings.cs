@@ -14,12 +14,12 @@ namespace Vakantiepark.Domain.Entities
         // Part of the total paid at booking, e.g. 20 (%).
         public decimal DepositPercentage { get; set; }
 
-        // Cancelling more than this many days before arrival is free.
-        public int FreeCancellationDays { get; set; }
-
-        // Cancelling fewer than this many days before arrival costs the full stay
-        // (without tourist tax). In between, the deposit is lost.
-        public int FullChargeCancellationDays { get; set; }
+        // Cancellation rules (US-12):
+        // - more than FreeCancellationDaysBeforeArrival days before arrival: everything is refunded;
+        // - fewer than NoRefundDaysBeforeArrival days: the stay is not refunded, the tourist tax is;
+        // - in between: the deposit is lost, the rest is refunded.
+        public int FreeCancellationDaysBeforeArrival { get; set; }
+        public int NoRefundDaysBeforeArrival { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

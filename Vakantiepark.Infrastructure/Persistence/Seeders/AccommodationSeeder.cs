@@ -102,7 +102,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             if (export.Accommodations.Count != export.Counts.Total)
                 throw new InvalidOperationException($"De export bevat {export.Accommodations.Count} accommodaties, maar meldt er {export.Counts.Total}.");
 
-            var types = export.Accommodations
+            Dictionary<string, AccommodationType> types = export.Accommodations
                 .GroupBy(unit => unit.Type)
                 .ToDictionary(group => group.Key, group => new AccommodationType
                 {
@@ -113,12 +113,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     CreatedAt = now,
                 });
 
-            var zones = export.Accommodations
+            Dictionary<(string Zone, AccommodationCategory Category), Zone> zones = export.Accommodations
                 .Select(unit => (unit.Zone, unit.Category))
                 .Distinct()
                 .ToDictionary(key => key, key => new Zone { Id = Guid.NewGuid(), Name = key.Zone, Category = key.Category, CreatedAt = now });
 
-            var features = export.Accommodations
+            Dictionary<string, Feature> features = export.Accommodations
                 .SelectMany(unit => Properties(unit).Select(property => (property.Key, property.Value.ValueKind, unit.Category)))
                 .GroupBy(property => property.Key)
                 .ToDictionary(group => group.Key, group => BuildFeature(
@@ -136,13 +136,14 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                 Type = types[unit.Type],
                 Zone = zones[(unit.Zone, unit.Category)],
                 // A 'no' is stored as a missing row; numbers and options are always stored.
-                Features = [.. Properties(unit)
+                Features = Properties(unit)
                     .Where(property => property.Value.ValueKind != JsonValueKind.False)
-                    .Select(property => ToValue(features[property.Key], property.Value, unit.Code))],
+                    .Select(property => ToValue(features[property.Key], property.Value, unit.Code))
+                    .ToList(),
                 CreatedAt = now,
             }).ToList();
 
-            return new AccommodationImport([.. types.Values], [.. zones.Values], [.. features.Values], accommodations);
+            return new AccommodationImport(types.Values.ToList(), zones.Values.ToList(), features.Values.ToList(), accommodations);
         }
 
         private static Feature BuildFeature(string key, FeatureValueType valueType, List<AccommodationCategory> categories, DateTime now)
@@ -156,14 +157,14 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                 if (!OptionNames.TryGetValue(key, out (string Value, string Name)[]? choices))
                     throw new InvalidOperationException($"De eigenschap '{key}' uit de export heeft nog geen keuzelijst in de seeder.");
 
-                options = [.. choices.Select((choice, index) => new FeatureOption
+                options = choices.Select((choice, index) => new FeatureOption
                 {
                     Id = Guid.NewGuid(),
                     Value = choice.Value,
                     Name = choice.Name,
                     SortOrder = index,
                     CreatedAt = now,
-                })];
+                }).ToList();
             }
 
             return new Feature

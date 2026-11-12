@@ -40,15 +40,16 @@ namespace Vakantiepark.API.Middlewares
 
         private static string? GetCasingWarning(string? routePattern)
         {
-            List<string> segments = [.. (routePattern ?? string.Empty)
+            List<string> segments = (routePattern ?? string.Empty)
                 .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(x => !x.StartsWith('{'))];
+                .Where(x => !x.StartsWith('{'))
+                .ToList();
 
             if (segments.Count < 2)
                 return null;
 
             bool controllerIsUpper = char.IsUpper(segments[0][0]);
-            List<string> faulty = [.. segments.Skip(1).Where(x => char.IsUpper(x[0]) != controllerIsUpper)];
+            List<string> faulty = segments.Skip(1).Where(x => char.IsUpper(x[0]) != controllerIsUpper).ToList();
             if (faulty.Count == 0)
                 return null;
 

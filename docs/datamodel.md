@@ -63,8 +63,8 @@ erDiagram
         time departure_time
         int high_season_minimum_nights
         decimal deposit_percentage
-        int free_cancellation_days
-        int full_charge_cancellation_days
+        int free_cancellation_days_before_arrival
+        int no_refund_days_before_arrival
     }
     TOURIST_TAX_RATE {
         decimal amount_per_person_per_night

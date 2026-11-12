@@ -164,9 +164,10 @@ namespace Vakantiepark.API
             {
                 options.InvalidModelStateResponseFactory = context =>
                 {
-                    List<ApiErrors> errors = [.. context.ModelState
+                    List<ApiErrors> errors = context.ModelState
                         .Where(x => x.Value is not null && x.Value.Errors.Count > 0)
-                        .Select(x => ApiErrors.Build(x.Key, [.. x.Value!.Errors.Select(e => e.ErrorMessage)]))];
+                        .Select(x => ApiErrors.Build(x.Key, x.Value!.Errors.Select(e => e.ErrorMessage).ToList()))
+                        .ToList();
 
                     return new BadRequestObjectResult(ApiResponse<object>.Error(errors));
                 };

@@ -15,7 +15,7 @@ namespace Vakantiepark.Application.Extensions
                 Category = accommodation.Type.Category.ToString(),
                 Zone = accommodation.Zone.Name,
                 MaxPersons = accommodation.MaxPersons,
-                Features = [.. accommodation.Features
+                Features = accommodation.Features
                     .OrderBy(value => value.Feature.Name)
                     .Select(value => new AccommodationFeatureResponse()
                     {
@@ -25,7 +25,8 @@ namespace Vakantiepark.Application.Extensions
                         NumberValue = value.NumberValue,
                         OptionValue = value.Option?.Value,
                         OptionName = value.Option?.Name,
-                    })],
+                    })
+                    .ToList(),
             };
 
         public static FeatureResponse ToResponse(this Feature feature)
@@ -35,9 +36,10 @@ namespace Vakantiepark.Application.Extensions
                 Name = feature.Name,
                 ValueType = feature.ValueType.ToString(),
                 Category = feature.Category?.ToString(),
-                Options = [.. feature.Options
+                Options = feature.Options
                     .OrderBy(option => option.SortOrder)
-                    .Select(option => new FeatureOptionResponse() { Value = option.Value, Name = option.Name })],
+                    .Select(option => new FeatureOptionResponse() { Value = option.Value, Name = option.Name })
+                    .ToList(),
             };
     }
 }

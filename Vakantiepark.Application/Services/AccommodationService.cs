@@ -20,7 +20,7 @@ namespace Vakantiepark.Application.Services
         public async Task<List<AccommodationResponse>> GetAllAsync()
         {
             List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
-            return [.. accommodations.Select(accommodation => accommodation.ToResponse())];
+            return accommodations.Select(accommodation => accommodation.ToResponse()).ToList();
         }
 
         public async Task<AccommodationResponse> GetByCodeAsync(string code)
@@ -34,7 +34,7 @@ namespace Vakantiepark.Application.Services
         public async Task<List<FeatureResponse>> GetFeaturesAsync()
         {
             List<Feature> features = await FeatureRepository.GetAllWithOptionsAsync();
-            return [.. features.Select(feature => feature.ToResponse())];
+            return features.Select(feature => feature.ToResponse()).ToList();
         }
     }
 }

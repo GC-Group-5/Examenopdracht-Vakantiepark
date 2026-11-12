@@ -12,7 +12,7 @@ using Vakantiepark.Infrastructure.Persistence;
 namespace Vakantiepark.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDBContext))]
-    [Migration("20261112100749_AddedZonesFeaturesSeasonsAndPrices")]
+    [Migration("20261112104219_AddedZonesFeaturesSeasonsAndPrices")]
     partial class AddedZonesFeaturesSeasonsAndPrices
     {
         /// <inheritdoc />
@@ -440,17 +440,17 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(5,2)")
                         .HasColumnName("deposit_percentage");
 
-                    b.Property<int>("FreeCancellationDays")
+                    b.Property<int>("FreeCancellationDaysBeforeArrival")
                         .HasColumnType("integer")
-                        .HasColumnName("free_cancellation_days");
-
-                    b.Property<int>("FullChargeCancellationDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("full_charge_cancellation_days");
+                        .HasColumnName("free_cancellation_days_before_arrival");
 
                     b.Property<int>("HighSeasonMinimumNights")
                         .HasColumnType("integer")
                         .HasColumnName("high_season_minimum_nights");
+
+                    b.Property<int>("NoRefundDaysBeforeArrival")
+                        .HasColumnType("integer")
+                        .HasColumnName("no_refund_days_before_arrival");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

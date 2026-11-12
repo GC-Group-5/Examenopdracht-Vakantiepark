@@ -224,8 +224,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     departure_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
                     high_season_minimum_nights = table.Column<int>(type: "integer", nullable: false),
                     deposit_percentage = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
-                    free_cancellation_days = table.Column<int>(type: "integer", nullable: false),
-                    full_charge_cancellation_days = table.Column<int>(type: "integer", nullable: false),
+                    free_cancellation_days_before_arrival = table.Column<int>(type: "integer", nullable: false),
+                    no_refund_days_before_arrival = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)

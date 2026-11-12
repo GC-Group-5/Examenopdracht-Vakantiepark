@@ -70,8 +70,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             DepartureTime = new TimeOnly(10, 0),
             HighSeasonMinimumNights = 7,
             DepositPercentage = 20m,
-            FreeCancellationDays = 30,
-            FullChargeCancellationDays = 7,
+            FreeCancellationDaysBeforeArrival = 30,
+            NoRefundDaysBeforeArrival = 7,
             CreatedAt = now,
         };
 
@@ -79,7 +79,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
         {
             foreach (AccommodationType type in types)
             {
-                if (!TypeRates.TryGetValue(type.Name, out var rates))
+                if (!TypeRates.TryGetValue(type.Name, out (decimal DefaultPricePerNight, decimal CleaningFee) rates))
                     throw new InvalidOperationException($"Voor type '{type.Name}' is geen testprijs in de seeder.");
 
                 type.DefaultPricePerNight = rates.DefaultPricePerNight;
