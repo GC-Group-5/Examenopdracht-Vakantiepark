@@ -21,10 +21,9 @@ namespace Vakantiepark.Application
         {
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
-            //services.AddScoped<IBookingService, BookingService>();
-            services.AddScoped<IBookingService, BookingService>(); // TIJDELIJK: niet committen
-            services.AddScoped<IPriceService, TemporaryPriceService>(); // TIJDELIJK: niet committen
             services.AddScoped<IAccommodationService, AccommodationService>();
+            services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IPriceService, PriceService>();
 
             return services;
         }
