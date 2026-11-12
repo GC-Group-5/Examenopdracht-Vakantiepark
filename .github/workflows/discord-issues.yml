@@ -1,0 +1,73 @@
+name: Discord - tickets and bugs
+
+# Issues with the label "bug" go to #bugs; user stories (title starts with "US-")
+# go to #tickets. Other issues are not posted.
+
+on:
+  issues:
+    types: [opened, reopened, closed, labeled]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send to Discord
+        env:
+          BUGS_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_BUGS }}
+          TICKETS_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_TICKETS }}
+          ACTION: ${{ github.event.action }}
+          ADDED_LABEL: ${{ github.event.label.name }}
+          LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          URL: ${{ github.event.issue.html_url }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          SENDER: ${{ github.event.sender.login }}
+          BODY: ${{ github.event.issue.body }}
+          CREATED_AT: ${{ github.event.issue.created_at }}
+          STATE_REASON: ${{ github.event.issue.state_reason }}
+        run: |
+          IS_BUG=false
+          case ",$LABELS," in *,bug,*) IS_BUG=true ;; esac
+
+          if [ "$ACTION" = "labeled" ]; then
+            # Only a bug label added later; a bug opened with the label is posted by 'opened'.
+            if [ "$ADDED_LABEL" != "bug" ]; then exit 0; fi
+            AGE=$(( $(date +%s) - $(date -d "$CREATED_AT" +%s) ))
+            if [ "$AGE" -lt 120 ]; then exit 0; fi
+          fi
+
+          EXTRA=""
+          if [ "$IS_BUG" = "true" ]; then
+            WEBHOOK="$BUGS_WEBHOOK"; NAME="Bugs"
+            case "$ACTION" in
+              opened) HEADLINE="🐞 Nieuwe bug"; COLOR=15158332; EXTRA=$'\n\n'"${BODY:0:300}" ;;
+              labeled) HEADLINE="🐞 Gemarkeerd als bug door $SENDER"; COLOR=15158332 ;;
+              closed)
+                if [ "$STATE_REASON" = "not_planned" ]; then HEADLINE="⚪ Bug gesloten zonder oplossing"; COLOR=9807270
+                else HEADLINE="✅ Bug opgelost"; COLOR=3066993; fi ;;
+              reopened) HEADLINE="🔁 Bug heropend door $SENDER"; COLOR=15105570 ;;
+            esac
+          elif [[ "$TITLE" == US-* ]]; then
+            WEBHOOK="$TICKETS_WEBHOOK"; NAME="Scrumbord"
+            case "$ACTION" in
+              opened) HEADLINE="🆕 Nieuwe userstory"; COLOR=5793266 ;;
+              closed)
+                if [ "$STATE_REASON" = "not_planned" ]; then HEADLINE="⚪ Userstory vervallen"; COLOR=9807270
+                else HEADLINE="✅ Userstory afgerond"; COLOR=3066993; fi ;;
+              reopened) HEADLINE="🔁 Userstory heropend door $SENDER"; COLOR=15105570 ;;
+              *) exit 0 ;;
+            esac
+          else
+            exit 0
+          fi
+
+          if [ -z "$WEBHOOK" ]; then echo "Discord secret for $NAME is not set; skipping."; exit 0; fi
+
+          DESC="**#$NUMBER $TITLE**"$'\n'"Aangemaakt door **$AUTHOR**$EXTRA"
+
+          jq -n --arg name "$NAME" --arg title "$HEADLINE" --arg url "$URL" --arg desc "$DESC" --argjson color "$COLOR" \
+            '{username: $name, embeds: [{title: $title, url: $url, description: $desc, color: $color, timestamp: (now | todate)}]}' \
+            | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"
