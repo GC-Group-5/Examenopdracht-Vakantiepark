@@ -11,6 +11,9 @@ namespace Vakantiepark.Infrastructure.Repositories
         public BookingRepository(ApplicationDBContext context)
             : base(context) { }
 
+        public async Task<Booking?> GetByBookingNumberAsync(string bookingNumber)
+            => await Set.SingleOrDefaultAsync(x => x.BookingNumber == bookingNumber && x.DeletedAt == null);
+
         // Deleted bookings keep their number in the unique index, so they count too.
         public async Task<bool> ExistsByBookingNumberIncludingDeletedAsync(string bookingNumber)
             => await Set.AnyAsync(x => x.BookingNumber == bookingNumber);

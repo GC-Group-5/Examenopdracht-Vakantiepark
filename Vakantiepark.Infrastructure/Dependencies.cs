@@ -45,12 +45,6 @@ namespace Vakantiepark.Infrastructure
         private static IServiceCollection RegisterHelpers(this IServiceCollection services)
         {
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
-
-            return services;
-        }
-
-        private static IServiceCollection RegisterHelpers(this IServiceCollection services)
-        {
             services.AddSingleton<IBookingNumberGenerator, BookingNumberGenerator>();
 
             return services;
