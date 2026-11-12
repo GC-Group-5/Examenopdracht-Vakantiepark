@@ -1,0 +1,97 @@
+@page "/accommodaties"
+@using Vakantiepark.Shared.DTOs.Accommodation
+@using Vakantiepark.UI.Application.Interfaces
+@inject IHttpService HttpService
+
+<PageTitle>Alle verblijven - Vakantiepark D'r op Uut</PageTitle>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="mb-5">
+            <div class="eyebrow">Verblijven</div>
+            <h1 class="page-title mb-3">Alle verblijfstypes</h1>
+            <p class="lead text-muted-du mb-0">Bekijk alle 12 verblijfstypes en kies de accommodatie die bij jullie past.</p>
+        </div>
+
+        @if (accommodations is null && errorMessage is null)
+        {
+            <p class="text-muted-du">De verblijven worden geladen...</p>
+        }
+        else if (errorMessage is not null)
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+        else if (AccommodationTypes.Count == 0)
+        {
+            <div class="text-center py-5">
+                <h2 class="h5">Geen verblijven gevonden</h2>
+                <p class="text-muted-du">Er zijn op dit moment geen verblijven beschikbaar.</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (AccommodationResponse accommodation in AccommodationTypes)
+                {
+                    <div class="col-md-6 col-xl-3">
+                        <a class="text-decoration-none" href="@($"accommodaties/{accommodation.TypeSlug}")">
+                            <article class="type-card h-100">
+                                <img src="@($"img/accommodaties/{accommodation.TypeSlug}/1.webp")"
+                                     alt="@accommodation.TypeName"
+                                     loading="lazy" />
+                                <div class="card-body">
+                                    <div class="eyebrow">@accommodation.Category · @accommodation.MaxPersons pers.</div>
+                                    <h2 class="h3 mt-2 mb-0">@accommodation.TypeName</h2>
+                                    <p class="text-muted-du mt-3">Bekijk de eigenschappen en foto's van dit verblijfstype.</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (AccommodationFeatureResponse feature in accommodation.Features.Take(3))
+                                        {
+                                            <span class="feature-chip">@FormatFeature(feature)</span>
+                                        }
+                                    </div>
+                                </div>
+                            </article>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private List<AccommodationResponse>? accommodations;
+    private string? errorMessage;
+
+    private List<AccommodationResponse> AccommodationTypes
+        => accommodations?
+            .DistinctBy(accommodation => accommodation.TypeSlug)
+            .ToList() ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<AccommodationResponse>> response =
+            await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
+
+        if (response.Succeeded)
+        {
+            accommodations = response.Value ?? [];
+            return;
+        }
+
+        errorMessage = response.Message ?? "De verblijven konden niet worden geladen.";
+    }
+
+    private static string FormatFeature(AccommodationFeatureResponse feature)
+        => feature.Key switch
+        {
+            "bedrooms" when feature.NumberValue is decimal bedrooms
+                => $"{bedrooms:0} {(bedrooms == 1 ? "slaapkamer" : "slaapkamers")}",
+            "maxPets" when feature.NumberValue is 0
+                => "Geen huisdieren toegestaan",
+            "maxPets" when feature.NumberValue is decimal maxPets
+                => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
+            _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
+            _ => feature.OptionName ?? feature.Name,
+        };
+}
