@@ -1,60 +1,16 @@
-using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces;
 
 namespace Vakantiepark.Domain.Entities
 {
+    // One physical unit on the park (a house or a pitch). Everything the client's export
+    // lists under 'properties' (bedrooms, sauna, surface, max pets...) is a feature with a
+    // value (AccommodationFeature), so a new property never needs a new column.
     public class Accommodation : IEntity
     {
         public Guid Id { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
-        public AccommodationCategory Category { get; set; }
-        public string Zone { get; set; } = string.Empty;
         public int MaxPersons { get; set; }
-
-        // real columns, per the US-02 acceptance criteria.
-        public bool PetsAllowed { get; set; }
-        public int MaxPets { get; set; }
-        public bool WheelchairAccessible { get; set; }
-
-        // Holiday home features: 0 and false for camping pitches.
-        public int Bedrooms { get; set; }
-        public int Bathrooms { get; set; }
-        public int Beds { get; set; }
-        public bool Sauna { get; set; }
-        public bool Dishwasher { get; set; }
-        public bool WashingMachine { get; set; }
-        public bool AirConditioning { get; set; }
-        public bool Fireplace { get; set; }
-        public bool CoveredTerrace { get; set; }
-        public bool ChargingPoint { get; set; }
-        public bool Waterfront { get; set; }
-        public bool NearPool { get; set; }
-        public bool ChildFriendly { get; set; }
-        public bool SmokeFree { get; set; }
-        public bool HotTub { get; set; }
-        public bool LevelAccess { get; set; }
-        public bool AdaptedBathroom { get; set; }
-        public bool WidenedDoors { get; set; }
-        public bool AdjustableBed { get; set; }
-        public bool ExtraParkingSpace { get; set; }
-
-        // Camping pitch features: null and false for holiday homes.
-        public bool Electricity { get; set; }
-        public int ElectricityAmps { get; set; }
-        public bool WaterConnection { get; set; }
-        public bool DrainConnection { get; set; }
-        public bool PrivateSanitary { get; set; }
-        public bool CarAtPitch { get; set; }
-        public bool NearSanitary { get; set; }
-        public bool ExtraWide { get; set; }
-        public PitchSurface? Surface { get; set; }
-        public PitchShade? Shade { get; set; }
-        public WifiCoverage? WifiCoverage { get; set; }
-
-        // Meters with half-metre precision; null means the unit has no such limit.
-        public double? MaxCaravanLengthMeters { get; set; }
-        public double? MaxVehicleLengthMeters { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -62,8 +18,19 @@ namespace Vakantiepark.Domain.Entities
 
         // Navigation Keys
         public Guid TypeId { get; set; }
+        public Guid ZoneId { get; set; }
 
         // Navigation Properties
         public AccommodationType Type { get; set; } = null!;
+        public Zone Zone { get; set; } = null!;
+        public List<AccommodationFeature> Features { get; set; } = [];
+
+        // Helpers for business rules; they need Features (with Feature) to be loaded.
+        public bool HasFeature(string key) => Features.Any(feature => feature.Feature.Key == key);
+
+        public decimal? GetNumber(string key) => Features.FirstOrDefault(feature => feature.Feature.Key == key)?.NumberValue;
+
+        // The chosen option's value, e.g. 'reinforced_grass'; needs Option to be loaded as well.
+        public string? GetOption(string key) => Features.FirstOrDefault(feature => feature.Feature.Key == key)?.Option?.Value;
     }
 }
