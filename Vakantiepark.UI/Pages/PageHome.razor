@@ -55,7 +55,7 @@
             @foreach (Highlight highlight in Highlights)
             {
                 <div class="col-md-6 col-xl-3">
-                    <a class="text-decoration-none" href="@($"accommodaties/{highlight.Slug}")">
+                    <a class="text-decoration-none" href="@BookingUrl(highlight)">
                         <article class="type-card">
                             <img src="@($"img/accommodaties/{highlight.Slug}/1.webp")" alt="@highlight.ImageAlt" loading="lazy" />
                             <div class="card-body">
@@ -140,6 +140,17 @@
             "Kamperen met nét wat meer gemak, zoals stroom en op veel plaatsen een wateraansluiting.",
             ["Stroom 10/16A", "Water mogelijk", "Auto bij de plaats mogelijk"], "Tentplaats Comfort met tent en stroomkast op het gras"),
     ];
+
+    // Until search (US-06) and the overview (US-04) exist, a card opens the booking form directly:
+    // arrival in two weeks, a stay of one week, and two guests (or fewer if the type is smaller).
+    private static string BookingUrl(Highlight highlight)
+    {
+        DateOnly arrival = DateOnly.FromDateTime(DateTime.Today).AddDays(14);
+        DateOnly departure = arrival.AddDays(7);
+        int guests = Math.Min(2, highlight.MaxPersons);
+
+        return $"zoek-en-boek?type={highlight.Slug}&aankomst={arrival:yyyy-MM-dd}&vertrek={departure:yyyy-MM-dd}&personen={guests}";
+    }
 
     private sealed record Highlight(string Slug, string Name, string Category, int Count, int MaxPersons, string Description, string[] Features, string ImageAlt);
 }

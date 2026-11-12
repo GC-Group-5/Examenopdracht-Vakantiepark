@@ -30,6 +30,8 @@ namespace Vakantiepark.Infrastructure.Repositories
             catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
             {
                 Context.Entry(booking).State = EntityState.Detached;
+                foreach (BookingTraveler traveler in booking.Travelers)
+                    Context.Entry(traveler).State = EntityState.Detached;
                 return false;
             }
         }

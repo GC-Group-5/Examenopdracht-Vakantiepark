@@ -15,5 +15,8 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request)
             => await HttpService.PostAsync<BookingResponse, CreateBookingRequest>("/Booking", request);
+
+        public async Task<ApiResponse<BookingInfoResponse>> GetInfoAsync(string accommodationTypeSlug)
+            => await HttpService.GetAsync<BookingInfoResponse>($"/Booking/info?type={Uri.EscapeDataString(accommodationTypeSlug)}");
     }
 }

@@ -16,12 +16,17 @@ namespace Vakantiepark.UnitTests
                 AccommodationTypeSlug = "eik-luxe-6",
                 ArrivalDate = arrivalDate,
                 DepartureDate = arrivalDate.AddDays(7),
-                ArrivalTime = new TimeOnly(15, 0),
-                DepartureTime = new TimeOnly(10, 0),
                 NumberOfGuests = 4,
                 Name = "Jan Jansen",
+                BirthDate = new DateOnly(1985, 3, 14),
                 Email = "jan@example.nl",
-                PhoneNumber = "0612345678"
+                PhoneNumber = "0612345678",
+                Travelers =
+                [
+                    new TravelerRequest() { Name = "Petra Jansen", BirthDate = new DateOnly(1987, 6, 2) },
+                    new TravelerRequest() { Name = "Sanne Jansen", BirthDate = new DateOnly(2015, 9, 21) },
+                    new TravelerRequest() { Name = "Tim Jansen", BirthDate = new DateOnly(2018, 1, 5) }
+                ]
             };
 
             configure?.Invoke(request);
@@ -60,6 +65,23 @@ namespace Vakantiepark.UnitTests
 
             configure?.Invoke(booking);
             return booking;
+        }
+
+        public static ParkSettings CreateParkSettings(Action<ParkSettings>? configure = null)
+        {
+            ParkSettings settings = new ParkSettings()
+            {
+                Id = Guid.NewGuid(),
+                ArrivalTime = new TimeOnly(15, 0),
+                DepartureTime = new TimeOnly(10, 0),
+                HighSeasonMinimumNights = 7,
+                DepositPercentage = 30m,
+                FreeCancellationDaysBeforeArrival = 42,
+                NoRefundDaysBeforeArrival = 14
+            };
+
+            configure?.Invoke(settings);
+            return settings;
         }
 
         public static PriceSpecificationResponse CreatePriceSpecification(Action<PriceSpecificationResponse>? configure = null)

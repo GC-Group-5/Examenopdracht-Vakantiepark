@@ -15,5 +15,17 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         Task<List<Accommodation>> GetAllWithDetailsAsync();
 
         Task<Accommodation?> GetByCodeWithDetailsAsync(string code);
+
+        /// <summary>
+        /// Returns the ids from unitIds that lie in the given zone.
+        /// </summary>
+        Task<List<Guid>> GetIdsInZoneAsync(List<Guid> unitIds, string zoneName);
+
+        Task<string?> GetTypeNameBySlugAsync(string accommodationTypeSlug);
+
+        /// <summary>
+        /// Returns the names of the zones that have at least one unit of the type, alphabetically.
+        /// </summary>
+        Task<List<string>> GetZoneNamesByTypeSlugAsync(string accommodationTypeSlug);
     }
 }

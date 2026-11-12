@@ -14,10 +14,12 @@ namespace Vakantiepark.Application.Services
 {
 	public class BookingService : IBookingService
 	{
+		// A collision is very unlikely with 31^8 possible numbers; this only prevents an endless loop.
 		private const int MaxBookingNumberAttempts = 5;
 
 		private readonly IBookingRepository BookingRepository;
 		private readonly IAccommodationUnitRepository AccommodationUnitRepository;
+		private readonly IParkSettingsRepository ParkSettingsRepository;
 		private readonly IPriceService PriceService;
 		private readonly IBookingNumberGenerator BookingNumberGenerator;
 		private readonly IEmailSender EmailSender;
@@ -26,6 +28,7 @@ namespace Vakantiepark.Application.Services
 		public BookingService(
 			IBookingRepository bookingRepository,
 			IAccommodationUnitRepository accommodationUnitRepository,
+			IParkSettingsRepository parkSettingsRepository,
 			IPriceService priceService,
 			IBookingNumberGenerator bookingNumberGenerator,
 			IEmailSender emailSender,
@@ -33,6 +36,7 @@ namespace Vakantiepark.Application.Services
 		{
 			BookingRepository = bookingRepository;
 			AccommodationUnitRepository = accommodationUnitRepository;
+			ParkSettingsRepository = parkSettingsRepository;
 			PriceService = priceService;
 			BookingNumberGenerator = bookingNumberGenerator;
 			EmailSender = emailSender;
@@ -41,9 +45,15 @@ namespace Vakantiepark.Application.Services
 
 		public async Task<BookingResponse> CreateAsync(CreateBookingRequest request)
 		{
+			request.ValidateParty();
+
 			List<Guid> availableUnitIds = await GetAvailableUnitIdsAsync(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate);
 
 			request.Validate(availableUnitIds);
+
+			Guid unitId = await ChooseUnitAsync(availableUnitIds, request.PreferredZone);
+
+			ParkSettings settings = await GetParkSettingsAsync();
 
 			PriceSpecificationResponse price = await PriceService.CalculateAsync(
 				request.AccommodationTypeSlug,
@@ -53,13 +63,27 @@ namespace Vakantiepark.Application.Services
 
 			string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
-			Booking booking = request.ToEntity(availableUnitIds[0], bookingNumber, price);
+			Booking booking = request.ToEntity(unitId, bookingNumber, price, settings);
 
 			if (!await BookingRepository.TryAddAsync(booking))
 				throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
-			
-			await SendConfirmationAsync(booking, request.AccommodationTypeSlug);
+
+			string accommodationType = await AccommodationUnitRepository.GetTypeNameBySlugAsync(request.AccommodationTypeSlug)
+				?? request.AccommodationTypeSlug;
+
+			await SendConfirmationAsync(booking, accommodationType);
 			return booking.ToResponse();
+		}
+
+		public async Task<BookingInfoResponse> GetInfoAsync(string accommodationTypeSlug)
+		{
+			string accommodationType = await AccommodationUnitRepository.GetTypeNameBySlugAsync(accommodationTypeSlug)
+				?? throw new KeyNotFoundException("Dit verblijf bestaat niet.");
+
+			List<string> zones = await AccommodationUnitRepository.GetZoneNamesByTypeSlugAsync(accommodationTypeSlug);
+			ParkSettings settings = await GetParkSettingsAsync();
+
+			return settings.ToInfoResponse(accommodationType, zones);
 		}
 
 		private async Task<List<Guid>> GetAvailableUnitIdsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
@@ -69,6 +93,24 @@ namespace Vakantiepark.Application.Services
 
 			return [.. unitIds.Except(bookedUnitIds)];
 		}
+
+		// Without a preference any free unit will do; with one, the unit must lie in that zone.
+		private async Task<Guid> ChooseUnitAsync(List<Guid> availableUnitIds, string? preferredZone)
+		{
+			if (string.IsNullOrWhiteSpace(preferredZone))
+				return availableUnitIds[0];
+
+			List<Guid> unitIdsInZone = await AccommodationUnitRepository.GetIdsInZoneAsync(availableUnitIds, preferredZone.Trim());
+			if (unitIdsInZone.Count == 0)
+				throw new ArgumentException(CreateBookingRequestValidation.NotAvailableInZoneMessage);
+
+			return availableUnitIds.First(unitIdsInZone.Contains);
+		}
+
+		// The settings row is created by the seeder, so a missing row is a setup error, not a guest error.
+		private async Task<ParkSettings> GetParkSettingsAsync()
+			=> await ParkSettingsRepository.GetAsync()
+				?? throw new InvalidOperationException("The park settings were not found.");
 
 		private async Task<string> GenerateUniqueBookingNumberAsync()
 		{
@@ -110,6 +152,7 @@ namespace Vakantiepark.Application.Services
 			}
 			catch (Exception exception)
 			{
+				// The booking is already saved, so a failed email must not undo it or hide the booking number.
 				Logger.LogError(exception, "Could not send the confirmation email for booking {BookingNumber}.", booking.BookingNumber);
 			}
 		}
