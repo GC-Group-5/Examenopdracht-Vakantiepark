@@ -20,6 +20,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
@@ -304,8 +305,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("BookingNumber")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasColumnType("text")
                         .HasColumnName("booking_number");
 
                     b.Property<decimal>("CleaningFee")
