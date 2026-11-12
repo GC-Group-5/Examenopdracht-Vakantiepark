@@ -25,6 +25,8 @@ namespace Vakantiepark.UI
 
         private static IServiceCollection RegisterServices(this IServiceCollection services)
         {
+            services.AddScoped<IBookingService, BookingService>();
+
             return services;
         }
     }

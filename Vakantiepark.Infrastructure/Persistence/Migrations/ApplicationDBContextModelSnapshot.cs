@@ -20,6 +20,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
@@ -302,6 +303,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("arrival_time");
 
+                    b.Property<string>("BookingNumber")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("booking_number");
+
                     b.Property<decimal>("CleaningFee")
                         .HasColumnType("numeric")
                         .HasColumnName("cleaning_fee");
@@ -355,6 +361,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_bookings");
+
+                    b.HasIndex("BookingNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_bookings_booking_number");
 
                     b.ToTable("bookings", (string)null);
                 });

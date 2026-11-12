@@ -14,10 +14,15 @@
     <div class="container">
         <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
             <div class="eyebrow">Je boekingsnummer</div>
-            <p class="h2 mt-2 mb-4">K7M2XQ9P</p>
+            <p class="h2 mt-2 mb-4">@BookingNumber</p>
             <p class="mb-2">Bewaar dit nummer goed. Met je boekingsnummer en e-mailadres log je in op <strong>Mijn boeking</strong>.</p>
             <p class="text-muted-du mb-0">Geen e-mail ontvangen? Kijk ook in je spammap of neem contact op met de receptie.</p>
             <a class="btn btn-du mt-4" href="/">Terug naar home</a>
         </div>
     </div>
 </section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "nummer")]
+    public string? BookingNumber { get; set; }
+}

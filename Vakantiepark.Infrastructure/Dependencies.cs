@@ -1,7 +1,9 @@
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Vakantiepark.Domain.Interfaces.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Vakantiepark.Infrastructure.Persistence;
 using Vakantiepark.Infrastructure.Repositories;
+using Vakantiepark.Infrastructure.Helpers;
 
 namespace Vakantiepark.Infrastructure
 {
@@ -11,6 +13,7 @@ namespace Vakantiepark.Infrastructure
         {
             services.RegisterPersistence(connectionString);
             services.RegisterRepositories();
+            services.RegisterHelpers();
 
             return services;
         }
@@ -26,6 +29,13 @@ namespace Vakantiepark.Infrastructure
         {
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             services.AddScoped<IBookingRepository, BookingRepository>();
+
+            return services;
+        }
+
+        private static IServiceCollection RegisterHelpers(this IServiceCollection services)
+        {
+            services.AddSingleton<IBookingNumberGenerator, BookingNumberGenerator>();
 
             return services;
         }

@@ -6,9 +6,10 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, PriceSpecificationResponse price)
+        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price)
             => new Booking()
             {
+                BookingNumber = bookingNumber,
                 Name = request.Name,
                 Email = request.Email,
                 PhoneNumber = request.PhoneNumber,
@@ -27,6 +28,7 @@ namespace Vakantiepark.Application.Extensions
         public static BookingResponse ToResponse(this Booking booking)
             => new BookingResponse()
             {
+                BookingNumber = booking.BookingNumber,
                 Name = booking.Name,
                 Email = booking.Email,
                 PhoneNumber = booking.PhoneNumber,
