@@ -9,6 +9,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
     // converted to the tables below. Re-running the generator is a one-off task;
     // new units from the client arrive as new rows, keeping the seeder idempotent
     // by code (US-26: seeddata must be re-runnable without duplicates).
+    //
+    // The yes/no flags from the export are seeded as Feature rows linked through
+    // the accommodation_features join table (direct many-to-many): a new feature
+    // is one row in 'features', no code, no migration. Value columns (max persons,
+    // max pets, bedrooms, amps, meters, surface, shade, wifi) stay real columns
+    // because business rules use them. Category on the unit lives on its Type.
     public static class AccommodationSeeder
     {
         // Type table: slug, name, category, night rates per season index
@@ -29,221 +35,252 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             ("camperplaats-xl", "Camperplaats XL", "camping_pitch", [27m, 33m, 46m, 30m], 0m),
         ];
 
-        // Homes: code, type, zone, maxPersons, bedrooms, bathrooms, beds, petsAllowed,
-        // maxPets, wheelchairAccessible, sauna, dishwasher, washingMachine,
-        // airConditioning, fireplace, coveredTerrace, chargingPoint, waterfront,
-        // nearPool, childFriendly, smokeFree, hotTub, levelAccess, adaptedBathroom,
-        // widenedDoors, adjustableBed, extraParkingSpace.
-        private static readonly (string Code, string Type, string Zone, int MaxPersons, int Bedrooms, int Bathrooms, int Beds, bool Pets, int MaxPets, bool Wheelchair, bool Sauna, bool Dishwasher, bool WashingMachine, bool Airco, bool Fireplace, bool CoveredTerrace, bool ChargingPoint, bool Waterfront, bool NearPool, bool ChildFriendly, bool SmokeFree, bool HotTub, bool LevelAccess, bool AdaptedBathroom, bool WidenedDoors, bool AdjustableBed, bool ExtraParking)[] Homes =
+        // Feature table: key (machine key, kebab-case), Dutch name shown to
+        // guests, category ("" = both). A new feature from the client = a new
+        // row here, nothing else.
+        private static readonly (string Key, string Name, string Category)[] Features =
         [
-            ("BK4-001", "Berk 4", "Rustweide", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("BK4-002", "Berk 4", "Waterkant", 4, 2, 1, 4, true, 2, false, false, false, true, true, false, true, false, true, true, true, true, false, false, false, false, false, false),
-            ("BK4-003", "Berk 4", "Bosrand", 4, 2, 1, 4, false, 0, false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-004", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, true, false, false, true, false, true, false, false, false, false, false, false),
-            ("BK4-005", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, true, false, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-006", "Berk 4", "Heideveld", 4, 2, 1, 4, false, 0, false, false, true, true, false, false, false, true, false, true, false, true, false, false, false, false, false, false),
-            ("BK4-007", "Berk 4", "Parkcentrum", 4, 2, 1, 4, false, 0, false, false, false, false, false, false, true, false, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-008", "Berk 4", "Parkcentrum", 4, 2, 1, 4, false, 0, false, false, false, false, true, true, true, false, true, false, false, true, false, false, false, false, false, false),
-            ("BK4-009", "Berk 4", "Bosrand", 4, 2, 1, 4, false, 0, false, false, true, false, false, false, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-010", "Berk 4", "Waterkant", 4, 2, 1, 4, true, 2, false, false, true, true, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-011", "Berk 4", "Rustweide", 4, 2, 1, 4, false, 0, false, false, true, false, false, true, false, true, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-012", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, false, false),
-            ("BK4-013", "Berk 4", "Waterkant", 4, 2, 1, 4, true, 2, false, false, false, false, false, false, false, true, true, false, true, true, false, false, false, false, false, false),
-            ("BK4-014", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-015", "Berk 4", "Rustweide", 4, 2, 1, 4, false, 0, false, false, true, true, true, false, true, false, false, true, false, true, false, false, false, false, false, false),
-            ("BK4-016", "Berk 4", "Rustweide", 4, 2, 1, 4, true, 2, false, false, true, false, true, true, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-017", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, true, true, false, true, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-018", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, true, false, false, false, false, true, true, false, true, false, false, false, false, false, false),
-            ("BK4-019", "Berk 4", "Waterkant", 4, 2, 1, 4, false, 0, false, false, true, true, false, false, false, true, true, false, true, true, false, false, false, false, false, false),
-            ("BK4-020", "Berk 4", "Bosrand", 4, 2, 1, 4, false, 0, false, false, true, false, false, false, false, true, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-021", "Berk 4", "Rustweide", 4, 2, 1, 4, true, 2, false, false, true, true, false, true, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-022", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-023", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, true, false, true, true, true, true, false, false, false, false, false, false),
-            ("BK4-024", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("BK4-025", "Berk 4", "Parkcentrum", 4, 2, 1, 4, false, 0, false, false, false, false, true, false, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-026", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, true, false, true, false, false, true, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-027", "Berk 4", "Parkcentrum", 4, 2, 1, 4, true, 2, false, false, true, false, false, true, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-028", "Berk 4", "Rustweide", 4, 2, 1, 4, true, 2, true, false, true, false, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-029", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, true, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK4-030", "Berk 4", "Heideveld", 4, 2, 1, 4, true, 2, false, false, true, false, true, false, false, false, true, true, false, true, false, false, false, false, false, false),
-            ("BK4-031", "Berk 4", "Waterkant", 4, 2, 1, 4, false, 0, false, false, false, true, true, false, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("BK4-032", "Berk 4", "Parkcentrum", 4, 2, 1, 4, false, 0, false, false, false, false, false, false, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("BK6-001", "Berk 6", "Rustweide", 6, 3, 1, 6, true, 2, false, false, true, false, false, false, false, false, false, true, false, true, false, false, false, false, false, false),
-            ("BK6-002", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, true, false, true, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK6-003", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("BK6-004", "Berk 6", "Parkcentrum", 6, 3, 1, 6, false, 0, false, false, true, true, false, false, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK6-005", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, true, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-006", "Berk 6", "Rustweide", 6, 3, 1, 6, false, 0, false, false, true, false, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-007", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, true, true, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-008", "Berk 6", "Bosrand", 6, 3, 1, 6, false, 0, false, false, true, true, true, false, true, true, false, true, true, true, false, false, false, false, false, false),
-            ("BK6-009", "Berk 6", "Waterkant", 6, 3, 1, 6, true, 2, false, false, true, true, false, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-010", "Berk 6", "Parkcentrum", 6, 3, 1, 6, true, 2, false, false, true, false, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-011", "Berk 6", "Waterkant", 6, 3, 1, 6, false, 0, false, false, true, false, false, true, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("BK6-012", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, true, true, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-013", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, false, true, true, false, false, true, true, true, true, false, false, false, false, false, false),
-            ("BK6-014", "Berk 6", "Bosrand", 6, 3, 1, 6, false, 0, false, false, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-015", "Berk 6", "Heideveld", 6, 3, 1, 6, false, 0, false, false, true, true, false, true, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-016", "Berk 6", "Parkcentrum", 6, 3, 1, 6, true, 2, false, false, true, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-017", "Berk 6", "Heideveld", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, true, false, true, false, false, true, false, false, false, false, false, false),
-            ("BK6-018", "Berk 6", "Rustweide", 6, 3, 1, 6, false, 0, false, false, true, true, false, true, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-019", "Berk 6", "Parkcentrum", 6, 3, 1, 6, true, 2, false, false, true, false, false, true, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-020", "Berk 6", "Waterkant", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, true, true, true, false, true, true, false, false, false, false, false, false),
-            ("BK6-021", "Berk 6", "Bosrand", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, false, false),
-            ("BK6-022", "Berk 6", "Waterkant", 6, 3, 1, 6, true, 2, false, false, true, true, false, true, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("BK6-023", "Berk 6", "Waterkant", 6, 3, 1, 6, false, 0, false, false, true, true, false, false, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("BK6-024", "Berk 6", "Waterkant", 6, 3, 1, 6, true, 2, false, false, true, false, false, false, true, true, true, true, false, true, false, false, false, false, false, false),
-            ("BK6-025", "Berk 6", "Rustweide", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("BK6-026", "Berk 6", "Parkcentrum", 6, 3, 1, 6, true, 2, false, false, true, false, false, false, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("EK6-001", "Eik 6", "Rustweide", 6, 3, 1, 6, false, 0, false, false, true, true, false, false, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-002", "Eik 6", "Heideveld", 6, 3, 2, 6, false, 0, false, false, true, true, true, true, true, true, true, false, false, true, false, false, false, false, false, false),
-            ("EK6-003", "Eik 6", "Bosrand", 6, 3, 2, 6, true, 2, false, false, true, true, true, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-004", "Eik 6", "Bosrand", 6, 3, 1, 6, false, 0, false, false, true, false, false, true, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-005", "Eik 6", "Rustweide", 6, 3, 2, 6, false, 0, false, false, true, false, true, true, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("EK6-006", "Eik 6", "Heideveld", 6, 3, 1, 6, true, 2, false, false, true, true, true, true, true, false, false, false, false, true, false, false, false, false, false, false),
-            ("EK6-007", "Eik 6", "Rustweide", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-008", "Eik 6", "Rustweide", 6, 3, 2, 6, false, 0, false, true, true, true, true, false, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-009", "Eik 6", "Waterkant", 6, 3, 2, 6, false, 0, false, false, true, true, false, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-010", "Eik 6", "Rustweide", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-011", "Eik 6", "Rustweide", 6, 3, 2, 6, false, 0, false, false, true, true, false, false, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("EK6-012", "Eik 6", "Parkcentrum", 6, 3, 1, 6, true, 2, false, false, true, false, true, false, false, false, true, true, true, true, false, false, false, false, false, false),
-            ("EK6-013", "Eik 6", "Parkcentrum", 6, 3, 2, 6, true, 2, false, true, true, false, false, true, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-014", "Eik 6", "Parkcentrum", 6, 3, 2, 6, false, 0, false, false, true, false, false, false, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-015", "Eik 6", "Rustweide", 6, 3, 2, 6, true, 2, false, true, true, true, false, false, true, true, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-016", "Eik 6", "Waterkant", 6, 3, 1, 6, true, 2, false, true, true, true, false, false, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-017", "Eik 6", "Waterkant", 6, 3, 1, 6, true, 2, false, true, true, false, true, false, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-018", "Eik 6", "Bosrand", 6, 3, 2, 6, true, 2, false, false, true, true, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-019", "Eik 6", "Bosrand", 6, 3, 1, 6, true, 2, false, false, true, true, false, false, false, false, true, true, false, true, false, false, false, false, false, false),
-            ("EK6-020", "Eik 6", "Heideveld", 6, 3, 1, 6, true, 2, false, true, true, false, false, true, true, true, false, false, false, true, false, false, false, false, false, false),
-            ("EK6-021", "Eik 6", "Heideveld", 6, 3, 2, 6, true, 2, false, true, true, true, false, false, false, true, false, true, true, true, false, false, false, false, false, false),
-            ("EK6-022", "Eik 6", "Rustweide", 6, 3, 2, 6, false, 0, false, false, true, false, false, true, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("EK6-023", "Eik 6", "Rustweide", 6, 3, 2, 6, false, 0, false, false, true, false, false, false, true, false, false, true, false, true, false, false, false, false, false, false),
-            ("EK6-024", "Eik 6", "Rustweide", 6, 3, 1, 6, true, 2, false, false, true, true, false, true, false, false, true, true, true, true, false, false, false, false, false, false),
-            ("EL6-001", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, true, 2, false, true, true, true, false, false, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("EL6-002", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, true, 2, true, false, true, true, false, true, true, false, true, true, false, true, false, false, false, false, false, false),
-            ("EL6-003", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, false, 0, false, true, true, true, false, true, true, true, true, true, false, true, true, false, false, false, false, false),
-            ("EL6-004", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, true, 2, false, true, true, true, true, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("EL6-005", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, true, true, false, false, true, false, false, false, false, false, false),
-            ("EL6-006", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, true, 2, false, true, true, true, true, true, true, true, false, true, false, true, false, false, false, false, false, false),
-            ("EL6-007", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, true, 2, false, true, true, true, true, true, true, false, true, false, true, true, true, false, false, false, false, false),
-            ("EL6-008", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, true, false, true, true, true, true, false, false, false, false, false),
-            ("EL6-009", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, false, false, false, false, true, false, false, false, false, false, false),
-            ("EL6-010", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, false, 0, false, true, true, true, true, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("EL6-011", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, true, 2, false, true, true, true, true, false, true, true, true, false, true, true, false, false, false, false, false, false),
-            ("EL6-012", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, true, 2, false, true, true, true, true, false, true, true, false, false, true, true, true, false, false, false, false, false),
-            ("EL6-013", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("EL6-014", "Eik Luxe 6", "Bosrand", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("EL6-015", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, true, 2, false, true, true, true, true, true, true, true, true, false, true, true, true, false, false, false, false, false),
-            ("EL6-016", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, true, false, true, true, true, false, false, false, false, false, false),
-            ("EL6-017", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, false, 0, false, false, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false),
-            ("EL6-018", "Eik Luxe 6", "Bosrand", 6, 3, 2, 6, false, 0, false, true, true, true, true, true, true, false, true, true, true, true, true, false, false, false, false, false),
-            ("BU8-001", "Beuk 8", "Parkcentrum", 8, 4, 3, 8, false, 0, false, true, true, true, false, true, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("BU8-002", "Beuk 8", "Waterkant", 8, 4, 3, 8, false, 0, false, false, true, true, true, false, false, false, true, false, true, true, false, false, false, false, false, false),
-            ("BU8-003", "Beuk 8", "Parkcentrum", 8, 4, 2, 8, false, 0, false, false, true, false, true, true, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-004", "Beuk 8", "Parkcentrum", 8, 4, 2, 8, false, 0, false, false, true, false, true, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-005", "Beuk 8", "Bosrand", 8, 4, 3, 8, true, 2, false, true, true, true, false, true, true, false, true, true, false, true, false, false, false, false, false, false),
-            ("BU8-006", "Beuk 8", "Bosrand", 8, 4, 2, 8, false, 0, true, false, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-007", "Beuk 8", "Heideveld", 8, 4, 3, 8, true, 2, false, false, true, true, false, false, true, false, true, true, true, true, false, false, false, false, false, false),
-            ("BU8-008", "Beuk 8", "Rustweide", 8, 4, 2, 8, false, 0, false, false, true, true, true, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-009", "Beuk 8", "Bosrand", 8, 4, 2, 8, false, 0, false, false, true, true, false, false, false, true, false, false, false, true, false, false, false, false, false, false),
-            ("BU8-010", "Beuk 8", "Rustweide", 8, 4, 3, 8, false, 0, false, false, true, true, true, true, true, false, false, true, true, true, false, false, false, false, false, false),
-            ("BU8-011", "Beuk 8", "Heideveld", 8, 4, 3, 8, false, 0, false, false, true, true, false, true, false, false, false, true, true, true, false, false, false, false, false, false),
-            ("BU8-012", "Beuk 8", "Heideveld", 8, 4, 2, 8, true, 2, false, false, true, false, false, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-013", "Beuk 8", "Heideveld", 8, 4, 2, 8, false, 0, false, false, true, true, true, false, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-014", "Beuk 8", "Heideveld", 8, 4, 3, 8, false, 0, false, false, true, true, true, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-015", "Beuk 8", "Bosrand", 8, 4, 2, 8, true, 2, false, false, true, true, true, true, false, false, false, false, false, true, false, false, false, false, false, false),
-            ("BU8-016", "Beuk 8", "Bosrand", 8, 4, 3, 8, false, 0, false, true, true, true, true, false, false, false, true, true, true, true, false, false, false, false, false, false),
-            ("BU8-017", "Beuk 8", "Waterkant", 8, 4, 3, 8, false, 0, false, true, true, true, true, false, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-018", "Beuk 8", "Parkcentrum", 8, 4, 3, 8, true, 2, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false, false, false, false),
-            ("BU8-019", "Beuk 8", "Heideveld", 8, 4, 2, 8, true, 2, false, false, true, true, false, true, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("BU8-020", "Beuk 8", "Bosrand", 8, 4, 3, 8, false, 0, true, false, true, true, false, true, false, true, true, false, true, true, false, false, false, false, false, false),
-            ("WG4M-001", "Wilg 4 Mindervalide", "Waterkant", 4, 2, 1, 4, true, 2, true, false, true, true, true, false, false, false, false, false, true, true, false, true, true, true, true, false),
-            ("WG4M-002", "Wilg 4 Mindervalide", "Waterkant", 4, 2, 1, 4, true, 2, true, false, true, true, true, false, true, false, false, true, true, true, false, true, true, true, true, false),
-            ("WG4M-003", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, true, 2, true, false, true, false, false, false, true, true, false, true, true, true, false, true, true, true, false, false),
-            ("WG4M-004", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, false, 0, true, false, true, true, true, false, true, false, false, false, true, true, false, true, true, true, true, false),
-            ("WG4M-005", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, false, 0, true, false, true, true, false, false, false, false, false, true, true, true, false, true, true, true, false, false),
-            ("WG4M-006", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, false, 0, true, false, true, false, true, false, true, false, false, true, true, true, false, true, true, true, true, false),
-            ("WG4M-007", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, true, 2, true, false, true, true, true, false, true, false, false, true, true, true, false, true, true, true, true, false),
-            ("WG4M-008", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, false, 0, true, false, true, false, false, false, true, false, false, false, true, true, false, true, true, true, true, false),
-            ("WG4M-009", "Wilg 4 Mindervalide", "Parkcentrum", 4, 2, 1, 4, false, 0, true, false, true, true, true, false, true, false, true, true, true, true, false, true, true, true, true, false),
-            ("WG4M-010", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, true, 2, true, false, true, false, false, false, true, false, false, false, true, true, false, true, true, true, true, false),
-            ("WG4M-011", "Wilg 4 Mindervalide", "Parkcentrum", 4, 2, 1, 4, false, 0, true, false, true, false, true, false, true, false, false, true, true, true, false, true, true, true, true, false),
-            ("WG4M-012", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, false, 0, true, false, true, false, true, false, true, true, false, true, true, true, false, true, true, true, true, false),
-            ("BV10-001", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, false, 0, false, false, true, true, true, true, true, false, true, true, true, true, false, false, false, false, false, false),
-            ("BV10-002", "Bosvilla 10", "Rustweide", 10, 5, 3, 10, false, 0, false, true, true, true, true, true, true, true, false, false, true, true, false, false, false, false, false, true),
-            ("BV10-003", "Bosvilla 10", "Heideveld", 10, 5, 3, 10, true, 2, false, true, true, true, false, true, true, false, true, false, true, true, false, false, false, false, false, false),
-            ("BV10-004", "Bosvilla 10", "Heideveld", 10, 5, 3, 10, true, 2, false, true, true, true, false, true, true, true, false, false, true, true, false, false, false, false, false, false),
-            ("BV10-005", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, true, 2, false, true, true, true, true, true, true, false, true, false, true, true, false, false, false, false, false, true),
-            ("BV10-006", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, true, 2, false, true, true, true, false, true, true, true, true, false, true, true, false, false, false, false, false, true),
-            ("BV10-007", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, true, 2, false, true, true, true, true, true, false, true, true, false, true, true, false, false, false, false, false, true),
-            ("BV10-008", "Bosvilla 10", "Waterkant", 10, 5, 2, 10, true, 2, false, true, true, true, true, false, true, false, false, false, true, true, false, false, false, false, false, true),
-            ("BV10-009", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, true, 2, false, true, true, true, true, true, true, true, false, true, true, true, false, false, false, false, false, true),
-            ("BV10-010", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, true, 2, false, false, true, true, true, true, true, false, false, false, true, true, true, false, false, false, false, true),
-            ("BV10-011", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, true, 2, false, true, true, true, false, true, false, true, false, true, true, true, false, false, false, false, false, true),
-            ("BV10-012", "Bosvilla 10", "Bosrand", 10, 5, 2, 10, false, 0, false, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true),
-            ("BV10-013", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, false, 0, false, false, true, true, false, true, true, true, false, false, true, true, true, false, false, false, false, true),
-            ("BV10-014", "Bosvilla 10", "Parkcentrum", 10, 5, 2, 10, true, 2, false, true, true, true, true, true, true, false, false, false, true, true, false, false, false, false, false, false),
-            ("BV10-015", "Bosvilla 10", "Parkcentrum", 10, 5, 3, 10, true, 2, false, true, true, true, true, true, true, true, false, true, true, true, false, false, false, false, false, true),
-            ("BV10-016", "Bosvilla 10", "Bosrand", 10, 5, 2, 10, true, 2, false, true, true, true, true, true, true, false, false, false, true, true, false, false, false, false, false, true),
-            ("BV10-017", "Bosvilla 10", "Rustweide", 10, 5, 3, 10, false, 0, false, false, true, true, true, false, true, false, true, true, true, true, true, false, false, false, false, true),
-            ("BV10-018", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, false, 0, false, true, true, true, true, true, true, false, true, true, true, true, true, false, false, false, false, true),
+            ("sauna", "Sauna", "holiday_home"),
+            ("dishwasher", "Dishwasmachine", "holiday_home"),
+            ("washing-machine", "Wasmachine", "holiday_home"),
+            ("airconditioning", "Airco", "holiday_home"),
+            ("fireplace", "Open haard", "holiday_home"),
+            ("covered-terrace", "Overdekt terras", "holiday_home"),
+            ("charging-point", "Laadpaal", "holiday_home"),
+            ("waterfront", "Waterkant", "holiday_home"),
+            ("near-pool", "Bij zwembad", "holiday_home"),
+            ("child-friendly", "Kindvriendelijk", "holiday_home"),
+            ("smoke-free", "Rookvrij", "holiday_home"),
+            ("hot-tub", "Hot tub", "holiday_home"),
+            ("level-access", "Geen drempels", "holiday_home"),
+            ("adapted-bathroom", "Aangepaste badkamer", "holiday_home"),
+            ("widened-doors", "Verbrede deuren", "holiday_home"),
+            ("adjustable-bed", "Verstelbaar bed", "holiday_home"),
+            ("extra-parking-space", "Extra parkeerplaats", "holiday_home"),
+            ("wheelchair-accessible", "Mindervalide", "holiday_home"),
+            ("electricity", "Elektriciteit", "camping_pitch"),
+            ("water-connection", "Wateraansluiting", "camping_pitch"),
+            ("drain-connection", "Waterafvoer", "camping_pitch"),
+            ("private-sanitary", "Eigen sanitair", "camping_pitch"),
+            ("car-at-pitch", "Auto bij de plaats", "camping_pitch"),
+            ("near-sanitary", "Bij sanitair", "camping_pitch"),
+            ("extra-wide", "Extra brede plaats", "camping_pitch"),
+            ("pets-allowed", "Honden toegestaan", ""),
         ];
 
-        // Pitches: code, type, zone, maxPersons, electricity, electricityAmps,
-        // waterConnection, drainConnection, privateSanitary, carAtPitch, nearSanitary,
-        // extraWide, surface, shade, wifiCoverage, maxCaravanLengthMeters,
-        // maxVehicleLengthMeters, petsAllowed, maxPets.
-        private static readonly (string Code, string Type, string Zone, int MaxPersons, bool Electricity, int Amps, bool Water, bool Drain, bool PrivateSanitary, bool CarAtPitch, bool NearSanitary, bool ExtraWide, string Surface, string Shade, string Wifi, double? MaxCaravanM, double? MaxVehicleM, bool Pets, int MaxPets)[] Pitches =
+        // Homes: code, type, zone, maxPersons, bedrooms, bathrooms, beds, maxPets,
+        // feature keys. The flags feed FeatureKeysByUnit(); only value fields land
+        // on the entity.
+        private static readonly (string Code, string Type, string Zone, int MaxPersons, int Bedrooms, int Bathrooms, int Beds, int MaxPets, string[] Flags)[] Homes =
         [
-            ("TB-001", "Tentplaats Basis", "Bosveld", 6, false, 0, false, false, false, false, false, false, "grass", "low", "limited", null, null, true, 2),
-            ("TB-002", "Tentplaats Basis", "Bosveld", 5, false, 0, false, false, false, true, false, false, "grass", "medium", "limited", null, null, true, 2),
-            ("TB-003", "Tentplaats Basis", "Waterweide", 5, true, 6, false, false, false, false, false, false, "grass", "high", "limited", null, null, true, 2),
-            ("TB-004", "Tentplaats Basis", "Kampeerveld Noord", 4, true, 6, false, false, false, true, false, false, "grass", "medium", "standard", null, null, true, 2),
-            ("TB-005", "Tentplaats Basis", "Kampeerveld Noord", 4, true, 10, false, false, false, true, true, false, "grass", "high", "standard", null, null, false, 0),
-            ("TB-006", "Tentplaats Basis", "Waterweide", 6, false, 0, false, false, false, false, false, false, "grass", "high", "limited", null, null, true, 2),
-            ("TB-007", "Tentplaats Basis", "Bosveld", 4, false, 0, false, false, false, false, true, false, "grass", "high", "standard", null, null, true, 2),
-            ("TB-008", "Tentplaats Basis", "Waterweide", 6, true, 6, false, false, false, false, false, false, "grass", "high", "limited", null, null, true, 2),
-            ("TB-009", "Tentplaats Basis", "Waterweide", 6, true, 6, false, false, false, false, true, false, "grass", "medium", "standard", null, null, true, 2),
-            ("TB-010", "Tentplaats Basis", "Kampeerveld Zuid", 5, true, 10, false, false, false, true, false, false, "grass", "high", "standard", null, null, true, 2),
-            ("TB-011", "Tentplaats Basis", "Kampeerveld Zuid", 4, false, 0, false, false, false, false, true, false, "grass", "low", "limited", null, null, true, 2),
-            ("TB-012", "Tentplaats Basis", "Kampeerveld Noord", 4, false, 0, false, false, false, true, false, false, "grass", "low", "standard", null, null, true, 2),
-            ("TC-001", "Tentplaats Comfort", "Kampeerveld Noord", 4, true, 16, true, false, false, true, true, false, "grass", "high", "good", null, null, false, 0),
-            ("TC-002", "Tentplaats Comfort", "Kampeerveld Noord", 6, true, 10, true, false, false, false, true, false, "grass", "medium", "good", null, null, false, 0),
-            ("TC-003", "Tentplaats Comfort", "Waterweide", 4, true, 16, false, false, true, true, false, false, "grass", "medium", "good", null, null, false, 0),
-            ("TC-004", "Tentplaats Comfort", "Kampeerveld Noord", 4, true, 10, true, false, true, true, true, false, "grass", "medium", "standard", null, null, true, 2),
-            ("TC-005", "Tentplaats Comfort", "Bosveld", 6, true, 10, false, false, true, true, false, false, "grass", "high", "good", null, null, false, 0),
-            ("TC-006", "Tentplaats Comfort", "Kampeerveld Noord", 6, true, 10, true, false, false, true, false, false, "grass", "medium", "good", null, null, false, 0),
-            ("TC-007", "Tentplaats Comfort", "Waterweide", 4, true, 10, true, false, false, false, true, false, "grass", "high", "standard", null, null, true, 2),
-            ("TC-008", "Tentplaats Comfort", "Waterweide", 6, true, 10, true, false, false, true, false, false, "grass", "low", "good", null, null, false, 0),
-            ("TC-009", "Tentplaats Comfort", "Bosveld", 6, true, 16, true, false, false, true, true, false, "grass", "low", "standard", null, null, true, 2),
-            ("TC-010", "Tentplaats Comfort", "Waterweide", 6, true, 16, true, false, false, true, false, false, "grass", "medium", "standard", null, null, true, 2),
-            ("CV-001", "Caravanplaats", "Bosveld", 6, true, 16, true, false, false, true, true, false, "reinforced_grass", "medium", "good", 8, null, true, 2),
-            ("CV-002", "Caravanplaats", "Kampeerveld Zuid", 6, true, 10, true, true, true, true, true, false, "grass", "medium", "standard", 6.5, null, true, 2),
-            ("CV-003", "Caravanplaats", "Kampeerveld Zuid", 6, true, 10, true, true, false, true, true, false, "reinforced_grass", "low", "standard", 8, null, true, 2),
-            ("CV-004", "Caravanplaats", "Kampeerveld Noord", 6, true, 10, false, false, true, true, false, false, "grass", "medium", "good", 7, null, false, 0),
-            ("CV-005", "Caravanplaats", "Kampeerveld Noord", 6, true, 16, true, false, false, true, true, false, "grass", "medium", "standard", 8, null, true, 2),
-            ("CV-006", "Caravanplaats", "Kampeerveld Zuid", 6, true, 10, true, true, false, true, true, false, "grass", "medium", "standard", 8, null, true, 2),
-            ("CV-007", "Caravanplaats", "Kampeerveld Zuid", 6, true, 10, false, false, false, true, true, false, "grass", "low", "standard", 7.5, null, true, 2),
-            ("CV-008", "Caravanplaats", "Kampeerveld Noord", 6, true, 10, true, false, false, true, false, false, "grass", "medium", "good", 8, null, true, 2),
-            ("CV-009", "Caravanplaats", "Bosveld", 6, true, 10, true, true, false, true, true, false, "reinforced_grass", "medium", "good", 6, null, false, 0),
-            ("CV-010", "Caravanplaats", "Kampeerveld Noord", 6, true, 16, true, true, true, true, true, false, "grass", "medium", "standard", 6, null, true, 2),
-            ("CV-011", "Caravanplaats", "Bosveld", 6, true, 10, true, true, false, true, true, false, "reinforced_grass", "low", "good", 8, null, true, 2),
-            ("CV-012", "Caravanplaats", "Bosveld", 6, true, 16, true, true, false, true, true, false, "grass", "low", "good", 6.5, null, true, 2),
-            ("CP-001", "Camperplaats", "Bosveld", 6, true, 10, true, true, false, true, false, false, "paved", "none", "standard", null, 7, true, 2),
-            ("CP-002", "Camperplaats", "Kampeerveld Zuid", 6, true, 10, true, false, false, true, false, false, "reinforced_grass", "medium", "good", null, 7.5, false, 0),
-            ("CP-003", "Camperplaats", "Kampeerveld Noord", 6, true, 16, true, true, false, true, false, false, "paved", "low", "good", null, 7.5, true, 2),
-            ("CP-004", "Camperplaats", "Kampeerveld Zuid", 6, true, 10, true, true, false, true, true, false, "paved", "medium", "good", null, 8.5, true, 2),
-            ("CP-005", "Camperplaats", "Kampeerveld Noord", 6, true, 16, true, true, false, true, false, false, "paved", "low", "standard", null, 8.5, true, 2),
-            ("CP-006", "Camperplaats", "Kampeerveld Noord", 6, true, 10, true, true, false, true, true, false, "paved", "none", "standard", null, 7, true, 2),
-            ("CP-007", "Camperplaats", "Bosveld", 6, true, 10, true, true, false, true, false, false, "reinforced_grass", "none", "good", null, 7, true, 2),
-            ("CP-008", "Camperplaats", "Kampeerveld Noord", 6, true, 10, true, true, false, true, false, false, "paved", "medium", "good", null, 7, true, 2),
-            ("CP-009", "Camperplaats", "Kampeerveld Noord", 6, true, 10, true, true, false, true, false, false, "paved", "low", "good", null, 8, false, 0),
-            ("CP-010", "Camperplaats", "Kampeerveld Zuid", 6, true, 10, true, true, false, true, false, false, "paved", "low", "good", null, 8.5, true, 2),
-            ("CPXL-001", "Camperplaats XL", "Bosveld", 6, true, 16, true, true, true, true, false, true, "paved", "none", "good", null, 11, false, 0),
-            ("CPXL-002", "Camperplaats XL", "Kampeerveld Noord", 6, true, 16, true, true, false, true, true, true, "paved", "none", "good", null, 9, false, 0),
-            ("CPXL-003", "Camperplaats XL", "Waterweide", 6, true, 16, true, true, false, true, true, true, "paved", "none", "good", null, 10, true, 2),
-            ("CPXL-004", "Camperplaats XL", "Kampeerveld Noord", 6, true, 16, true, true, false, true, false, true, "paved", "none", "good", null, 9, true, 2),
-            ("CPXL-005", "Camperplaats XL", "Kampeerveld Zuid", 6, true, 16, true, true, false, true, true, true, "paved", "low", "good", null, 10.5, true, 2),
-            ("CPXL-006", "Camperplaats XL", "Kampeerveld Noord", 6, true, 16, true, true, false, true, true, true, "paved", "none", "good", null, 11, true, 2),
+
+            ("BK4-001", "Berk 4", "Rustweide", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-002", "Berk 4", "Waterkant", 4, 2, 1, 4, 2, ["washing-machine", "airconditioning", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-003", "Berk 4", "Bosrand", 4, 2, 1, 4, 0, ["near-pool", "child-friendly", "smoke-free"]),
+            ("BK4-004", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BK4-005", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "smoke-free", "pets-allowed"]),
+            ("BK4-006", "Berk 4", "Heideveld", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "charging-point", "near-pool", "smoke-free"]),
+            ("BK4-007", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 0, ["covered-terrace", "smoke-free"]),
+            ("BK4-008", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 0, ["airconditioning", "fireplace", "covered-terrace", "waterfront", "smoke-free"]),
+            ("BK4-009", "Berk 4", "Bosrand", 4, 2, 1, 4, 0, ["dishwasher", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK4-010", "Berk 4", "Waterkant", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-011", "Berk 4", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "fireplace", "charging-point", "smoke-free"]),
+            ("BK4-012", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-013", "Berk 4", "Waterkant", 4, 2, 1, 4, 2, ["charging-point", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-014", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-015", "Berk 4", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "near-pool", "smoke-free"]),
+            ("BK4-016", "Berk 4", "Rustweide", 4, 2, 1, 4, 2, ["dishwasher", "airconditioning", "fireplace", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-017", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "fireplace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-018", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "waterfront", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BK4-019", "Berk 4", "Waterkant", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "charging-point", "waterfront", "child-friendly", "smoke-free"]),
+            ("BK4-020", "Berk 4", "Bosrand", 4, 2, 1, 4, 0, ["dishwasher", "charging-point", "smoke-free"]),
+            ("BK4-021", "Berk 4", "Rustweide", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "fireplace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-022", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "smoke-free", "pets-allowed"]),
+            ("BK4-023", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-024", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["fireplace", "smoke-free", "pets-allowed"]),
+            ("BK4-025", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 0, ["airconditioning", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK4-026", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "fireplace", "near-pool", "child-friendly", "smoke-free", "wheelchair-accessible", "pets-allowed"]),
+            ("BK4-027", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 2, ["dishwasher", "fireplace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-028", "Berk 4", "Rustweide", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free", "wheelchair-accessible", "pets-allowed"]),
+            ("BK4-029", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK4-030", "Berk 4", "Heideveld", 4, 2, 1, 4, 2, ["dishwasher", "airconditioning", "waterfront", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BK4-031", "Berk 4", "Waterkant", 4, 2, 1, 4, 0, ["washing-machine", "airconditioning", "charging-point", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK4-032", "Berk 4", "Parkcentrum", 4, 2, 1, 4, 0, ["covered-terrace", "waterfront", "child-friendly", "smoke-free"]),
+            ("BK6-001", "Berk 6", "Rustweide", 6, 3, 1, 6, 2, ["dishwasher", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BK6-002", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK6-003", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "smoke-free"]),
+            ("BK6-004", "Berk 6", "Parkcentrum", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK6-005", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("BK6-006", "Berk 6", "Rustweide", 6, 3, 1, 6, 0, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("BK6-007", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "airconditioning", "child-friendly", "smoke-free"]),
+            ("BK6-008", "Berk 6", "Bosrand", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK6-009", "Berk 6", "Waterkant", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-010", "Berk 6", "Parkcentrum", 6, 3, 1, 6, 2, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-011", "Berk 6", "Waterkant", 6, 3, 1, 6, 0, ["dishwasher", "fireplace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK6-012", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "airconditioning", "child-friendly", "smoke-free"]),
+            ("BK6-013", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "airconditioning", "fireplace", "waterfront", "near-pool", "child-friendly", "smoke-free"]),
+            ("BK6-014", "Berk 6", "Bosrand", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "child-friendly", "smoke-free"]),
+            ("BK6-015", "Berk 6", "Heideveld", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "fireplace", "child-friendly", "smoke-free"]),
+            ("BK6-016", "Berk 6", "Parkcentrum", 6, 3, 1, 6, 2, ["dishwasher", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-017", "Berk 6", "Heideveld", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "covered-terrace", "waterfront", "smoke-free", "pets-allowed"]),
+            ("BK6-018", "Berk 6", "Rustweide", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "fireplace", "charging-point", "child-friendly", "smoke-free"]),
+            ("BK6-019", "Berk 6", "Parkcentrum", 6, 3, 1, 6, 2, ["dishwasher", "fireplace", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-020", "Berk 6", "Waterkant", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "covered-terrace", "charging-point", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-021", "Berk 6", "Bosrand", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-022", "Berk 6", "Waterkant", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "fireplace", "charging-point", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-023", "Berk 6", "Waterkant", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "covered-terrace", "waterfront", "child-friendly", "smoke-free"]),
+            ("BK6-024", "Berk 6", "Waterkant", 6, 3, 1, 6, 2, ["dishwasher", "covered-terrace", "charging-point", "waterfront", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BK6-025", "Berk 6", "Rustweide", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BK6-026", "Berk 6", "Parkcentrum", 6, 3, 1, 6, 2, ["dishwasher", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-001", "Eik 6", "Rustweide", 6, 3, 1, 6, 0, ["dishwasher", "washing-machine", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("EK6-002", "Eik 6", "Heideveld", 6, 3, 2, 6, 0, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "waterfront", "smoke-free"]),
+            ("EK6-003", "Eik 6", "Bosrand", 6, 3, 2, 6, 2, ["dishwasher", "washing-machine", "airconditioning", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-004", "Eik 6", "Bosrand", 6, 3, 1, 6, 0, ["dishwasher", "fireplace", "near-pool", "child-friendly", "smoke-free"]),
+            ("EK6-005", "Eik 6", "Rustweide", 6, 3, 2, 6, 0, ["dishwasher", "airconditioning", "fireplace", "smoke-free"]),
+            ("EK6-006", "Eik 6", "Heideveld", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "smoke-free", "pets-allowed"]),
+            ("EK6-007", "Eik 6", "Rustweide", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-008", "Eik 6", "Rustweide", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "charging-point", "near-pool", "child-friendly", "smoke-free"]),
+            ("EK6-009", "Eik 6", "Waterkant", 6, 3, 2, 6, 0, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free"]),
+            ("EK6-010", "Eik 6", "Rustweide", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "covered-terrace", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-011", "Eik 6", "Rustweide", 6, 3, 2, 6, 0, ["dishwasher", "washing-machine", "covered-terrace", "waterfront", "child-friendly", "smoke-free"]),
+            ("EK6-012", "Eik 6", "Parkcentrum", 6, 3, 1, 6, 2, ["dishwasher", "airconditioning", "waterfront", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-013", "Eik 6", "Parkcentrum", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "fireplace", "charging-point", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-014", "Eik 6", "Parkcentrum", 6, 3, 2, 6, 0, ["dishwasher", "charging-point", "near-pool", "child-friendly", "smoke-free"]),
+            ("EK6-015", "Eik 6", "Rustweide", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-016", "Eik 6", "Waterkant", 6, 3, 1, 6, 2, ["sauna", "dishwasher", "washing-machine", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-017", "Eik 6", "Waterkant", 6, 3, 1, 6, 2, ["sauna", "dishwasher", "airconditioning", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-018", "Eik 6", "Bosrand", 6, 3, 2, 6, 2, ["dishwasher", "washing-machine", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-019", "Eik 6", "Bosrand", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "waterfront", "near-pool", "smoke-free", "pets-allowed"]),
+            ("EK6-020", "Eik 6", "Heideveld", 6, 3, 1, 6, 2, ["sauna", "dishwasher", "fireplace", "covered-terrace", "charging-point", "smoke-free", "pets-allowed"]),
+            ("EK6-021", "Eik 6", "Heideveld", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "charging-point", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EK6-022", "Eik 6", "Rustweide", 6, 3, 2, 6, 0, ["dishwasher", "fireplace", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("EK6-023", "Eik 6", "Rustweide", 6, 3, 2, 6, 0, ["dishwasher", "covered-terrace", "near-pool", "smoke-free"]),
+            ("EK6-024", "Eik 6", "Rustweide", 6, 3, 1, 6, 2, ["dishwasher", "washing-machine", "fireplace", "waterfront", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EL6-001", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EL6-002", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, 2, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "waterfront", "near-pool", "smoke-free", "wheelchair-accessible", "pets-allowed"]),
+            ("EL6-003", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "waterfront", "near-pool", "smoke-free", "hot-tub"]),
+            ("EL6-004", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EL6-005", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "waterfront", "smoke-free"]),
+            ("EL6-006", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "near-pool", "smoke-free", "pets-allowed"]),
+            ("EL6-007", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "hot-tub", "pets-allowed"]),
+            ("EL6-008", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "hot-tub"]),
+            ("EL6-009", "Eik Luxe 6", "Waterkant", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "smoke-free"]),
+            ("EL6-010", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("EL6-011", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "covered-terrace", "charging-point", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("EL6-012", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "hot-tub", "pets-allowed"]),
+            ("EL6-013", "Eik Luxe 6", "Heideveld", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free"]),
+            ("EL6-014", "Eik Luxe 6", "Bosrand", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("EL6-015", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "waterfront", "child-friendly", "smoke-free", "hot-tub", "pets-allowed"]),
+            ("EL6-016", "Eik Luxe 6", "Rustweide", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free"]),
+            ("EL6-017", "Eik Luxe 6", "Parkcentrum", 6, 3, 2, 6, 0, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "waterfront", "near-pool", "child-friendly", "smoke-free", "hot-tub"]),
+            ("EL6-018", "Eik Luxe 6", "Bosrand", 6, 3, 2, 6, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "hot-tub"]),
+            ("BU8-001", "Beuk 8", "Parkcentrum", 8, 4, 3, 8, 0, ["sauna", "dishwasher", "washing-machine", "fireplace", "smoke-free"]),
+            ("BU8-002", "Beuk 8", "Waterkant", 8, 4, 3, 8, 0, ["dishwasher", "washing-machine", "airconditioning", "waterfront", "child-friendly", "smoke-free"]),
+            ("BU8-003", "Beuk 8", "Parkcentrum", 8, 4, 2, 8, 0, ["dishwasher", "airconditioning", "fireplace", "charging-point", "child-friendly", "smoke-free"]),
+            ("BU8-004", "Beuk 8", "Parkcentrum", 8, 4, 2, 8, 0, ["dishwasher", "airconditioning", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free"]),
+            ("BU8-005", "Beuk 8", "Bosrand", 8, 4, 3, 8, 2, ["sauna", "dishwasher", "washing-machine", "fireplace", "covered-terrace", "waterfront", "near-pool", "smoke-free", "pets-allowed"]),
+            ("BU8-006", "Beuk 8", "Bosrand", 8, 4, 2, 8, 0, ["dishwasher", "washing-machine", "child-friendly", "smoke-free", "wheelchair-accessible"]),
+            ("BU8-007", "Beuk 8", "Heideveld", 8, 4, 3, 8, 2, ["dishwasher", "washing-machine", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BU8-008", "Beuk 8", "Rustweide", 8, 4, 2, 8, 0, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free"]),
+            ("BU8-009", "Beuk 8", "Bosrand", 8, 4, 2, 8, 0, ["dishwasher", "washing-machine", "charging-point", "smoke-free"]),
+            ("BU8-010", "Beuk 8", "Rustweide", 8, 4, 3, 8, 0, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BU8-011", "Beuk 8", "Heideveld", 8, 4, 3, 8, 0, ["dishwasher", "washing-machine", "fireplace", "near-pool", "child-friendly", "smoke-free"]),
+            ("BU8-012", "Beuk 8", "Heideveld", 8, 4, 2, 8, 2, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BU8-013", "Beuk 8", "Heideveld", 8, 4, 2, 8, 0, ["dishwasher", "washing-machine", "airconditioning", "charging-point", "child-friendly", "smoke-free"]),
+            ("BU8-014", "Beuk 8", "Heideveld", 8, 4, 3, 8, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("BU8-015", "Beuk 8", "Bosrand", 8, 4, 2, 8, 2, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "smoke-free", "pets-allowed"]),
+            ("BU8-016", "Beuk 8", "Bosrand", 8, 4, 3, 8, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "waterfront", "near-pool", "child-friendly", "smoke-free"]),
+            ("BU8-017", "Beuk 8", "Waterkant", 8, 4, 3, 8, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "covered-terrace", "child-friendly", "smoke-free"]),
+            ("BU8-018", "Beuk 8", "Parkcentrum", 8, 4, 3, 8, 2, ["dishwasher", "washing-machine", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BU8-019", "Beuk 8", "Heideveld", 8, 4, 2, 8, 2, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BU8-020", "Beuk 8", "Bosrand", 8, 4, 3, 8, 0, ["dishwasher", "washing-machine", "fireplace", "charging-point", "waterfront", "child-friendly", "smoke-free", "wheelchair-accessible"]),
+            ("WG4M-001", "Wilg 4 Mindervalide", "Waterkant", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "airconditioning", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible", "pets-allowed"]),
+            ("WG4M-002", "Wilg 4 Mindervalide", "Waterkant", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible", "pets-allowed"]),
+            ("WG4M-003", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "wheelchair-accessible", "pets-allowed"]),
+            ("WG4M-004", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("WG4M-005", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "wheelchair-accessible"]),
+            ("WG4M-006", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "airconditioning", "covered-terrace", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("WG4M-007", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, 2, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible", "pets-allowed"]),
+            ("WG4M-008", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("WG4M-009", "Wilg 4 Mindervalide", "Parkcentrum", 4, 2, 1, 4, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("WG4M-010", "Wilg 4 Mindervalide", "Bosrand", 4, 2, 1, 4, 2, ["dishwasher", "covered-terrace", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible", "pets-allowed"]),
+            ("WG4M-011", "Wilg 4 Mindervalide", "Parkcentrum", 4, 2, 1, 4, 0, ["dishwasher", "airconditioning", "covered-terrace", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("WG4M-012", "Wilg 4 Mindervalide", "Rustweide", 4, 2, 1, 4, 0, ["dishwasher", "airconditioning", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "level-access", "adapted-bathroom", "widened-doors", "adjustable-bed", "wheelchair-accessible"]),
+            ("BV10-001", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 0, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free"]),
+            ("BV10-002", "Bosvilla 10", "Rustweide", 10, 5, 3, 10, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "extra-parking-space"]),
+            ("BV10-003", "Bosvilla 10", "Heideveld", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "fireplace", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BV10-004", "Bosvilla 10", "Heideveld", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BV10-005", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "waterfront", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-006", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "waterfront", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-007", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "charging-point", "waterfront", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-008", "Bosvilla 10", "Waterkant", 10, 5, 2, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "covered-terrace", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-009", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-010", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 2, ["dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "child-friendly", "smoke-free", "hot-tub", "extra-parking-space", "pets-allowed"]),
+            ("BV10-011", "Bosvilla 10", "Bosrand", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "fireplace", "charging-point", "near-pool", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-012", "Bosvilla 10", "Bosrand", 10, 5, 2, 10, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "waterfront", "near-pool", "child-friendly", "smoke-free", "extra-parking-space"]),
+            ("BV10-013", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 0, ["dishwasher", "washing-machine", "fireplace", "covered-terrace", "charging-point", "child-friendly", "smoke-free", "hot-tub", "extra-parking-space"]),
+            ("BV10-014", "Bosvilla 10", "Parkcentrum", 10, 5, 2, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "child-friendly", "smoke-free", "pets-allowed"]),
+            ("BV10-015", "Bosvilla 10", "Parkcentrum", 10, 5, 3, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "charging-point", "near-pool", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-016", "Bosvilla 10", "Bosrand", 10, 5, 2, 10, 2, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "child-friendly", "smoke-free", "extra-parking-space", "pets-allowed"]),
+            ("BV10-017", "Bosvilla 10", "Rustweide", 10, 5, 3, 10, 0, ["dishwasher", "washing-machine", "airconditioning", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "hot-tub", "extra-parking-space"]),
+            ("BV10-018", "Bosvilla 10", "Rustweide", 10, 5, 2, 10, 0, ["sauna", "dishwasher", "washing-machine", "airconditioning", "fireplace", "covered-terrace", "waterfront", "near-pool", "child-friendly", "smoke-free", "hot-tub", "extra-parking-space"]),
+        ];
+
+        // Pitches: code, type, zone, maxPersons, amps, surface, shade, wifi,
+        // max caravan/vehicle meters, maxPets, feature keys.
+        private static readonly (string Code, string Type, string Zone, int MaxPersons, int Amps, string? Surface, string? Shade, string? Wifi, double? MaxCaravanM, double? MaxVehicleM, int MaxPets, string[] Flags)[] Pitches =
+        [
+
+            ("TB-001", "Tentplaats Basis", "Bosveld", 6, 0, "grass", "low", "limited", null, null, 2, ["pets-allowed"]),
+            ("TB-002", "Tentplaats Basis", "Bosveld", 5, 0, "grass", "medium", "limited", null, null, 2, ["car-at-pitch", "pets-allowed"]),
+            ("TB-003", "Tentplaats Basis", "Waterweide", 5, 6, "grass", "high", "limited", null, null, 2, ["electricity", "pets-allowed"]),
+            ("TB-004", "Tentplaats Basis", "Kampeerveld Noord", 4, 6, "grass", "medium", "standard", null, null, 2, ["electricity", "car-at-pitch", "pets-allowed"]),
+            ("TB-005", "Tentplaats Basis", "Kampeerveld Noord", 4, 10, "grass", "high", "standard", null, null, 0, ["electricity", "car-at-pitch", "near-sanitary"]),
+            ("TB-006", "Tentplaats Basis", "Waterweide", 6, 0, "grass", "high", "limited", null, null, 2, ["pets-allowed"]),
+            ("TB-007", "Tentplaats Basis", "Bosveld", 4, 0, "grass", "high", "standard", null, null, 2, ["near-sanitary", "pets-allowed"]),
+            ("TB-008", "Tentplaats Basis", "Waterweide", 6, 6, "grass", "high", "limited", null, null, 2, ["electricity", "pets-allowed"]),
+            ("TB-009", "Tentplaats Basis", "Waterweide", 6, 6, "grass", "medium", "standard", null, null, 2, ["electricity", "near-sanitary", "pets-allowed"]),
+            ("TB-010", "Tentplaats Basis", "Kampeerveld Zuid", 5, 10, "grass", "high", "standard", null, null, 2, ["electricity", "car-at-pitch", "pets-allowed"]),
+            ("TB-011", "Tentplaats Basis", "Kampeerveld Zuid", 4, 0, "grass", "low", "limited", null, null, 2, ["near-sanitary", "pets-allowed"]),
+            ("TB-012", "Tentplaats Basis", "Kampeerveld Noord", 4, 0, "grass", "low", "standard", null, null, 2, ["car-at-pitch", "pets-allowed"]),
+            ("TC-001", "Tentplaats Comfort", "Kampeerveld Noord", 4, 16, "grass", "high", "good", null, null, 0, ["electricity", "water-connection", "car-at-pitch", "near-sanitary"]),
+            ("TC-002", "Tentplaats Comfort", "Kampeerveld Noord", 6, 10, "grass", "medium", "good", null, null, 0, ["electricity", "water-connection", "near-sanitary"]),
+            ("TC-003", "Tentplaats Comfort", "Waterweide", 4, 16, "grass", "medium", "good", null, null, 0, ["electricity", "private-sanitary", "car-at-pitch"]),
+            ("TC-004", "Tentplaats Comfort", "Kampeerveld Noord", 4, 10, "grass", "medium", "standard", null, null, 2, ["electricity", "water-connection", "private-sanitary", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("TC-005", "Tentplaats Comfort", "Bosveld", 6, 10, "grass", "high", "good", null, null, 0, ["electricity", "private-sanitary", "car-at-pitch"]),
+            ("TC-006", "Tentplaats Comfort", "Kampeerveld Noord", 6, 10, "grass", "medium", "good", null, null, 0, ["electricity", "water-connection", "car-at-pitch"]),
+            ("TC-007", "Tentplaats Comfort", "Waterweide", 4, 10, "grass", "high", "standard", null, null, 2, ["electricity", "water-connection", "near-sanitary", "pets-allowed"]),
+            ("TC-008", "Tentplaats Comfort", "Waterweide", 6, 10, "grass", "low", "good", null, null, 0, ["electricity", "water-connection", "car-at-pitch"]),
+            ("TC-009", "Tentplaats Comfort", "Bosveld", 6, 16, "grass", "low", "standard", null, null, 2, ["electricity", "water-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("TC-010", "Tentplaats Comfort", "Waterweide", 6, 16, "grass", "medium", "standard", null, null, 2, ["electricity", "water-connection", "car-at-pitch", "pets-allowed"]),
+            ("CV-001", "Caravanplaats", "Bosveld", 6, 16, "reinforced_grass", "medium", "good", 8, null, 2, ["electricity", "water-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-002", "Caravanplaats", "Kampeerveld Zuid", 6, 10, "grass", "medium", "standard", 6.5, null, 2, ["electricity", "water-connection", "drain-connection", "private-sanitary", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-003", "Caravanplaats", "Kampeerveld Zuid", 6, 10, "reinforced_grass", "low", "standard", 8, null, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-004", "Caravanplaats", "Kampeerveld Noord", 6, 10, "grass", "medium", "good", 7, null, 0, ["electricity", "private-sanitary", "car-at-pitch"]),
+            ("CV-005", "Caravanplaats", "Kampeerveld Noord", 6, 16, "grass", "medium", "standard", 8, null, 2, ["electricity", "water-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-006", "Caravanplaats", "Kampeerveld Zuid", 6, 10, "grass", "medium", "standard", 8, null, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-007", "Caravanplaats", "Kampeerveld Zuid", 6, 10, "grass", "low", "standard", 7.5, null, 2, ["electricity", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-008", "Caravanplaats", "Kampeerveld Noord", 6, 10, "grass", "medium", "good", 8, null, 2, ["electricity", "water-connection", "car-at-pitch", "pets-allowed"]),
+            ("CV-009", "Caravanplaats", "Bosveld", 6, 10, "reinforced_grass", "medium", "good", 6, null, 0, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary"]),
+            ("CV-010", "Caravanplaats", "Kampeerveld Noord", 6, 16, "grass", "medium", "standard", 6, null, 2, ["electricity", "water-connection", "drain-connection", "private-sanitary", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-011", "Caravanplaats", "Bosveld", 6, 10, "reinforced_grass", "low", "good", 8, null, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CV-012", "Caravanplaats", "Bosveld", 6, 16, "grass", "low", "good", 6.5, null, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CP-001", "Camperplaats", "Bosveld", 6, 10, "paved", "none", "standard", null, 7, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CP-002", "Camperplaats", "Kampeerveld Zuid", 6, 10, "reinforced_grass", "medium", "good", null, 7.5, 0, ["electricity", "water-connection", "car-at-pitch"]),
+            ("CP-003", "Camperplaats", "Kampeerveld Noord", 6, 16, "paved", "low", "good", null, 7.5, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CP-004", "Camperplaats", "Kampeerveld Zuid", 6, 10, "paved", "medium", "good", null, 8.5, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CP-005", "Camperplaats", "Kampeerveld Noord", 6, 16, "paved", "low", "standard", null, 8.5, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CP-006", "Camperplaats", "Kampeerveld Noord", 6, 10, "paved", "none", "standard", null, 7, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "pets-allowed"]),
+            ("CP-007", "Camperplaats", "Bosveld", 6, 10, "reinforced_grass", "none", "good", null, 7, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CP-008", "Camperplaats", "Kampeerveld Noord", 6, 10, "paved", "medium", "good", null, 7, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CP-009", "Camperplaats", "Kampeerveld Noord", 6, 10, "paved", "low", "good", null, 8, 0, ["electricity", "water-connection", "drain-connection", "car-at-pitch"]),
+            ("CP-010", "Camperplaats", "Kampeerveld Zuid", 6, 10, "paved", "low", "good", null, 8.5, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "pets-allowed"]),
+            ("CPXL-001", "Camperplaats XL", "Bosveld", 6, 16, "paved", "none", "good", null, 11, 0, ["electricity", "water-connection", "drain-connection", "private-sanitary", "car-at-pitch", "extra-wide"]),
+            ("CPXL-002", "Camperplaats XL", "Kampeerveld Noord", 6, 16, "paved", "none", "good", null, 9, 0, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "extra-wide"]),
+            ("CPXL-003", "Camperplaats XL", "Waterweide", 6, 16, "paved", "none", "good", null, 10, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "extra-wide", "pets-allowed"]),
+            ("CPXL-004", "Camperplaats XL", "Kampeerveld Noord", 6, 16, "paved", "none", "good", null, 9, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "extra-wide", "pets-allowed"]),
+            ("CPXL-005", "Camperplaats XL", "Kampeerveld Zuid", 6, 16, "paved", "low", "good", null, 10.5, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "extra-wide", "pets-allowed"]),
+            ("CPXL-006", "Camperplaats XL", "Kampeerveld Noord", 6, 16, "paved", "none", "good", null, 11, 2, ["electricity", "water-connection", "drain-connection", "car-at-pitch", "near-sanitary", "extra-wide", "pets-allowed"]),
         ];
 
         public static List<AccommodationType> BuildTypes()
@@ -264,6 +301,34 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             return types;
         }
 
+        public static List<Feature> BuildFeatures()
+        {
+            List<Feature> features = [];
+            foreach ((string key, string name, string category) in Features)
+            {
+                features.Add(new Feature
+                {
+                    Id = Guid.NewGuid(),
+                    Key = key,
+                    Name = name,
+                    Category = ParseFeatureCategory(category),
+                    CreatedAt = DateTime.UtcNow,
+                });
+            }
+            return features;
+        }
+
+        // Unit code -> feature keys, from the export flags.
+        public static IReadOnlyDictionary<string, string[]> FeatureKeysByUnit()
+        {
+            Dictionary<string, string[]> keys = new(StringComparer.OrdinalIgnoreCase);
+            foreach (var h in Homes)
+                keys[h.Code] = h.Flags;
+            foreach (var p in Pitches)
+                keys[p.Code] = p.Flags;
+            return keys;
+        }
+
         public static List<Accommodation> BuildUnits()
         {
             List<Accommodation> units = [];
@@ -274,32 +339,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     Id = Guid.NewGuid(),
                     Code = h.Code,
                     Name = h.Code,
-                    Category = AccommodationCategory.HolidayHome,
                     Zone = h.Zone,
                     MaxPersons = h.MaxPersons,
-                    PetsAllowed = h.Pets,
                     MaxPets = h.MaxPets,
-                    WheelchairAccessible = h.Wheelchair,
                     Bedrooms = h.Bedrooms,
                     Bathrooms = h.Bathrooms,
                     Beds = h.Beds,
-                    Sauna = h.Sauna,
-                    Dishwasher = h.Dishwasher,
-                    WashingMachine = h.WashingMachine,
-                    AirConditioning = h.Airco,
-                    Fireplace = h.Fireplace,
-                    CoveredTerrace = h.CoveredTerrace,
-                    ChargingPoint = h.ChargingPoint,
-                    Waterfront = h.Waterfront,
-                    NearPool = h.NearPool,
-                    ChildFriendly = h.ChildFriendly,
-                    SmokeFree = h.SmokeFree,
-                    HotTub = h.HotTub,
-                    LevelAccess = h.LevelAccess,
-                    AdaptedBathroom = h.AdaptedBathroom,
-                    WidenedDoors = h.WidenedDoors,
-                    AdjustableBed = h.AdjustableBed,
-                    ExtraParkingSpace = h.ExtraParking,
                     CreatedAt = DateTime.UtcNow,
                 });
             }
@@ -310,24 +355,15 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     Id = Guid.NewGuid(),
                     Code = p.Code,
                     Name = p.Code,
-                    Category = AccommodationCategory.CampingPitch,
                     Zone = p.Zone,
                     MaxPersons = p.MaxPersons,
-                    Electricity = p.Electricity,
+                    MaxPets = p.MaxPets,
                     ElectricityAmps = p.Amps,
-                    WaterConnection = p.Water,
-                    DrainConnection = p.Drain,
-                    PrivateSanitary = p.PrivateSanitary,
-                    CarAtPitch = p.CarAtPitch,
-                    NearSanitary = p.NearSanitary,
-                    ExtraWide = p.ExtraWide,
                     Surface = MapSurface(p.Surface),
                     Shade = MapShade(p.Shade),
                     WifiCoverage = MapWifi(p.Wifi),
                     MaxCaravanLengthMeters = p.MaxCaravanM,
                     MaxVehicleLengthMeters = p.MaxVehicleM,
-                    PetsAllowed = p.Pets,
-                    MaxPets = p.MaxPets,
                     CreatedAt = DateTime.UtcNow,
                 });
             }
@@ -340,10 +376,17 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
 
         public static async Task SeedAccommodationsAsync(this ApplicationDBContext context)
         {
-            List<Accommodation> existingUnits = await context.Accommodations
-                .Where(unit => unit.DeletedAt == null)
-                .ToListAsync();
-            HashSet<string> knownCodes = existingUnits.Select(unit => unit.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // Features first: the link rows reference them, and a feature row
+            // alone is a valid state (a feature nobody has yet = an empty chip list).
+            List<Feature> trackedFeatures = await context.Features.ToListAsync();
+            Dictionary<string, Feature> featuresByKey = trackedFeatures
+                .ToDictionary(feature => feature.Key, StringComparer.OrdinalIgnoreCase);
+            List<Feature> newFeatures = BuildFeatures()
+                .Where(feature => !featuresByKey.ContainsKey(feature.Key))
+                .ToList();
+            foreach (Feature feature in newFeatures)
+                featuresByKey[feature.Key] = feature;
+            context.Features.AddRange(newFeatures);
 
             List<AccommodationType> existingTypeList = await context.AccommodationTypes
                 .Where(type => type.DeletedAt == null)
@@ -370,6 +413,15 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             }
             context.AccommodationTypes.AddRange(newTypes);
 
+            // Units only when their code is new (idempotent re-run); existing
+            // units keep their features untouched.
+            HashSet<string> knownCodes = (await context.Accommodations
+                .Where(unit => unit.DeletedAt == null)
+                .ToListAsync())
+                .Select(unit => unit.Code)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            IReadOnlyDictionary<string, string[]> keysByUnit = FeatureKeysByUnit();
             List<Accommodation> newUnits = [];
             foreach (Accommodation unit in BuildUnits())
             {
@@ -377,10 +429,13 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     continue;
 
                 unit.TypeId = TypeIdFor(unit.Code, typeIds);
+                string[] keys = keysByUnit.TryGetValue(unit.Code, out string[]? unitKeys) ? unitKeys : [];
+                unit.Features = [.. keys.Select(key => featuresByKey[key])];
                 newUnits.Add(unit);
             }
             context.Accommodations.AddRange(newUnits);
 
+            // EF inserts the accommodation_features rows from the navigations.
             await context.SaveChangesAsync();
         }
 
@@ -403,7 +458,16 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             _ => throw new InvalidOperationException($"Onbekende categorie '{category}' in de seeddata."),
         };
 
-        private static PitchSurface? MapSurface(string value) => value switch
+        // "" (empty) = the feature applies to both categories (null column).
+        private static AccommodationCategory? ParseFeatureCategory(string category) => category switch
+        {
+            "" => null,
+            "holiday_home" => AccommodationCategory.HolidayHome,
+            "camping_pitch" => AccommodationCategory.CampingPitch,
+            _ => throw new InvalidOperationException($"Onbekende feature-categorie '{category}' in de seeddata."),
+        };
+
+        private static PitchSurface? MapSurface(string? value) => value switch
         {
             "grass" => PitchSurface.Grass,
             "paved" => PitchSurface.Paved,
@@ -411,7 +475,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             _ => null,
         };
 
-        private static PitchShade? MapShade(string value) => value switch
+        private static PitchShade? MapShade(string? value) => value switch
         {
             "none" => PitchShade.None,
             "low" => PitchShade.Low,
@@ -420,7 +484,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             _ => null,
         };
 
-        private static WifiCoverage? MapWifi(string value) => value switch
+        private static WifiCoverage? MapWifi(string? value) => value switch
         {
             "limited" => WifiCoverage.Limited,
             "standard" => WifiCoverage.Standard,

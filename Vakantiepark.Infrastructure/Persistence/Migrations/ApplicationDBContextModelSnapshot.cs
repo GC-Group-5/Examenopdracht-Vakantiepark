@@ -22,6 +22,25 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AccommodationFeature", b =>
+                {
+                    b.Property<Guid>("AccommodationsId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodations_id");
+
+                    b.Property<Guid>("FeaturesId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("features_id");
+
+                    b.HasKey("AccommodationsId", "FeaturesId")
+                        .HasName("pk_accommodation_features");
+
+                    b.HasIndex("FeaturesId")
+                        .HasDatabaseName("ix_accommodation_features_features_id");
+
+                    b.ToTable("accommodation_features", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -29,56 +48,23 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<bool>("AdaptedBathroom")
-                        .HasColumnType("boolean")
-                        .HasColumnName("adapted_bathroom");
-
-                    b.Property<bool>("AdjustableBed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("adjustable_bed");
-
-                    b.Property<bool>("AirConditioning")
-                        .HasColumnType("boolean")
-                        .HasColumnName("air_conditioning");
-
-                    b.Property<int>("Bathrooms")
+                    b.Property<int?>("Bathrooms")
                         .HasColumnType("integer")
                         .HasColumnName("bathrooms");
 
-                    b.Property<int>("Bedrooms")
+                    b.Property<int?>("Bedrooms")
                         .HasColumnType("integer")
                         .HasColumnName("bedrooms");
 
-                    b.Property<int>("Beds")
+                    b.Property<int?>("Beds")
                         .HasColumnType("integer")
                         .HasColumnName("beds");
-
-                    b.Property<bool>("CarAtPitch")
-                        .HasColumnType("boolean")
-                        .HasColumnName("car_at_pitch");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("category");
-
-                    b.Property<bool>("ChargingPoint")
-                        .HasColumnType("boolean")
-                        .HasColumnName("charging_point");
-
-                    b.Property<bool>("ChildFriendly")
-                        .HasColumnType("boolean")
-                        .HasColumnName("child_friendly");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("code");
-
-                    b.Property<bool>("CoveredTerrace")
-                        .HasColumnType("boolean")
-                        .HasColumnName("covered_terrace");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -88,41 +74,9 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<bool>("Dishwasher")
-                        .HasColumnType("boolean")
-                        .HasColumnName("dishwasher");
-
-                    b.Property<bool>("DrainConnection")
-                        .HasColumnType("boolean")
-                        .HasColumnName("drain_connection");
-
-                    b.Property<bool>("Electricity")
-                        .HasColumnType("boolean")
-                        .HasColumnName("electricity");
-
-                    b.Property<int>("ElectricityAmps")
+                    b.Property<int?>("ElectricityAmps")
                         .HasColumnType("integer")
                         .HasColumnName("electricity_amps");
-
-                    b.Property<bool>("ExtraParkingSpace")
-                        .HasColumnType("boolean")
-                        .HasColumnName("extra_parking_space");
-
-                    b.Property<bool>("ExtraWide")
-                        .HasColumnType("boolean")
-                        .HasColumnName("extra_wide");
-
-                    b.Property<bool>("Fireplace")
-                        .HasColumnType("boolean")
-                        .HasColumnName("fireplace");
-
-                    b.Property<bool>("HotTub")
-                        .HasColumnType("boolean")
-                        .HasColumnName("hot_tub");
-
-                    b.Property<bool>("LevelAccess")
-                        .HasColumnType("boolean")
-                        .HasColumnName("level_access");
 
                     b.Property<double?>("MaxCaravanLengthMeters")
                         .HasColumnType("double precision")
@@ -146,33 +100,9 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("name");
 
-                    b.Property<bool>("NearPool")
-                        .HasColumnType("boolean")
-                        .HasColumnName("near_pool");
-
-                    b.Property<bool>("NearSanitary")
-                        .HasColumnType("boolean")
-                        .HasColumnName("near_sanitary");
-
-                    b.Property<bool>("PetsAllowed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("pets_allowed");
-
-                    b.Property<bool>("PrivateSanitary")
-                        .HasColumnType("boolean")
-                        .HasColumnName("private_sanitary");
-
-                    b.Property<bool>("Sauna")
-                        .HasColumnType("boolean")
-                        .HasColumnName("sauna");
-
                     b.Property<string>("Shade")
                         .HasColumnType("text")
                         .HasColumnName("shade");
-
-                    b.Property<bool>("SmokeFree")
-                        .HasColumnType("boolean")
-                        .HasColumnName("smoke_free");
 
                     b.Property<string>("Surface")
                         .HasColumnType("text")
@@ -185,26 +115,6 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
-
-                    b.Property<bool>("WashingMachine")
-                        .HasColumnType("boolean")
-                        .HasColumnName("washing_machine");
-
-                    b.Property<bool>("WaterConnection")
-                        .HasColumnType("boolean")
-                        .HasColumnName("water_connection");
-
-                    b.Property<bool>("Waterfront")
-                        .HasColumnType("boolean")
-                        .HasColumnName("waterfront");
-
-                    b.Property<bool>("WheelchairAccessible")
-                        .HasColumnType("boolean")
-                        .HasColumnName("wheelchair_accessible");
-
-                    b.Property<bool>("WidenedDoors")
-                        .HasColumnType("boolean")
-                        .HasColumnName("widened_doors");
 
                     b.Property<string>("WifiCoverage")
                         .HasColumnType("text")
@@ -418,6 +328,52 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("bookings", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_features");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_features_key");
+
+                    b.ToTable("features", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -505,6 +461,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.ToTable("seasons", (string)null);
                 });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -568,6 +525,24 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.ToTable("users", (string)null);
                 });
+
+            modelBuilder.Entity("AccommodationFeature", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Accommodation", null)
+                        .WithMany()
+                        .HasForeignKey("AccommodationsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_accommodation_features_accommodations_accommodations_id");
+
+                    b.HasOne("Vakantiepark.Domain.Entities.Feature", null)
+                        .WithMany()
+                        .HasForeignKey("FeaturesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_accommodation_features_features_features_id");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.AccommodationType", "Type")

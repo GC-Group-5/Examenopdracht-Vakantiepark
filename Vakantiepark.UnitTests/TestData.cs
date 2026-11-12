@@ -2,8 +2,6 @@ using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Enums;
 using Vakantiepark.Shared.DTOs.Price;
-using Vakantiepark.Domain.Entities;
-using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.UnitTests
 {

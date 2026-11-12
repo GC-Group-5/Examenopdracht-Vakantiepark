@@ -20,14 +20,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
                 .HasForeignKey(accommodation => accommodation.TypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Property(accommodation => accommodation.Category)
-                .HasConversion(
-                    category => category == AccommodationCategory.CampingPitch ? "camping_pitch" : "holiday_home",
-                    value => value == "camping_pitch" ? AccommodationCategory.CampingPitch : AccommodationCategory.HolidayHome,
-                    valueComparer: new ValueComparer<AccommodationCategory>(
-                        (left, right) => left == right,
-                        category => category.GetHashCode(),
-                        category => category));
+            // Descriptive yes/no features as data rows: direct many-to-many
+            // through accommodation_features. Business-rule values (MaxPersons,
+            // MaxPets, Bedrooms, meters...) stay real columns on the unit.
+            builder.HasMany(accommodation => accommodation.Features)
+                .WithMany(feature => feature.Accommodations)
+                .UsingEntity(join => join.ToTable("accommodation_features"));
 
             builder.Property(accommodation => accommodation.Surface)
                 .HasConversion(

@@ -7,6 +7,12 @@ namespace Vakantiepark.UnitTests
 {
     public class AccommodationSeederTests
     {
+        // Unit codes are type-prefixed, so category derives from the prefix now
+        // that the unit has no Category column (it lives on the Type).
+        private static readonly string[] PitchPrefixes = ["TB-", "TC-", "CV-", "CP-", "CPXL-"];
+
+        private static bool IsPitch(string code) => PitchPrefixes.Any(prefix => code.StartsWith(prefix, StringComparison.Ordinal));
+
         [Fact]
         public void BuildTypes_ContainsEveryExportType_Once()
         {
@@ -44,8 +50,8 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal(200, units.Count);
             Assert.Equal(200, units.Select(unit => unit.Code).Distinct().Count());
-            Assert.Equal(150, units.Count(unit => unit.Category == AccommodationCategory.HolidayHome));
-            Assert.Equal(50, units.Count(unit => unit.Category == AccommodationCategory.CampingPitch));
+            Assert.Equal(150, units.Count(unit => !IsPitch(unit.Code)));
+            Assert.Equal(50, units.Count(unit => IsPitch(unit.Code)));
         }
 
         [Fact]
@@ -79,27 +85,39 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(2, berk.Bedrooms);
             Assert.Equal(1, berk.Bathrooms);
             Assert.Equal(4, berk.Beds);
-            Assert.True(berk.PetsAllowed);
             Assert.Equal(2, berk.MaxPets);
-            Assert.True(berk.Dishwasher);
-            Assert.True(berk.Waterfront);
-            Assert.True(berk.ChildFriendly);
-            Assert.False(berk.Sauna);
-            Assert.False(berk.WheelchairAccessible);
+            Assert.Null(berk.Surface);
+            Assert.Null(berk.MaxCaravanLengthMeters);
+            Assert.Null(berk.ElectricityAmps);
         }
 
         [Fact]
-        public void BuildUnits_MindervalideHome_HasAllAccessibilityFeatures()
+        public void FeatureKeysByUnit_FirstBerk_HasItsExportFlags()
         {
-            List<Accommodation> units = AccommodationSeeder.BuildUnits();
+            IReadOnlyDictionary<string, string[]> featureCodes = AccommodationSeeder.FeatureKeysByUnit();
 
-            Accommodation wilg = units.Single(unit => unit.Code == "WG4M-001");
+            string[] codes = featureCodes["BK4-001"];
 
-            Assert.True(wilg.WheelchairAccessible);
-            Assert.True(wilg.LevelAccess);
-            Assert.True(wilg.AdaptedBathroom);
-            Assert.True(wilg.WidenedDoors);
-            Assert.True(wilg.AdjustableBed);
+            Assert.Contains("pets-allowed", codes);
+            Assert.Contains("dishwasher", codes);
+            Assert.Contains("waterfront", codes);
+            Assert.Contains("child-friendly", codes);
+            Assert.DoesNotContain("sauna", codes);
+            Assert.DoesNotContain("hot-tub", codes);
+        }
+
+        [Fact]
+        public void FeatureKeysByUnit_MindervalideHome_HasAllAccessibilityFlags()
+        {
+            IReadOnlyDictionary<string, string[]> featureCodes = AccommodationSeeder.FeatureKeysByUnit();
+
+            string[] codes = featureCodes["WG4M-001"];
+
+            Assert.Contains("wheelchair-accessible", codes);
+            Assert.Contains("level-access", codes);
+            Assert.Contains("adapted-bathroom", codes);
+            Assert.Contains("widened-doors", codes);
+            Assert.Contains("adjustable-bed", codes);
         }
 
         [Fact]
@@ -112,35 +130,70 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(PitchSurface.ReinforcedGrass, caravan.Surface);
             Assert.Equal(8d, caravan.MaxCaravanLengthMeters);
             Assert.Equal(16, caravan.ElectricityAmps);
-            Assert.False(caravan.DrainConnection);
             Assert.Equal(WifiCoverage.Good, caravan.WifiCoverage);
         }
 
         [Fact]
-        public void BuildUnits_Pitches_HaveNoHomeFeatures()
+        public void FeatureKeysByUnit_CaravanPitch_HasItsExportFlags()
         {
-            List<Accommodation> units = AccommodationSeeder.BuildUnits();
+            IReadOnlyDictionary<string, string[]> featureCodes = AccommodationSeeder.FeatureKeysByUnit();
 
-            Assert.All(units.Where(unit => unit.Category == AccommodationCategory.CampingPitch), unit =>
-            {
-                Assert.Equal(0, unit.Bedrooms);
-                Assert.Equal(0, unit.Beds);
-                Assert.False(unit.Sauna);
-                Assert.False(unit.Waterfront);
-            });
+            string[] codes = featureCodes["CV-001"];
+
+            Assert.Contains("electricity", codes);
+            Assert.Contains("car-at-pitch", codes);
+            Assert.Contains("near-sanitary", codes);
+            Assert.Contains("pets-allowed", codes);
+            Assert.DoesNotContain("drain-connection", codes);
         }
 
         [Fact]
-        public void BuildUnits_Homes_HaveNoPitchFeatures()
+        public void BuildFeatures_HasOneRowPerExportFlag_WithUniqueCodes()
         {
-            List<Accommodation> units = AccommodationSeeder.BuildUnits();
+            List<Feature> features = AccommodationSeeder.BuildFeatures();
 
-            Assert.All(units.Where(unit => unit.Category == AccommodationCategory.HolidayHome), unit =>
+            Assert.Equal(26, features.Count);
+            Assert.Equal(26, features.Select(feature => feature.Key).Distinct().Count());
+        }
+
+        [Fact]
+        public void BuildFeatures_PetsAllowed_IsTheOnlySharedCategoryFeature()
+        {
+            List<Feature> features = AccommodationSeeder.BuildFeatures();
+
+            Assert.Null(features.Single(feature => feature.Key == "pets-allowed").Category);
+            Assert.All(features.Where(feature => feature.Key != "pets-allowed"), feature => Assert.NotNull(feature.Category));
+            Assert.Equal(AccommodationCategory.HolidayHome, features.Single(feature => feature.Key == "sauna").Category);
+            Assert.Equal(AccommodationCategory.CampingPitch, features.Single(feature => feature.Key == "electricity").Category);
+        }
+
+        [Fact]
+        public void FeatureKeysByUnit_CoversEveryUnit_AndOnlyUsesKnownFeatureCodes()
+        {
+            IReadOnlyDictionary<string, string[]> featureCodes = AccommodationSeeder.FeatureKeysByUnit();
+            HashSet<string> knownCodes = [.. AccommodationSeeder.BuildFeatures().Select(feature => feature.Key)];
+
+            Assert.Equal(200, featureCodes.Count);
+            Assert.All(featureCodes.Values, codes => Assert.All(codes, code => Assert.Contains(code, knownCodes)));
+        }
+
+        [Fact]
+        public void FeatureKeysByUnit_RespectsFeatureCategory_PerUnit()
+        {
+            IReadOnlyDictionary<string, string[]> featureCodes = AccommodationSeeder.FeatureKeysByUnit();
+            Dictionary<string, AccommodationCategory?> categories =
+                AccommodationSeeder.BuildFeatures().ToDictionary(feature => feature.Key, feature => feature.Category);
+
+            foreach ((string code, string[] keys) in featureCodes)
             {
-                Assert.Null(unit.Surface);
-                Assert.Null(unit.MaxCaravanLengthMeters);
-                Assert.False(unit.Electricity);
-            });
+                foreach (string key in keys)
+                {
+                    AccommodationCategory? category = categories[key];
+                    bool fitsCategory = category is null
+                        || category == (IsPitch(code) ? AccommodationCategory.CampingPitch : AccommodationCategory.HolidayHome);
+                    Assert.True(fitsCategory, $"{code} heeft feature '{key}' buiten zijn categorie.");
+                }
+            }
         }
 
         [Fact]
