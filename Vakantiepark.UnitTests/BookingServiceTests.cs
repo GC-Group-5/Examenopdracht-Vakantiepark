@@ -17,6 +17,8 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new Mock<IAccommodationUnitRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
+        private readonly Mock<IRepository<Season>> _seasonRepository = new();
+        private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
         private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly Guid _firstUnitId = Guid.NewGuid();
         private readonly Guid _secondUnitId = Guid.NewGuid();
@@ -39,12 +41,16 @@ namespace Vakantiepark.UnitTests
             _bookingNumberGenerator
                 .Setup(x => x.Generate())
                 .Returns("K7M2XQ9P");
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
 
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
                 _priceService.Object,
                 _bookingNumberGenerator.Object,
+                _seasonRepository.Object,
+                _parkSettingsRepository.Object,
                 _emailSender.Object,
                 NullLogger<BookingService>.Instance);
         }
