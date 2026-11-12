@@ -28,11 +28,8 @@ namespace Vakantiepark.Infrastructure.Helpers
             }.ToMessageBody();
 
             using SmtpClient client = new SmtpClient();
-            await client.ConnectAsync(Settings.Host, Settings.Port, Settings.UseTls ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
-
-            if (!string.IsNullOrEmpty(Settings.Username))
-                await client.AuthenticateAsync(Settings.Username, Settings.Password);
-
+            // Mailpit runs locally without TLS or login; relaying to a real inbox is Mailpit's job (see AppHost).
+            await client.ConnectAsync(Settings.Host, Settings.Port, SecureSocketOptions.None);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }
