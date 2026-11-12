@@ -23,6 +23,8 @@ namespace Vakantiepark.Application
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IBookingService, BookingService>();
             services.AddScoped<IPriceService, TemporaryPriceService>(); // TIJDELIJK: weghalen vóór de pull request
+            //services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IAccommodationService, AccommodationService>();
 
             return services;
         }

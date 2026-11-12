@@ -1,0 +1,53 @@
+name: Discord - CI builds
+
+# Posts to #ci-builds when "CI - build and test" fails, and once more when the
+# same branch is green again. Successful builds after a success stay quiet.
+
+on:
+  workflow_run:
+    workflows: ["CI - build and test"]
+    types: [completed]
+
+permissions:
+  actions: read
+
+jobs:
+  notify:
+    if: github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_CI }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT: ${{ github.event.workflow_run.head_commit.message }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "Secret DISCORD_WEBHOOK_CI is not set; skipping."; exit 0; fi
+
+          if [ "$CONCLUSION" = "success" ]; then
+            PREVIOUS=$(gh api -X GET "repos/$REPO/actions/workflows/$WORKFLOW_ID/runs" \
+              -f branch="$BRANCH" -f status=completed -f per_page=2 --jq '.workflow_runs[1].conclusion // ""')
+            if [ "$PREVIOUS" != "failure" ]; then echo "Still green; nothing to post."; exit 0; fi
+            HEADLINE="🟢 Build weer groen op $BRANCH"; COLOR=3066993; DETAIL=""
+          else
+            FAILED=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+              --jq '[.jobs[].steps[]? | select(.conclusion == "failure") | .name] | join(", ")')
+            HEADLINE="🔴 Build mislukt op $BRANCH"; COLOR=15158332
+            DETAIL=$'\n'"Mislukte stap: **${FAILED:-onbekend}**"
+          fi
+
+          WHERE="Branch \`$BRANCH\`"
+          if [ -n "$PR_NUMBER" ]; then WHERE="PR [#$PR_NUMBER](https://github.com/$REPO/pull/$PR_NUMBER) · branch \`$BRANCH\`"; fi
+          DESC="$WHERE · door **$ACTOR**"$'\n'"> ${COMMIT%%$'\n'*}$DETAIL"
+
+          jq -n --arg title "$HEADLINE" --arg url "$RUN_URL" --arg desc "$DESC" --argjson color "$COLOR" \
+            '{username: "CI Builds", embeds: [{title: $title, url: $url, description: $desc, color: $color, timestamp: (now | todate)}]}' \
+            | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"

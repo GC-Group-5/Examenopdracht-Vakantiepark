@@ -254,7 +254,8 @@ The goal is code that reads like it was written by one careful person. Match the
 - Every async method ends in `Async` and returns `Task`/`Task<T>`. No `async void`. No `.Result` / `.Wait()`.
 - Use `is null` / `is not null`, never `== null` on references (EF lambdas excepted, where
   `x.DeletedAt == null` is required for translation).
-- Use collection expressions: `[]`, `[.. items]`.
+- Use `[]` for empty collections. Turn a query into a list with `.ToList()` (or `.ToArray()`), not with the
+  spread operator `[.. items]`: the team finds `.ToList()` easier to read.
 - Use expression-bodied members (`=>`) for one-line methods, especially repository queries and UI
   API wrappers.
 - Guard clauses: single-line `if` + statement without braces, followed by a blank line.
