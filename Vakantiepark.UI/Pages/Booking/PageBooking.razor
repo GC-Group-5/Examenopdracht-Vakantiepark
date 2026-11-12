@@ -83,12 +83,9 @@
 
                 <div class="d-flex gap-3 mt-4">
                     <button type="button" class="btn btn-outline-secondary" @onclick="EditDetails" disabled="@isSaving">Gegevens wijzigen</button>
-                    @if (IsBookingApiAvailable)
-                    {
-                        <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
-                            @(isSaving ? "Bezig met boeken..." : "Boeking bevestigen")
-                        </button>
-                    }
+                    <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
+                        @(isSaving ? "Bezig met boeken..." : "Boeking bevestigen")
+                    </button>
                 </div>
             </div>
         }
@@ -98,8 +95,6 @@
 @code {
     private const string DateFormat = "ddd d MMMM yyyy";
     private const string TimeFormat = "HH:mm";
-
-    private static readonly bool IsBookingApiAvailable = false;
 
     private static readonly TimeOnly PlaceholderArrivalTime = new TimeOnly(15, 0);
     private static readonly TimeOnly PlaceholderDepartureTime = new TimeOnly(10, 0);
