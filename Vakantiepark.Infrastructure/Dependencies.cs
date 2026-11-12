@@ -40,7 +40,6 @@ namespace Vakantiepark.Infrastructure
             services.AddScoped<IAccommodationUnitRepository, AccommodationUnitRepository>();
             services.AddScoped<IFeatureRepository, FeatureRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
-            services.AddScoped<IAccommodationUnitRepository, AccommodationUnitRepository>();
 
             return services;
         }
