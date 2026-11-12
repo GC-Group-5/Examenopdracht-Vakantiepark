@@ -1,0 +1,30 @@
+name: Discord - sprint status
+
+# Every weekday at 08:30 (Dutch winter time) posts to #sprint-status: the burndown
+# of the current sprint, what everyone has in progress, and which PRs wait for review.
+# Can also be started by hand: Actions → Discord - sprint status → Run workflow.
+
+on:
+  schedule:
+    - cron: "30 7 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Post sprint status
+        run: python3 .github/scripts/sprint_status.py
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_SPRINT }}
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          ORG: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PROJECT_NUMBER: "3"
