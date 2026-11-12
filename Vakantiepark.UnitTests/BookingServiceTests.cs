@@ -14,22 +14,26 @@ namespace Vakantiepark.UnitTests
     {
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new Mock<IAccommodationUnitRepository>();
+        private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new Mock<IAccommodationTypeRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
-        private readonly Mock<IRepository<Season>> _seasonRepository = new();
-        private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
-        private readonly Guid _firstUnitId = Guid.NewGuid();
-        private readonly Guid _secondUnitId = Guid.NewGuid();
+        private readonly Mock<IRepository<Season>> _seasonRepository = new Mock<IRepository<Season>>();
+        private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new Mock<IRepository<ParkSettings>>();
+        private readonly Accommodation _firstUnit = TestData.CreateAccommodation("EL6-001", "Waterkant");
+        private readonly Accommodation _secondUnit = TestData.CreateAccommodation("EL6-002", "Bosrand");
         private readonly BookingService _sut;
 
         public BookingServiceTests()
         {
+            _accommodationTypeRepository
+                .Setup(x => x.GetBySlugAsync("eik-luxe-6"))
+                .ReturnsAsync(TestData.CreateAccommodationType(type => { type.Slug = "eik-luxe-6"; type.Name = "Eik Luxe 6"; }));
             _accommodationUnitRepository
-                .Setup(x => x.GetInServiceIdsByTypeSlugAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([_firstUnitId, _secondUnitId]);
+                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .ReturnsAsync(() => new List<Accommodation> { _firstUnit, _secondUnit });
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<Guid>());
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
                 .ReturnsAsync(true);
@@ -39,17 +43,18 @@ namespace Vakantiepark.UnitTests
             _bookingNumberGenerator
                 .Setup(x => x.Generate())
                 .Returns("K7M2XQ9P");
-            // Lege kalender: de hoogseizoen-controle van US-07 slaat dan over.
-            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
-            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Season>());
+            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<ParkSettings> { TestData.CreateParkSettings() });
 
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
+                _accommodationTypeRepository.Object,
                 _priceService.Object,
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
-                _parkSettingsRepository.Object);
+                _parkSettingsRepository.Object,
+                new FixedTimeProvider(DateTimeOffset.UtcNow));
         }
 
         [Fact]
@@ -66,7 +71,38 @@ namespace Vakantiepark.UnitTests
                 && booking.ArrivalDate == request.ArrivalDate
                 && booking.DepartureDate == request.DepartureDate
                 && booking.NumberOfGuests == request.NumberOfGuests
-                && booking.TotalPrice == 817m)), Times.Once);
+                && booking.TotalPrice == 817m
+                && booking.Deposit == 163.40m)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_StoresEveryPersonWithBirthDate_MainBookerFirst()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+
+            await _sut.CreateAsync(request);
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking =>
+                booking.Guests.Count == 4
+                && booking.Guests[0].IsMainBooker
+                && booking.Guests[0].Name == "Jan Jansen"
+                && booking.Guests[0].BirthDate == new DateOnly(1985, 5, 1)
+                && booking.Guests.Count(guest => guest.IsMainBooker) == 1
+                && booking.Guests[3].Name == "Sara Jansen")), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_TakesArrivalAndDepartureTimesFromParkSettings()
+        {
+            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<ParkSettings>
+            {
+                TestData.CreateParkSettings(settings => { settings.ArrivalTime = new TimeOnly(16, 0); settings.DepartureTime = new TimeOnly(9, 30); }),
+            });
+
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal(new TimeOnly(16, 0), response.ArrivalTime);
+            Assert.Equal(new TimeOnly(9, 30), response.DepartureTime);
         }
 
         [Fact]
@@ -74,11 +110,33 @@ namespace Vakantiepark.UnitTests
         {
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([_firstUnitId]);
+                .ReturnsAsync(new List<Guid> { _firstUnit.Id });
 
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());
 
-            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnitId)), Times.Once);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnit.Id)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_PreferredZone_AssignsUnitInThatZone()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.PreferredZone = "bosrand"));
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnit.Id)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_PreferredZoneFull_ThrowsZoneMessageAndSavesNothing()
+        {
+            _bookingRepository
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .ReturnsAsync(new List<Guid> { _secondUnit.Id });
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.PreferredZone = "Bosrand")));
+
+            Assert.Contains("In de zone Bosrand is in deze periode geen Eik Luxe 6 meer vrij", exception.Message);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]
@@ -86,9 +144,31 @@ namespace Vakantiepark.UnitTests
         {
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([_firstUnitId, _secondUnitId]);
+                .ReturnsAsync(new List<Guid> { _firstUnit.Id, _secondUnit.Id });
 
-            await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            Assert.Equal(CreateBookingRequestValidation.NotAvailableMessage, exception.Message);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_NoUnitFitsTheParty_ThrowsArgumentException()
+        {
+            _accommodationUnitRepository
+                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<Accommodation>());
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            Assert.Contains("geen plek voor 4 personen", exception.Message);
+        }
+
+        [Fact]
+        public async Task CreateAsync_UnknownAccommodationType_ThrowsArgumentException()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.AccommodationTypeSlug = "bestaat-niet")));
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
@@ -130,8 +210,22 @@ namespace Vakantiepark.UnitTests
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
+        // Two guests pass the availability check at the same moment; the database refuses the
+        // second booking of the same unit, and the service then takes the next free unit.
         [Fact]
-        public async Task CreateAsync_UnitBookedByConcurrentRequest_ThrowsArgumentException()
+        public async Task CreateAsync_UnitTakenByConcurrentRequest_BooksNextFreeUnit()
+        {
+            _bookingRepository
+                .Setup(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _firstUnit.Id)))
+                .ReturnsAsync(false);
+
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnit.Id)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_EveryUnitTakenByConcurrentRequests_ThrowsNotAvailableMessage()
         {
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
@@ -140,6 +234,24 @@ namespace Vakantiepark.UnitTests
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
 
             Assert.Equal(CreateBookingRequestValidation.NotAvailableMessage, exception.Message);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task GetQuoteAsync_ValidStay_ReturnsNamePriceTimesAndCancellationTerms()
+        {
+            DateOnly arrival = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+
+            BookingQuoteResponse quote = await _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), 4, "Waterkant");
+
+            Assert.Equal("Eik Luxe 6", quote.AccommodationTypeName);
+            Assert.Equal("Waterkant", quote.Zone);
+            Assert.Equal(new TimeOnly(15, 0), quote.ArrivalTime);
+            Assert.Equal(817m, quote.Price.TotalPrice);
+            Assert.Equal(163.40m, quote.Price.Deposit);
+            Assert.Equal(30, quote.FreeCancellationDaysBeforeArrival);
+            Assert.Equal(7, quote.NoRefundDaysBeforeArrival);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
     }
 }

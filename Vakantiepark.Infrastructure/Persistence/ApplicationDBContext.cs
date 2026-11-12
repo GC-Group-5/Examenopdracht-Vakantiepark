@@ -14,6 +14,7 @@ namespace Vakantiepark.Infrastructure.Persistence
         public DbSet<AccommodationFeature> AccommodationFeatures => Set<AccommodationFeature>();
 
         public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
 
         public DbSet<ParkSettings> ParkSettings => Set<ParkSettings>();
         public DbSet<TouristTaxRate> TouristTaxRates => Set<TouristTaxRate>();
@@ -38,6 +39,7 @@ namespace Vakantiepark.Infrastructure.Persistence
             builder.Entity<FeatureOption>(options => options.Configure());
             builder.Entity<AccommodationFeature>(options => options.Configure());
             builder.Entity<Booking>(options => options.Configure());
+            builder.Entity<BookingGuest>(options => options.Configure());
             builder.Entity<ParkSettings>(options => options.Configure());
             builder.Entity<TouristTaxRate>(options => options.Configure());
             builder.Entity<Season>(options => options.Configure());

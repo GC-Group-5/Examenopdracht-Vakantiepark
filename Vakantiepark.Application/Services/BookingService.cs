@@ -16,86 +16,139 @@ namespace Vakantiepark.Application.Services
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
+        private readonly IAccommodationTypeRepository AccommodationTypeRepository;
         private readonly IPriceService PriceService;
         private readonly IBookingNumberGenerator BookingNumberGenerator;
         private readonly IRepository<Season> SeasonRepository;
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
+        private readonly TimeProvider TimeProvider;
 
         public BookingService(
             IBookingRepository bookingRepository,
             IAccommodationUnitRepository accommodationUnitRepository,
+            IAccommodationTypeRepository accommodationTypeRepository,
             IPriceService priceService,
             IBookingNumberGenerator bookingNumberGenerator,
             IRepository<Season> seasonRepository,
-            IRepository<ParkSettings> parkSettingsRepository)
+            IRepository<ParkSettings> parkSettingsRepository,
+            TimeProvider timeProvider)
         {
             BookingRepository = bookingRepository;
             AccommodationUnitRepository = accommodationUnitRepository;
+            AccommodationTypeRepository = accommodationTypeRepository;
             PriceService = priceService;
             BookingNumberGenerator = bookingNumberGenerator;
             SeasonRepository = seasonRepository;
             ParkSettingsRepository = parkSettingsRepository;
+            TimeProvider = timeProvider;
+        }
+
+        public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)
+        {
+            CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, Today());
+
+            AccommodationType type = await GetTypeAsync(accommodationTypeSlug);
+            ParkSettings settings = await GetParkSettingsAsync();
+            await ValidateHighSeasonMinimumNightsAsync(arrivalDate, departureDate, settings);
+            await GetCandidateUnitsAsync(type, arrivalDate, departureDate, numberOfGuests, preferredZone);
+
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, numberOfGuests);
+
+            return new BookingQuoteResponse()
+            {
+                AccommodationTypeName = type.Name,
+                Zone = string.IsNullOrWhiteSpace(preferredZone) ? null : preferredZone.Trim(),
+                ArrivalDate = arrivalDate,
+                DepartureDate = departureDate,
+                ArrivalTime = settings.ArrivalTime,
+                DepartureTime = settings.DepartureTime,
+                NumberOfGuests = numberOfGuests,
+                Price = price,
+                FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
+                NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
+                DepositPercentage = settings.DepositPercentage,
+            };
         }
 
         public async Task<BookingResponse> CreateAsync(CreateBookingRequest request)
         {
-            List<Guid> availableUnitIds = await GetAvailableUnitIdsAsync(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate);
+            request.Validate(Today());
 
-            request.Validate(availableUnitIds);
+            AccommodationType type = await GetTypeAsync(request.AccommodationTypeSlug);
+            ParkSettings settings = await GetParkSettingsAsync();
+            await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
-            string? minimumNightsError = await GetHighSeasonMinimumNightsErrorAsync(request);
-            if (minimumNightsError is not null)
-            {
-                throw new ArgumentException(minimumNightsError);
-            }
+            List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.PreferredZone);
 
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(
-                request.AccommodationTypeSlug,
-                request.ArrivalDate,
-                request.DepartureDate,
-                request.NumberOfGuests);
-
+            // The server always calculates the price itself; a price from the browser is never used.
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
             string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
-            Booking booking = request.ToEntity(availableUnitIds[0], bookingNumber, price);
+            // Another guest may book the same unit between the availability check and saving.
+            // The database then refuses this booking, and the next free unit is tried.
+            foreach (Accommodation unit in candidates)
+            {
+                Booking booking = request.ToEntity(unit.Id, bookingNumber, price, settings);
 
-            if (!await BookingRepository.TryAddAsync(booking))
+                if (await BookingRepository.TryAddAsync(booking))
+                    return booking.ToResponse();
+            }
+
+            throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
+        }
+
+        // Free units of the type that fit the party, in the preferred zone when one is given.
+        private async Task<List<Accommodation>> GetCandidateUnitsAsync(AccommodationType type, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)
+        {
+            List<Accommodation> units = await AccommodationUnitRepository.GetBookableUnitsAsync(type.Slug, arrivalDate, departureDate, numberOfGuests);
+            if (units.Count == 0)
+                throw new ArgumentException($"{type.Name} heeft geen plek voor {numberOfGuests} personen. Kies een groter verblijf.");
+
+            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(
+                units.Select(unit => unit.Id).ToList(), arrivalDate, departureDate);
+            List<Accommodation> freeUnits = units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
+            if (freeUnits.Count == 0)
                 throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
 
-            return booking.ToResponse();
+            if (string.IsNullOrWhiteSpace(preferredZone))
+                return freeUnits;
+
+            List<Accommodation> inZone = freeUnits
+                .Where(unit => string.Equals(unit.Zone.Name, preferredZone.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (inZone.Count == 0)
+                throw new ArgumentException($"In de zone {preferredZone.Trim()} is in deze periode geen {type.Name} meer vrij. Kies een andere zone of boek zonder voorkeur.");
+
+            return inZone;
         }
 
-        // US-07: when the stay period falls (partly) in a high season, the
-        // booking must be at least the configured number of nights. The high
-        // season is marked on the season itself (Season.IsHighSeason), so
-        // this follows the season calendar directly; nights outside every
-        // high season count towards the total length as well.
-        private async Task<string?> GetHighSeasonMinimumNightsErrorAsync(CreateBookingRequest request)
+        // When the stay falls (partly) in a high season, it must last at least the minimum number of nights.
+        private async Task ValidateHighSeasonMinimumNightsAsync(DateOnly arrivalDate, DateOnly departureDate, ParkSettings settings)
         {
-            ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
-            if (settings is null || settings.HighSeasonMinimumNights < 2)
-                return null;
+            if (settings.HighSeasonMinimumNights < 2)
+                return;
 
             Season? overlappedSeason = (await SeasonRepository.GetAllAsync())
-                .Where(s => s.IsHighSeason)
-                .FirstOrDefault(s => s.StartDate < request.DepartureDate && request.ArrivalDate <= s.EndDate);
+                .Where(season => season.IsHighSeason)
+                .FirstOrDefault(season => season.StartDate < departureDate && arrivalDate <= season.EndDate);
             if (overlappedSeason is null)
-                return null;
+                return;
 
-            int nights = request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
-            if (nights >= settings.HighSeasonMinimumNights)
-                return null;
-
-            return $"In het hoogseizoen ({overlappedSeason.Name}) moet een boeking minimaal {settings.HighSeasonMinimumNights} nachten zijn.";
+            int nights = departureDate.DayNumber - arrivalDate.DayNumber;
+            if (nights < settings.HighSeasonMinimumNights)
+                throw new ArgumentException($"In het hoogseizoen ({overlappedSeason.Name}) moet een boeking minimaal {settings.HighSeasonMinimumNights} nachten zijn.");
         }
 
-        private async Task<List<Guid>> GetAvailableUnitIdsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
-        {
-            List<Guid> unitIds = await AccommodationUnitRepository.GetInServiceIdsByTypeSlugAsync(accommodationTypeSlug, arrivalDate, departureDate);
-            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(unitIds, arrivalDate, departureDate);
+        private async Task<AccommodationType> GetTypeAsync(string accommodationTypeSlug)
+            => await AccommodationTypeRepository.GetBySlugAsync(accommodationTypeSlug.Trim().ToLowerInvariant())
+                ?? throw new ArgumentException("Dit verblijf bestaat niet. Kies een verblijf uit het overzicht.");
 
-            return unitIds.Except(bookedUnitIds).ToList();
-        }
+        private async Task<ParkSettings> GetParkSettingsAsync()
+            => (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault()
+                ?? throw new InvalidOperationException("De parkinstellingen zijn niet ingesteld.");
+
+        private DateOnly Today()
+            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
 
         private async Task<string> GenerateUniqueBookingNumberAsync()
         {

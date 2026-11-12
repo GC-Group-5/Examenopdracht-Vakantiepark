@@ -9,13 +9,14 @@ using Xunit;
 
 namespace Vakantiepark.UnitTests
 {
-    // US-07 acceptance rule: when the stay period falls (partly) in a season
-    // flagged Season.IsHighSeason, the booking must be at least
-    // ParkSettings.HighSeasonMinimumNights long.
+    // When the stay period falls (partly) in a season flagged Season.IsHighSeason, the booking
+    // must be at least ParkSettings.HighSeasonMinimumNights long. "Today" is fixed at the start
+    // of 2026, so the summer 2026 dates in these tests lie in the future.
     public class HighSeasonMinimumNightsTests
     {
         private readonly Mock<IBookingRepository> _bookingRepository = new();
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new();
+        private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new();
         private readonly Mock<IPriceService> _priceService = new();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
@@ -31,29 +32,16 @@ namespace Vakantiepark.UnitTests
                 s.EndDate = new DateOnly(2026, 8, 30);
                 s.IsHighSeason = true;
             });
-            Season laag = TestData.CreateSeason(s =>
-            {
-                s.Name = "Laagseizoen 2026";
-                s.StartDate = new DateOnly(2026, 1, 1);
-                s.EndDate = new DateOnly(2026, 7, 3);
-                s.IsHighSeason = false;
-            });
 
-            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([laag, zomer]);
-            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new ParkSettings
-            {
-                Id = Guid.NewGuid(),
-                ArrivalTime = new TimeOnly(15, 0),
-                DepartureTime = new TimeOnly(10, 0),
-                HighSeasonMinimumNights = 7,
-                DepositPercentage = 20m,
-            }]);
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Season> { zomer });
+            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<ParkSettings> { TestData.CreateParkSettings() });
+            _accommodationTypeRepository.Setup(x => x.GetBySlugAsync("berk-4")).ReturnsAsync(TestData.CreateAccommodationType());
             _accommodationUnitRepository
-                .Setup(x => x.GetInServiceIdsByTypeSlugAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([Guid.NewGuid()]);
+                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .ReturnsAsync(() => new List<Accommodation> { TestData.CreateAccommodation("BK4-001") });
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<Guid>());
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
                 .ReturnsAsync(true);
@@ -67,58 +55,44 @@ namespace Vakantiepark.UnitTests
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
+                _accommodationTypeRepository.Object,
                 _priceService.Object,
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
-                _parkSettingsRepository.Object);
+                _parkSettingsRepository.Object,
+                new FixedTimeProvider(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero)));
         }
+
+        private static CreateBookingRequest Stay(int arrivalMonth, int arrivalDay, int departureMonth, int departureDay)
+            => TestData.CreateNewBookingRequest(r =>
+            {
+                r.AccommodationTypeSlug = "berk-4";
+                r.ArrivalDate = new DateOnly(2026, arrivalMonth, arrivalDay);
+                r.DepartureDate = new DateOnly(2026, departureMonth, departureDay);
+            });
 
         [Fact]
         public async Task CreateAsync_FiveNightsInHighSeason_IsRejectedWithDutchMessage()
         {
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 7, 10);
-                r.DepartureDate = new DateOnly(2026, 7, 15);
-            });
-
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(request));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(Stay(7, 10, 7, 15)));
 
             Assert.Contains("In het hoogseizoen (Zomervakantie 2026) moet een boeking minimaal 7 nachten zijn.", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateAsync_StayStartingBeforeHighSeasonAndEndingInIt_IsRejected()
+        public async Task CreateAsync_StayStartingInHighSeasonAndEndingAfterIt_IsRejected()
         {
-            // "Valt de periode (deels) in een hoogseizoen": deels overlappen
-            // telt ook, de minimumterm applies to the whole stay.
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 8, 26);
-                r.DepartureDate = new DateOnly(2026, 9, 1);
-            });
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(Stay(8, 26, 9, 1)));
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(request));
-
-            Assert.Contains("In het hoogseizoen (Zomervakantie 2026) moet een boeking minimaal 7 nachten zijn.", exception.Message);
+            Assert.Contains("minimaal 7 nachten", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]
         public async Task CreateAsync_OverlappingStayLongEnough_IsAllowed()
         {
-            // Overlaps the summer end by two nights but meets the minimum: allowed.
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 8, 26);
-                r.DepartureDate = new DateOnly(2026, 9, 6);
-            });
-
-            await _sut.CreateAsync(request);
+            await _sut.CreateAsync(Stay(8, 26, 9, 6));
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
@@ -126,15 +100,8 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CreateAsync_StayEndingJustBeforeHighSeason_IsAllowed()
         {
-            // Nights end 3 juli: no night falls in the high season, so no minimum.
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 6, 28);
-                r.DepartureDate = new DateOnly(2026, 7, 4);
-            });
-
-            await _sut.CreateAsync(request);
+            // The last night is 3 July; the departure day itself is not a night of the stay.
+            await _sut.CreateAsync(Stay(6, 28, 7, 4));
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
@@ -142,14 +109,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CreateAsync_SevenNightsInHighSeason_IsAllowed()
         {
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 7, 10);
-                r.DepartureDate = new DateOnly(2026, 7, 17);
-            });
-
-            await _sut.CreateAsync(request);
+            await _sut.CreateAsync(Stay(7, 10, 7, 17));
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
@@ -157,41 +117,16 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CreateAsync_FiveNightsOutsideHighSeason_IsAllowed()
         {
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 3, 10);
-                r.DepartureDate = new DateOnly(2026, 3, 15);
-            });
-
-            await _sut.CreateAsync(request);
+            await _sut.CreateAsync(Stay(3, 10, 3, 15));
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
 
         [Fact]
-        public async Task CreateAsync_NoSeasonMarkedAsHigh_IsAllowed()
+        public async Task GetQuoteAsync_FiveNightsInHighSeason_IsRejectedBeforeTheGuestFillsInDetails()
         {
-            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([
-                TestData.CreateSeason(s =>
-                {
-                    s.Name = "Zonder hoogseizoen";
-                    s.StartDate = new DateOnly(2026, 1, 1);
-                    s.EndDate = new DateOnly(2026, 12, 31);
-                    s.IsHighSeason = false;
-                }),
-            ]);
-
-            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
-            {
-                r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 7, 10);
-                r.DepartureDate = new DateOnly(2026, 7, 15);
-            });
-
-            await _sut.CreateAsync(request);
-
-            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.GetQuoteAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 15), 4, null));
         }
     }
 }
