@@ -1,0 +1,40 @@
+@page "/beheer"
+@attribute [Authorize(Roles = Roles.Staff)]
+@inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+
+<PageTitle>Beheeromgeving | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <AuthorizeView Context="auth">
+            <h1 class="page-title mt-2">Hallo, @auth.User.Identity?.Name</h1>
+            <p class="page-intro mt-4">
+                Je bent ingelogd als <strong>@(auth.User.IsInRole(Roles.Beheerder) ? Roles.Beheerder : Roles.Medewerker)</strong>.
+            </p>
+        </AuthorizeView>
+        <button type="button" class="btn btn-du-light mt-3" @onclick="LogoutAsync">Uitloggen</button>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Reserveringen</strong><div class="small text-muted-du">Komt in US-13 en US-14</div></div></div>
+            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Dagoverzicht</strong><div class="small text-muted-du">Komt in US-15</div></div></div>
+            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Bezetting</strong><div class="small text-muted-du">Komt in US-16 en US-17</div></div></div>
+            <AuthorizeView Roles="@Roles.Beheerder">
+                <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Parkinstellingen</strong><div class="small text-muted-du">Alleen voor beheerders, komt in US-18</div></div></div>
+            </AuthorizeView>
+        </div>
+    </div>
+</section>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("");
+    }
+}
