@@ -18,17 +18,23 @@ namespace Vakantiepark.Application.Services
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
         private readonly IPriceService PriceService;
         private readonly IBookingNumberGenerator BookingNumberGenerator;
+        private readonly IRepository<Season> SeasonRepository;
+        private readonly IRepository<ParkSettings> ParkSettingsRepository;
 
         public BookingService(
             IBookingRepository bookingRepository,
             IAccommodationUnitRepository accommodationUnitRepository,
             IPriceService priceService,
-            IBookingNumberGenerator bookingNumberGenerator)
+            IBookingNumberGenerator bookingNumberGenerator,
+            IRepository<Season> seasonRepository,
+            IRepository<ParkSettings> parkSettingsRepository)
         {
             BookingRepository = bookingRepository;
             AccommodationUnitRepository = accommodationUnitRepository;
             PriceService = priceService;
             BookingNumberGenerator = bookingNumberGenerator;
+            SeasonRepository = seasonRepository;
+            ParkSettingsRepository = parkSettingsRepository;
         }
 
         public async Task<BookingResponse> CreateAsync(CreateBookingRequest request)
@@ -36,6 +42,12 @@ namespace Vakantiepark.Application.Services
             List<Guid> availableUnitIds = await GetAvailableUnitIdsAsync(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate);
 
             request.Validate(availableUnitIds);
+
+            string? minimumNightsError = await GetHighSeasonMinimumNightsErrorAsync(request);
+            if (minimumNightsError is not null)
+            {
+                throw new ArgumentException(minimumNightsError);
+            }
 
             PriceSpecificationResponse price = await PriceService.CalculateAsync(
                 request.AccommodationTypeSlug,
@@ -51,6 +63,30 @@ namespace Vakantiepark.Application.Services
                 throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
 
             return booking.ToResponse();
+        }
+
+        // US-07: when the stay period falls (partly) in a high season, the
+        // booking must be at least the configured number of nights. The high
+        // season is marked on the season itself (Season.IsHighSeason), so
+        // this follows the season calendar directly; nights outside every
+        // high season count towards the total length as well.
+        private async Task<string?> GetHighSeasonMinimumNightsErrorAsync(CreateBookingRequest request)
+        {
+            ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
+            if (settings is null || settings.HighSeasonMinimumNights < 2)
+                return null;
+
+            Season? overlappedSeason = (await SeasonRepository.GetAllAsync())
+                .Where(s => s.IsHighSeason)
+                .FirstOrDefault(s => s.StartDate < request.DepartureDate && request.ArrivalDate <= s.EndDate);
+            if (overlappedSeason is null)
+                return null;
+
+            int nights = request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
+            if (nights >= settings.HighSeasonMinimumNights)
+                return null;
+
+            return $"In het hoogseizoen ({overlappedSeason.Name}) moet een boeking minimaal {settings.HighSeasonMinimumNights} nachten zijn.";
         }
 
         private async Task<List<Guid>> GetAvailableUnitIdsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
