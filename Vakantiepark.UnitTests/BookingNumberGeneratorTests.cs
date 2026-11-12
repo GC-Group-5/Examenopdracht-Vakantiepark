@@ -18,7 +18,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public void Create_ManyNumbers_AreNotSequentialOrRepeated()
         {
-            List<string> numbers = [.. Enumerable.Range(0, 1000).Select(_ => BookingNumberGenerator.Create())];
+            List<string> numbers = Enumerable.Range(0, 1000).Select(_ => BookingNumberGenerator.Create()).ToList();
 
             Assert.Equal(numbers.Count, numbers.Distinct().Count());
         }

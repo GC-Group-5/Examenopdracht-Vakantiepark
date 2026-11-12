@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The client's export, read by AccommodationSeeder. Embedded so it ships with the dll on every machine. -->
+    <EmbeddedResource Include="Persistence\Seeders\Data\accommodaties.json" LogicalName="accommodaties.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Vakantiepark.Domain\Vakantiepark.Domain.csproj" />
   </ItemGroup>
 

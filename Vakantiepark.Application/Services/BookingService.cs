@@ -58,7 +58,7 @@ namespace Vakantiepark.Application.Services
             List<Guid> unitIds = await AccommodationUnitRepository.GetInServiceIdsByTypeSlugAsync(accommodationTypeSlug, arrivalDate, departureDate);
             List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(unitIds, arrivalDate, departureDate);
 
-            return [.. unitIds.Except(bookedUnitIds)];
+            return unitIds.Except(bookedUnitIds).ToList();
         }
 
         private async Task<string> GenerateUniqueBookingNumberAsync()
