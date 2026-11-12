@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
@@ -18,6 +19,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new();
         private readonly Mock<IPriceService> _priceService = new();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new();
+        private readonly Mock<IEmailSender> _emailSender = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
         private readonly BookingService _sut;
@@ -70,7 +72,9 @@ namespace Vakantiepark.UnitTests
                 _priceService.Object,
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
-                _parkSettingsRepository.Object);
+                _parkSettingsRepository.Object,
+                _emailSender.Object,
+                NullLogger<BookingService>.Instance);
         }
 
         [Fact]
