@@ -1,5 +1,7 @@
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
+using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
@@ -13,6 +15,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new Mock<IAccommodationUnitRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
+        private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
         private readonly Guid _firstUnitId = Guid.NewGuid();
         private readonly Guid _secondUnitId = Guid.NewGuid();
         private readonly BookingService _sut;
@@ -26,16 +29,20 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync([]);
             _bookingRepository
-                .Setup(x => x.AddAsync(It.IsAny<Booking>()))
-                .ReturnsAsync((Booking booking) => booking);
+                .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
+                .ReturnsAsync(true);
             _priceService
                 .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
+            _bookingNumberGenerator
+                .Setup(x => x.Generate())
+                .Returns("K7M2XQ9P");
 
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
-                _priceService.Object);
+                _priceService.Object,
+                _bookingNumberGenerator.Object);
         }
 
         [Fact]
@@ -45,7 +52,7 @@ namespace Vakantiepark.UnitTests
 
             await _sut.CreateAsync(request);
 
-            _bookingRepository.Verify(x => x.AddAsync(It.Is<Booking>(booking =>
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking =>
                 booking.Name == request.Name
                 && booking.Email == request.Email
                 && booking.PhoneNumber == request.PhoneNumber
@@ -64,7 +71,7 @@ namespace Vakantiepark.UnitTests
 
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());
 
-            _bookingRepository.Verify(x => x.AddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnitId)), Times.Once);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnitId)), Times.Once);
         }
 
         [Fact]
@@ -76,7 +83,56 @@ namespace Vakantiepark.UnitTests
 
             await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
 
-            _bookingRepository.Verify(x => x.AddAsync(It.IsAny<Booking>()), Times.Never);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_ReturnsGeneratedBookingNumber()
+        {
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal("K7M2XQ9P", response.BookingNumber);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.BookingNumber == "K7M2XQ9P")), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_BookingNumberAlreadyExists_UsesNewNumber()
+        {
+            _bookingNumberGenerator
+                .SetupSequence(x => x.Generate())
+                .Returns("AAAA2222")
+                .Returns("BBBB3333");
+            _bookingRepository
+                .Setup(x => x.ExistsByBookingNumberIncludingDeletedAsync("AAAA2222"))
+                .ReturnsAsync(true);
+
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal("BBBB3333", response.BookingNumber);
+        }
+
+        [Fact]
+        public async Task CreateAsync_NoUniqueBookingNumberFound_ThrowsInvalidOperationExceptionAndSavesNothing()
+        {
+            _bookingRepository
+                .Setup(x => x.ExistsByBookingNumberIncludingDeletedAsync(It.IsAny<string>()))
+                .ReturnsAsync(true);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_UnitBookedByConcurrentRequest_ThrowsArgumentException()
+        {
+            _bookingRepository
+                .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
+                .ReturnsAsync(false);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            Assert.Equal(CreateBookingRequestValidation.NotAvailableMessage, exception.Message);
         }
     }
 }

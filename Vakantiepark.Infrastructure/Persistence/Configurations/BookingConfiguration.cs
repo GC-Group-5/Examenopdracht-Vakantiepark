@@ -9,7 +9,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.BookingNumber).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.BookingNumber).IsRequired();
             builder.HasIndex(x => x.BookingNumber).IsUnique();
 
             builder.Property(x => x.Name).IsRequired();

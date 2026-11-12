@@ -10,7 +10,10 @@ namespace Vakantiepark.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public AccommodationCategory Category { get; set; }
 
-        // Final cleaning is charged once per booking; the amount is a per-type setting (US-05).
+        // Applies to every night that falls outside a season with its own price.
+        public decimal DefaultPricePerNight { get; set; }
+
+        // Charged once per booking.
         public decimal CleaningFee { get; set; }
 
         public DateTime CreatedAt { get; set; }

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Vakantiepark.Domain.Entities;
-using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Infrastructure.Persistence.Configurations
 {
@@ -12,8 +11,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.HasIndex(feature => feature.Key).IsUnique();
             builder.Property(feature => feature.Key).HasMaxLength(60).IsRequired();
             builder.Property(feature => feature.Name).HasMaxLength(80).IsRequired();
-
-            // Store the category as text, like the rest of the enums.
+            builder.Property(feature => feature.ValueType).HasConversion<string>().HasMaxLength(20);
             builder.Property(feature => feature.Category).HasConversion<string>().HasMaxLength(20);
         }
     }

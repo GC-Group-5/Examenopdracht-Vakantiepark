@@ -3,20 +3,22 @@ using Vakantiepark.Domain.Interfaces;
 
 namespace Vakantiepark.Domain.Entities
 {
-    // One row per yes/no feature (vlag): adding a feature is one data row,
-    // no property, no column, no migration. Key is the stable machine key
-    // used in code and filters ("sauna"); Name is the Dutch name shown to
-    // guests. Category null = applies to homes and pitches.
+    // A property an accommodation can have, e.g. 'sauna' (yes/no), 'bedrooms' (number)
+    // or 'surface' (one of a fixed list of options). The value per accommodation lives in AccommodationFeature.
     public class Feature : IEntity
     {
         public Guid Id { get; set; }
 
-        // Stable machine key, kebab-case, e.g. 'sauna' or 'car-at-pitch'.
+        // Stable key used in code and filters; the property name from the export, e.g. 'hotTub'.
+        // Keys that business rules use are in FeatureKeys.
         public string Key { get; set; } = string.Empty;
 
+        // Dutch name shown to guests, e.g. 'Hottub'.
         public string Name { get; set; } = string.Empty;
 
-        // null = both categories; a pitch-only flag never shows on a home's chip list.
+        public FeatureValueType ValueType { get; set; }
+
+        // Null = applies to holiday homes and camping pitches.
         public AccommodationCategory? Category { get; set; }
 
         public DateTime CreatedAt { get; set; }
@@ -24,6 +26,7 @@ namespace Vakantiepark.Domain.Entities
         public DateTime? DeletedAt { get; set; }
 
         // Navigation Properties
-        public List<Accommodation> Accommodations { get; set; } = [];
+        public List<FeatureOption> Options { get; set; } = [];
+        public List<AccommodationFeature> Accommodations { get; set; } = [];
     }
 }

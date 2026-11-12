@@ -8,7 +8,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
     {
         public static void Configure(this EntityTypeBuilder<ParkSettings> builder)
         {
-            builder.Property(settings => settings.TouristTaxPerPersonPerNight).HasPrecision(18, 2);
+            builder.Property(settings => settings.DepositPercentage).HasPrecision(5, 2);
         }
     }
 }

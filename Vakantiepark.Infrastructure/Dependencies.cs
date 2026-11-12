@@ -1,11 +1,10 @@
 using Vakantiepark.Infrastructure.Persistence.Seeders;
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Vakantiepark.Domain.Interfaces.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Vakantiepark.Infrastructure.Persistence;
 using Vakantiepark.Infrastructure.Repositories;
-using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Infrastructure.Helpers;
-using Microsoft.EntityFrameworkCore;
 
 namespace Vakantiepark.Infrastructure
 {
@@ -38,6 +37,8 @@ namespace Vakantiepark.Infrastructure
         {
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<IAccommodationUnitRepository, AccommodationUnitRepository>();
+            services.AddScoped<IFeatureRepository, FeatureRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
 
             return services;
@@ -46,6 +47,7 @@ namespace Vakantiepark.Infrastructure
         private static IServiceCollection RegisterHelpers(this IServiceCollection services)
         {
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
+            services.AddSingleton<IBookingNumberGenerator, BookingNumberGenerator>();
 
             return services;
         }

@@ -1,0 +1,160 @@
+@page "/zoek-en-boek"
+@using Vakantiepark.Shared.DTOs.Booking
+@inject IBookingService BookingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Boeken | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Boeken</div>
+        <h1 class="page-title mt-2">@(showSummary ? "Controleer je boeking" : "Jouw gegevens")</h1>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        @if (!HasStay)
+        {
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <p class="mb-0">Kies eerst een verblijf, je data en het aantal personen voordat je boekt.</p>
+                <a class="btn btn-du mt-4" href="/">Terug naar home</a>
+            </div>
+        }
+        else if (!showSummary)
+        {
+            <EditForm Model="request" OnValidSubmit="ShowSummary" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <DataAnnotationsValidator />
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" for="booking-name">Naam</label>
+                        <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
+                        <ValidationMessage For="() => request.Name" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
+                        <InputText id="booking-email" type="email" class="form-control" @bind-Value="request.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+                        <ValidationMessage For="() => request.Email" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="booking-phone">Telefoonnummer</label>
+                        <InputText id="booking-phone" type="tel" class="form-control" @bind-Value="request.PhoneNumber" placeholder="06 12345678" autocomplete="tel" />
+                        <ValidationMessage For="() => request.PhoneNumber" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-du mt-4">Bevestigen</button>
+            </EditForm>
+        }
+        else
+        {
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <h2 class="h4 mb-4">Samenvatting</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Verblijf</dt>
+                    <dd class="col-sm-8">@request.AccommodationTypeSlug</dd>
+
+                    <dt class="col-sm-4">Data</dt>
+                    <dd class="col-sm-8">@request.ArrivalDate.ToString(DateFormat) t/m @request.DepartureDate.ToString(DateFormat) (@NumberOfNights nachten)</dd>
+
+                    <dt class="col-sm-4">Aankomst en vertrek</dt>
+                    <dd class="col-sm-8">Aankomst vanaf @request.ArrivalTime.ToString(TimeFormat), vertrek vóór @request.DepartureTime.ToString(TimeFormat)</dd>
+
+                    <dt class="col-sm-4">Reisgezelschap</dt>
+                    <dd class="col-sm-8">@request.NumberOfGuests personen</dd>
+
+                    <dt class="col-sm-4">Gegevens</dt>
+                    <dd class="col-sm-8">@request.Name<br />@request.Email<br />@request.PhoneNumber</dd>
+                </dl>
+
+                <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
+                <table class="table mb-0">
+                    <tbody>
+                        <tr><td>Verblijf (7 nachten)</td><td class="text-end">€ 700,00</td></tr>
+                        <tr><td>Eindschoonmaak</td><td class="text-end">€ 75,00</td></tr>
+                        <tr><td>Toeristenbelasting (4 personen × 7 nachten)</td><td class="text-end">€ 42,00</td></tr>
+                        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">€ 817,00</td></tr>
+                    </tbody>
+                </table>
+
+                @if (errorMessage is not null)
+                {
+                    <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
+                }
+
+                <div class="d-flex gap-3 mt-4">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="EditDetails" disabled="@isSaving">Gegevens wijzigen</button>
+                    <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
+                        @(isSaving ? "Bezig met boeken..." : "Boeking bevestigen")
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private const string DateFormat = "ddd d MMMM yyyy";
+    private const string TimeFormat = "HH:mm";
+
+    private static readonly TimeOnly PlaceholderArrivalTime = new TimeOnly(15, 0);
+    private static readonly TimeOnly PlaceholderDepartureTime = new TimeOnly(10, 0);
+
+    private readonly CreateBookingRequest request = new CreateBookingRequest();
+    private bool showSummary;
+    private bool isSaving;
+    private string? errorMessage;
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? AccommodationTypeSlug { get; set; }
+
+    [SupplyParameterFromQuery(Name = "aankomst")]
+    public DateOnly? ArrivalDate { get; set; }
+
+    [SupplyParameterFromQuery(Name = "vertrek")]
+    public DateOnly? DepartureDate { get; set; }
+
+    [SupplyParameterFromQuery(Name = "personen")]
+    public int? NumberOfGuests { get; set; }
+
+    private bool HasStay => !string.IsNullOrWhiteSpace(AccommodationTypeSlug)
+        && ArrivalDate is not null
+        && DepartureDate > ArrivalDate
+        && NumberOfGuests > 0;
+
+    private int NumberOfNights => request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
+
+    protected override void OnParametersSet()
+    {
+        if (!HasStay)
+            return;
+
+        request.AccommodationTypeSlug = AccommodationTypeSlug!;
+        request.ArrivalDate = ArrivalDate!.Value;
+        request.DepartureDate = DepartureDate!.Value;
+        request.NumberOfGuests = NumberOfGuests!.Value;
+        request.ArrivalTime = PlaceholderArrivalTime;
+        request.DepartureTime = PlaceholderDepartureTime;
+    }
+
+    private void ShowSummary() => showSummary = true;
+
+    private void EditDetails() => showSummary = false;
+
+    private async Task ConfirmAsync()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        ApiResponse<BookingResponse> response = await BookingService.CreateAsync(request);
+
+        isSaving = false;
+
+        if (!response.Succeeded || response.Value is null)
+        {
+            errorMessage = response.Message ?? "Je boeking kon niet worden opgeslagen. Probeer het opnieuw.";
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/zoek-en-boek/bevestiging?nummer={response.Value.BookingNumber}");
+    }
+}
