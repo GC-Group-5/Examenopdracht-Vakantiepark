@@ -29,11 +29,7 @@ namespace Vakantiepark.Infrastructure
 
                 // Runs after the migrations in Program.cs; test accounts never end up outside development.
                 if (seedTestData)
-                    options.UseSeeding((context, _) =>
-                    {
-                        context.SeedTestUsers();
-                        context.SeedTemporaryAccommodations(); // TIJDELIJK: weghalen vóór de pull request
-                    });
+                    options.UseSeeding((context, _) => context.SeedTestUsers());
             });
 
             return services;

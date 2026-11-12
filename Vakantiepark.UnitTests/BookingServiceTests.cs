@@ -5,6 +5,7 @@ using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Moq;
 
@@ -16,6 +17,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new Mock<IAccommodationUnitRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
+        private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly Guid _firstUnitId = Guid.NewGuid();
         private readonly Guid _secondUnitId = Guid.NewGuid();
         private readonly BookingService _sut;
@@ -42,7 +44,9 @@ namespace Vakantiepark.UnitTests
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
                 _priceService.Object,
-                _bookingNumberGenerator.Object);
+                _bookingNumberGenerator.Object,
+                _emailSender.Object,
+                NullLogger<BookingService>.Instance);
         }
 
         [Fact]

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Vakantiepark.Domain.Interfaces.Helpers
 {
     public interface IEmailSender
