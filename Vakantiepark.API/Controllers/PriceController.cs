@@ -38,10 +38,6 @@ namespace Vakantiepark.API.Controllers
             {
                 return BadRequest(ApiResponse<PriceSpecificationResponse>.Fail(exception.Message));
             }
-            catch (InvalidOperationException exception)
-            {
-                return BadRequest(ApiResponse<PriceSpecificationResponse>.Fail(exception.Message));
-            }
         }
     }
 }

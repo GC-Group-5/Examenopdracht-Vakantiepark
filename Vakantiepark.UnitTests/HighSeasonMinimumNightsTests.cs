@@ -9,9 +9,10 @@ using Xunit;
 
 namespace Vakantiepark.UnitTests
 {
-    // US-07 acceptance rule: a booking that starts in the high season
-    // (Season.IsHighSeason) must be at least HighSeasonMinimumNights long.
-    public class HoogseizoenMinimumNachtenTests
+    // US-07 acceptance rule: when the stay period falls (partly) in a season
+    // flagged Season.IsHighSeason, the booking must be at least
+    // ParkSettings.HighSeasonMinimumNights long.
+    public class HighSeasonMinimumNightsTests
     {
         private readonly Mock<IBookingRepository> _bookingRepository = new();
         private readonly Mock<IAccommodationUnitRepository> _accommodationUnitRepository = new();
@@ -21,30 +22,31 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
         private readonly BookingService _sut;
 
-        public HoogseizoenMinimumNachtenTests()
+        public HighSeasonMinimumNightsTests()
         {
-            Season hoog = TestData.CreateSeason(s =>
+            Season zomer = TestData.CreateSeason(s =>
             {
-                s.Name = "Hoogseizoen";
-                s.StartDate = new DateOnly(2026, 7, 1);
-                s.EndDate = new DateOnly(2026, 8, 31);
+                s.Name = "Zomervakantie 2026";
+                s.StartDate = new DateOnly(2026, 7, 4);
+                s.EndDate = new DateOnly(2026, 8, 30);
                 s.IsHighSeason = true;
             });
             Season laag = TestData.CreateSeason(s =>
             {
-                s.Name = "Laagseizoen";
+                s.Name = "Laagseizoen 2026";
                 s.StartDate = new DateOnly(2026, 1, 1);
-                s.EndDate = new DateOnly(2026, 6, 30);
+                s.EndDate = new DateOnly(2026, 7, 3);
                 s.IsHighSeason = false;
             });
 
-            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([hoog, laag]);
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([laag, zomer]);
             _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new ParkSettings
             {
                 Id = Guid.NewGuid(),
                 ArrivalTime = new TimeOnly(15, 0),
                 DepartureTime = new TimeOnly(10, 0),
                 HighSeasonMinimumNights = 7,
+                DepositPercentage = 20m,
             }]);
             _accommodationUnitRepository
                 .Setup(x => x.GetInServiceIdsByTypeSlugAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
@@ -72,7 +74,7 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_VijfNachtenInHoogseizoen_WordtAfgewezenMetNederlandseMelding()
+        public async Task CreateAsync_FiveNightsInHighSeason_IsRejectedWithDutchMessage()
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
             {
@@ -81,14 +83,64 @@ namespace Vakantiepark.UnitTests
                 r.DepartureDate = new DateOnly(2026, 7, 15);
             });
 
-            Exception exception = await Assert.ThrowsAnyAsync<Exception>(() => _sut.CreateAsync(request));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(request));
 
-            Assert.Contains("In het hoogseizoen (Hoogseizoen) moet een boeking minimaal 7 nachten zijn.", exception.Message);
+            Assert.Contains("In het hoogseizoen (Zomervakantie 2026) moet een boeking minimaal 7 nachten zijn.", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateAsync_ZevenNachtenInHoogseizoen_WordtTolaten()
+        public async Task CreateAsync_StayStartingBeforeHighSeasonAndEndingInIt_IsRejected()
+        {
+            // "Valt de periode (deels) in een hoogseizoen": deels overlappen
+            // telt ook, de minimumterm applies to the whole stay.
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
+            {
+                r.AccommodationTypeSlug = "berk-4";
+                r.ArrivalDate = new DateOnly(2026, 8, 26);
+                r.DepartureDate = new DateOnly(2026, 9, 1);
+            });
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(request));
+
+            Assert.Contains("In het hoogseizoen (Zomervakantie 2026) moet een boeking minimaal 7 nachten zijn.", exception.Message);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_OverlappingStayLongEnough_IsAllowed()
+        {
+            // Overlaps the summer end by two nights but meets the minimum: allowed.
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
+            {
+                r.AccommodationTypeSlug = "berk-4";
+                r.ArrivalDate = new DateOnly(2026, 8, 26);
+                r.DepartureDate = new DateOnly(2026, 9, 6);
+            });
+
+            await _sut.CreateAsync(request);
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_StayEndingJustBeforeHighSeason_IsAllowed()
+        {
+            // Nights end 3 juli: no night falls in the high season, so no minimum.
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
+            {
+                r.AccommodationTypeSlug = "berk-4";
+                r.ArrivalDate = new DateOnly(2026, 6, 28);
+                r.DepartureDate = new DateOnly(2026, 7, 4);
+            });
+
+            await _sut.CreateAsync(request);
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_SevenNightsInHighSeason_IsAllowed()
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
             {
@@ -103,7 +155,7 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_VijfNachtenBuitenHoogseizoen_WordtTolaten()
+        public async Task CreateAsync_FiveNightsOutsideHighSeason_IsAllowed()
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
             {
@@ -118,15 +170,23 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_StartInLaagseizoenEindInHoogseizoen_WordtTolaten()
+        public async Task CreateAsync_NoSeasonMarkedAsHigh_IsAllowed()
         {
-            // The minimum-nights rule looks at the season of the arrival date;
-            // the mixed price for the nights is the price service's job.
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([
+                TestData.CreateSeason(s =>
+                {
+                    s.Name = "Zonder hoogseizoen";
+                    s.StartDate = new DateOnly(2026, 1, 1);
+                    s.EndDate = new DateOnly(2026, 12, 31);
+                    s.IsHighSeason = false;
+                }),
+            ]);
+
             CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
             {
                 r.AccommodationTypeSlug = "berk-4";
-                r.ArrivalDate = new DateOnly(2026, 6, 29);
-                r.DepartureDate = new DateOnly(2026, 7, 3);
+                r.ArrivalDate = new DateOnly(2026, 7, 10);
+                r.DepartureDate = new DateOnly(2026, 7, 15);
             });
 
             await _sut.CreateAsync(request);

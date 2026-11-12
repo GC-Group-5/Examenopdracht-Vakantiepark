@@ -43,10 +43,10 @@ namespace Vakantiepark.Application.Services
 
             request.Validate(availableUnitIds);
 
-            string? minimumNachtenFout = await MinimumNachtenInHetHoogseizoenAsync(request);
-            if (minimumNachtenFout is not null)
+            string? minimumNightsError = await GetHighSeasonMinimumNightsErrorAsync(request);
+            if (minimumNightsError is not null)
             {
-                throw new ArgumentException(minimumNachtenFout);
+                throw new ArgumentException(minimumNightsError);
             }
 
             PriceSpecificationResponse price = await PriceService.CalculateAsync(
@@ -65,25 +65,28 @@ namespace Vakantiepark.Application.Services
             return booking.ToResponse();
         }
 
-        // US-07: in the high season a stay must be at least the configured
-        // number of nights. The high season is marked on the season itself
-        // (Season.IsHighSeason), so this follows the season calendar directly.
-        private async Task<string?> MinimumNachtenInHetHoogseizoenAsync(CreateBookingRequest request)
+        // US-07: when the stay period falls (partly) in a high season, the
+        // booking must be at least the configured number of nights. The high
+        // season is marked on the season itself (Season.IsHighSeason), so
+        // this follows the season calendar directly; nights outside every
+        // high season count towards the total length as well.
+        private async Task<string?> GetHighSeasonMinimumNightsErrorAsync(CreateBookingRequest request)
         {
             ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
             if (settings is null || settings.HighSeasonMinimumNights < 2)
                 return null;
 
-            Season? arrivalSeason = (await SeasonRepository.GetAllAsync())
-                .FirstOrDefault(s => request.ArrivalDate >= s.StartDate && request.ArrivalDate <= s.EndDate);
-            if (arrivalSeason is null || !arrivalSeason.IsHighSeason)
+            Season? overlappedSeason = (await SeasonRepository.GetAllAsync())
+                .Where(s => s.IsHighSeason)
+                .FirstOrDefault(s => s.StartDate < request.DepartureDate && request.ArrivalDate <= s.EndDate);
+            if (overlappedSeason is null)
                 return null;
 
             int nights = request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
             if (nights >= settings.HighSeasonMinimumNights)
                 return null;
 
-            return $"In het hoogseizoen ({arrivalSeason.Name}) moet een boeking minimaal {settings.HighSeasonMinimumNights} nachten zijn.";
+            return $"In het hoogseizoen ({overlappedSeason.Name}) moet een boeking minimaal {settings.HighSeasonMinimumNights} nachten zijn.";
         }
 
         private async Task<List<Guid>> GetAvailableUnitIdsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
