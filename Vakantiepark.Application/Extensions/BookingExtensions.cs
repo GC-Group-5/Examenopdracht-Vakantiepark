@@ -1,4 +1,3 @@
-using Vakantiepark.Application.Helpers;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
@@ -7,23 +6,32 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price)
+        // Arrival and departure times come from the park settings, not from the guest.
+        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
             => new Booking()
             {
                 BookingNumber = bookingNumber,
                 Name = request.Name,
+                BirthDate = request.BirthDate!.Value,
                 Email = request.Email,
                 PhoneNumber = request.PhoneNumber,
                 ArrivalDate = request.ArrivalDate,
                 DepartureDate = request.DepartureDate,
-                ArrivalTime = request.ArrivalTime,
-                DepartureTime = request.DepartureTime,
+                ArrivalTime = settings.ArrivalTime,
+                DepartureTime = settings.DepartureTime,
                 NumberOfGuests = request.NumberOfGuests,
                 AccommodationPrice = price.AccommodationPrice,
                 CleaningFee = price.CleaningFee,
                 TouristTax = price.TouristTax,
                 TotalPrice = price.TotalPrice,
-                AccommodationUnitId = accommodationUnitId
+                AccommodationUnitId = accommodationUnitId,
+                Travelers = request.Travelers
+                    .Select(traveler => new BookingTraveler()
+                    {
+                        Name = traveler.Name.Trim(),
+                        BirthDate = traveler.BirthDate!.Value
+                    })
+                    .ToList()
             };
 
         public static BookingResponse ToResponse(this Booking booking)
@@ -42,6 +50,18 @@ namespace Vakantiepark.Application.Extensions
                 CleaningFee = booking.CleaningFee,
                 TouristTax = booking.TouristTax,
                 TotalPrice = booking.TotalPrice
+            };
+
+        public static BookingInfoResponse ToInfoResponse(this ParkSettings settings, string accommodationTypeName, List<string> zones)
+            => new BookingInfoResponse()
+            {
+                AccommodationTypeName = accommodationTypeName,
+                Zones = zones,
+                ArrivalTime = settings.ArrivalTime,
+                DepartureTime = settings.DepartureTime,
+                DepositPercentage = settings.DepositPercentage,
+                FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
+                NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival
             };
     }
 }

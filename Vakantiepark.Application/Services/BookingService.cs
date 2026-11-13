@@ -19,43 +19,49 @@ namespace Vakantiepark.Application.Services
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
+        private readonly IAccommodationTypeRepository AccommodationTypeRepository;
+        private readonly IParkSettingsRepository ParkSettingsRepository;
+        private readonly IRepository<Season> SeasonRepository;
         private readonly IPriceService PriceService;
         private readonly IBookingNumberGenerator BookingNumberGenerator;
-        private readonly IRepository<Season> SeasonRepository;
-        private readonly IRepository<ParkSettings> ParkSettingsRepository;
-        private readonly IAccommodationTypeRepository AccommodationTypeRepository;
         private readonly IEmailSender EmailSender;
         private readonly ILogger<BookingService> Logger;
 
         public BookingService(
             IBookingRepository bookingRepository,
             IAccommodationUnitRepository accommodationUnitRepository,
+            IAccommodationTypeRepository accommodationTypeRepository,
+            IParkSettingsRepository parkSettingsRepository,
+            IRepository<Season> seasonRepository,
             IPriceService priceService,
             IBookingNumberGenerator bookingNumberGenerator,
-            IRepository<Season> seasonRepository,
-            IRepository<ParkSettings> parkSettingsRepository,
-            IAccommodationTypeRepository accommodationTypeRepository,
             IEmailSender emailSender,
             ILogger<BookingService> logger)
         {
             BookingRepository = bookingRepository;
             AccommodationUnitRepository = accommodationUnitRepository;
+            AccommodationTypeRepository = accommodationTypeRepository;
+            ParkSettingsRepository = parkSettingsRepository;
+            SeasonRepository = seasonRepository;
             PriceService = priceService;
             BookingNumberGenerator = bookingNumberGenerator;
-            SeasonRepository = seasonRepository;
-            ParkSettingsRepository = parkSettingsRepository;
-            AccommodationTypeRepository = accommodationTypeRepository;
             EmailSender = emailSender;
             Logger = logger;
         }
 
         public async Task<BookingResponse> CreateAsync(CreateBookingRequest request)
         {
+            request.ValidateParty();
+
             List<Guid> availableUnitIds = await GetAvailableUnitIdsAsync(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate);
 
             request.Validate(availableUnitIds);
 
-            string? minimumNightsError = await GetHighSeasonMinimumNightsErrorAsync(request);
+            Guid unitId = await ChooseUnitAsync(availableUnitIds, request.PreferredZone);
+
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            string? minimumNightsError = await GetHighSeasonMinimumNightsErrorAsync(request, settings);
             if (minimumNightsError is not null)
             {
                 throw new ArgumentException(minimumNightsError);
@@ -69,13 +75,24 @@ namespace Vakantiepark.Application.Services
 
             string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
-            Booking booking = request.ToEntity(availableUnitIds[0], bookingNumber, price);
+            Booking booking = request.ToEntity(unitId, bookingNumber, price, settings);
 
             if (!await BookingRepository.TryAddAsync(booking))
                 throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
 
-            await SendConfirmationAsync(booking, request.AccommodationTypeSlug, price);
+            await SendConfirmationAsync(booking, request.AccommodationTypeSlug, price, settings);
             return booking.ToResponse();
+        }
+
+        public async Task<BookingInfoResponse> GetInfoAsync(string accommodationTypeSlug)
+        {
+            string accommodationType = await AccommodationUnitRepository.GetTypeNameBySlugAsync(accommodationTypeSlug)
+                ?? throw new KeyNotFoundException("Dit verblijf bestaat niet.");
+
+            List<string> zones = await AccommodationUnitRepository.GetZoneNamesByTypeSlugAsync(accommodationTypeSlug);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            return settings.ToInfoResponse(accommodationType, zones);
         }
 
         // US-07: when the stay period falls (partly) in a high season, the
@@ -83,10 +100,9 @@ namespace Vakantiepark.Application.Services
         // season is marked on the season itself (Season.IsHighSeason), so
         // this follows the season calendar directly; nights outside every
         // high season count towards the total length as well.
-        private async Task<string?> GetHighSeasonMinimumNightsErrorAsync(CreateBookingRequest request)
+        private async Task<string?> GetHighSeasonMinimumNightsErrorAsync(CreateBookingRequest request, ParkSettings settings)
         {
-            ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
-            if (settings is null || settings.HighSeasonMinimumNights < 2)
+            if (settings.HighSeasonMinimumNights < 2)
                 return null;
 
             Season? overlappedSeason = (await SeasonRepository.GetAllAsync())
@@ -110,6 +126,24 @@ namespace Vakantiepark.Application.Services
             return unitIds.Except(bookedUnitIds).ToList();
         }
 
+        // Without a preference any free unit will do; with one, the unit must lie in that zone.
+        private async Task<Guid> ChooseUnitAsync(List<Guid> availableUnitIds, string? preferredZone)
+        {
+            if (string.IsNullOrWhiteSpace(preferredZone))
+                return availableUnitIds[0];
+
+            List<Guid> unitIdsInZone = await AccommodationUnitRepository.GetIdsInZoneAsync(availableUnitIds, preferredZone.Trim());
+            if (unitIdsInZone.Count == 0)
+                throw new ArgumentException(CreateBookingRequestValidation.NotAvailableInZoneMessage);
+
+            return availableUnitIds.First(unitIdsInZone.Contains);
+        }
+
+        // The settings row is created by the seeder, so a missing row is a setup error, not a guest error.
+        private async Task<ParkSettings> GetParkSettingsAsync()
+            => await ParkSettingsRepository.GetAsync()
+                ?? throw new InvalidOperationException("The park settings were not found.");
+
         private async Task<string> GenerateUniqueBookingNumberAsync()
         {
             for (int attempt = 0; attempt < MaxBookingNumberAttempts; attempt++)
@@ -123,9 +157,9 @@ namespace Vakantiepark.Application.Services
             throw new InvalidOperationException("Could not generate a unique booking number.");
         }
 
-        // Everything is inside the try: a missing setting or a mail server that is down is logged,
+        // Everything is inside the try: a mail server that is down is logged,
         // but never undoes the booking or hides the booking number from the guest.
-        private async Task SendConfirmationAsync(Booking booking, string accommodationTypeSlug, PriceSpecificationResponse price)
+        private async Task SendConfirmationAsync(Booking booking, string accommodationTypeSlug, PriceSpecificationResponse price, ParkSettings settings)
         {
             try
             {
@@ -133,8 +167,7 @@ namespace Vakantiepark.Application.Services
 
                 string accommodationType = (await AccommodationTypeRepository.GetBySlugAsync(accommodationTypeSlug))?.Name
                     ?? accommodationTypeSlug;
-                ParkSettings settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault()
-                    ?? throw new InvalidOperationException("The park settings were not found.");
+                string party = string.Join(", ", new[] { booking.Name }.Concat(booking.Travelers.Select(traveler => traveler.Name)));
 
                 RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingConfirmation, new Dictionary<string, string>
                 {
@@ -147,6 +180,7 @@ namespace Vakantiepark.Application.Services
                     ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
                     ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
                     ["NumberOfGuests"] = booking.NumberOfGuests.ToString(dutch),
+                    ["Party"] = party,
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),

@@ -21,7 +21,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new();
         private readonly Mock<IEmailSender> _emailSender = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
-        private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
+        private readonly Mock<IParkSettingsRepository> _parkSettingsRepository = new();
         private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new();
         private readonly BookingService _sut;
 
@@ -43,14 +43,14 @@ namespace Vakantiepark.UnitTests
             });
 
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([laag, zomer]);
-            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new ParkSettings
+            _parkSettingsRepository.Setup(x => x.GetAsync()).ReturnsAsync(new ParkSettings
             {
                 Id = Guid.NewGuid(),
                 ArrivalTime = new TimeOnly(15, 0),
                 DepartureTime = new TimeOnly(10, 0),
                 HighSeasonMinimumNights = 7,
                 DepositPercentage = 20m,
-            }]);
+            });
             _accommodationUnitRepository
                 .Setup(x => x.GetInServiceIdsByTypeSlugAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync([Guid.NewGuid()]);
@@ -70,11 +70,11 @@ namespace Vakantiepark.UnitTests
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _accommodationUnitRepository.Object,
+                _accommodationTypeRepository.Object,
+                _parkSettingsRepository.Object,
+                _seasonRepository.Object,
                 _priceService.Object,
                 _bookingNumberGenerator.Object,
-                _seasonRepository.Object,
-                _parkSettingsRepository.Object,
-                _accommodationTypeRepository.Object,
                 _emailSender.Object,
                 NullLogger<BookingService>.Instance);
         }

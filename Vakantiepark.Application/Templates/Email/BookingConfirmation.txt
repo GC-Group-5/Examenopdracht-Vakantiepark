@@ -8,7 +8,7 @@ JE VERBLIJF
 Verblijf:       {{AccommodationType}}
 Aankomst:       {{ArrivalDate}} vanaf {{ArrivalTime}}
 Vertrek:        {{DepartureDate}} vóór {{DepartureTime}}
-Reisgezelschap: {{NumberOfGuests}} personen
+Reisgezelschap: {{NumberOfGuests}} personen: {{Party}}
 
 PRIJSSPECIFICATIE
 Verblijf:           {{AccommodationPrice}}

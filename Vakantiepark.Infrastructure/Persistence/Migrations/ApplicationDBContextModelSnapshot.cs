@@ -242,6 +242,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("arrival_time");
 
+                    b.Property<DateOnly>("BirthDate")
+                        .HasColumnType("date")
+                        .HasColumnName("birth_date");
+
                     b.Property<string>("BookingNumber")
                         .IsRequired()
                         .HasColumnType("text")
@@ -306,6 +310,36 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_bookings_booking_number");
 
                     b.ToTable("bookings", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingTraveler", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("BirthDate")
+                        .HasColumnType("date")
+                        .HasColumnName("birth_date");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_travelers");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_travelers_booking_id");
+
+                    b.ToTable("booking_travelers", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>
@@ -723,6 +757,16 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Season");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingTraveler", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Booking", null)
+                        .WithMany("Travelers")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_travelers_bookings_booking_id");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.FeatureOption", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.Feature", "Feature")
@@ -745,6 +789,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Accommodations");
 
                     b.Navigation("Prices");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
+                {
+                    b.Navigation("Travelers");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>

@@ -9,6 +9,7 @@ namespace Vakantiepark.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
+        public DateOnly BirthDate { get; set; }
         public DateOnly ArrivalDate { get; set; }
         public DateOnly DepartureDate { get; set; }
         public TimeOnly ArrivalTime { get; set; }
@@ -22,5 +23,9 @@ namespace Vakantiepark.Domain.Entities
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }
         public Guid AccommodationUnitId { get; set; }
+
+        // Navigation Properties
+        // Everyone in the party except the main booker, who is one of NumberOfGuests.
+        public List<BookingTraveler> Travelers { get; set; } = [];
     }
 }

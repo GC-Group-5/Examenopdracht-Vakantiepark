@@ -92,27 +92,12 @@ namespace Vakantiepark.API
             app.Run();
         }
 
-        // Default: Mailpit, supplied by Vakantiepark.AppHost as "Endpoint=smtp://host:port".
-        // Optional: an external test SMTP server (e.g. Mailtrap) set in this project's user-secrets under "Email:Smtp".
+        // The API always sends to Mailpit, supplied by Vakantiepark.AppHost as "Endpoint=smtp://host:port".
+        // Mailpit can relay to a real inbox; that is configured in the AppHost, so the API needs no secrets.
         private static EmailSettings CreateEmailSettings(IConfiguration configuration)
         {
             string fromAddress = configuration["Email:FromAddress"]
                 ?? throw new InvalidOperationException("The setting 'Email:FromAddress' was not found.");
-
-            IConfigurationSection smtp = configuration.GetSection("Email:Smtp");
-            if (!string.IsNullOrWhiteSpace(smtp["Host"]))
-            {
-                return new EmailSettings()
-                {
-                    Host = smtp["Host"]!,
-                    Port = smtp.GetValue<int?>("Port")
-                        ?? throw new InvalidOperationException("The setting 'Email:Smtp:Port' was not found."),
-                    Username = smtp["Username"] ?? string.Empty,
-                    Password = smtp["Password"] ?? string.Empty,
-                    UseTls = true,
-                    FromAddress = fromAddress
-                };
-            }
 
             string connectionString = configuration.GetConnectionString("mailpit")
                 ?? throw new InvalidOperationException("The connection string 'mailpit' was not found. Start the application through Vakantiepark.AppHost.");

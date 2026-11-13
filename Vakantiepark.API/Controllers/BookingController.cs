@@ -29,5 +29,20 @@ namespace Vakantiepark.API.Controllers
                 return BadRequest(ApiResponse<BookingResponse>.Fail(exception.Message));
             }
         }
+
+        // The stay and park rules the booking form shows in its summary, e.g. GET /Booking/info?type=berk-4.
+        [HttpGet("info")]
+        public async Task<IActionResult> GetInfoAsync([FromQuery] string type)
+        {
+            try
+            {
+                BookingInfoResponse info = await BookingService.GetInfoAsync(type);
+                return Ok(ApiResponse<BookingInfoResponse>.Ok(info));
+            }
+            catch (KeyNotFoundException exception)
+            {
+                return NotFound(ApiResponse<BookingInfoResponse>.Fail(exception.Message));
+            }
+        }
     }
 }

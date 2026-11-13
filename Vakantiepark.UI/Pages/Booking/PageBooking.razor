@@ -1,4 +1,5 @@
 @page "/zoek-en-boek"
+@using System.Globalization
 @using Vakantiepark.Shared.DTOs.Booking
 @inject IBookingService BookingService
 @inject NavigationManager NavigationManager
@@ -8,7 +9,7 @@
 <section class="page-head">
     <div class="container">
         <div class="eyebrow">Boeken</div>
-        <h1 class="page-title mt-2">@(showSummary ? "Controleer je boeking" : "Jouw gegevens")</h1>
+        <h1 class="page-title mt-2">Jouw boeking</h1>
     </div>
 </section>
 
@@ -21,71 +22,146 @@
                 <a class="btn btn-du mt-4" href="/">Terug naar home</a>
             </div>
         }
-        else if (!showSummary)
+        else if (info is null)
         {
-            <EditForm Model="request" OnValidSubmit="ShowSummary" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
-                <DataAnnotationsValidator />
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold" for="booking-name">Naam</label>
-                        <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
-                        <ValidationMessage For="() => request.Name" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
-                        <InputText id="booking-email" type="email" class="form-control" @bind-Value="request.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
-                        <ValidationMessage For="() => request.Email" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-phone">Telefoonnummer</label>
-                        <InputText id="booking-phone" type="tel" class="form-control" @bind-Value="request.PhoneNumber" placeholder="06 12345678" autocomplete="tel" />
-                        <ValidationMessage For="() => request.PhoneNumber" />
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-du mt-4">Bevestigen</button>
-            </EditForm>
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <p class="mb-0">@(loadError ?? "Gegevens van het verblijf worden geladen...")</p>
+                @if (loadError is not null)
+                {
+                    <a class="btn btn-du mt-4" href="/">Terug naar home</a>
+                }
+            </div>
         }
         else
         {
-            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
-                <h2 class="h4 mb-4">Samenvatting</h2>
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Verblijf</dt>
-                    <dd class="col-sm-8">@request.AccommodationTypeSlug</dd>
+            <div class="row g-4 align-items-start">
+                @* Left: everything the guest fills in. *@
+                <div class="col-lg-7">
+                    <EditForm Model="request" OnValidSubmit="ConfirmAsync" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                        <DataAnnotationsValidator />
 
-                    <dt class="col-sm-4">Data</dt>
-                    <dd class="col-sm-8">@request.ArrivalDate.ToString(DateFormat) t/m @request.DepartureDate.ToString(DateFormat) (@NumberOfNights nachten)</dd>
+                        <h2 class="h4 mb-3">Hoofdboeker</h2>
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold" for="booking-name">Naam</label>
+                                <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
+                                <ValidationMessage For="() => request.Name" />
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold" for="booking-birthdate">Geboortedatum</label>
+                                <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" autocomplete="bday" />
+                                <ValidationMessage For="() => request.BirthDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
+                                <InputText id="booking-email" type="email" class="form-control" @bind-Value="request.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+                                <ValidationMessage For="() => request.Email" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="booking-phone">Telefoonnummer</label>
+                                <InputText id="booking-phone" type="tel" class="form-control" @bind-Value="request.PhoneNumber" placeholder="06 12345678" autocomplete="tel" />
+                                <ValidationMessage For="() => request.PhoneNumber" />
+                            </div>
+                        </div>
+                        <p class="text-muted-du small mt-2 mb-0">De hoofdboeker moet op de aankomstdatum minimaal @MinimumMainBookerAge jaar zijn. We vragen geen ID-bewijs.</p>
 
-                    <dt class="col-sm-4">Aankomst en vertrek</dt>
-                    <dd class="col-sm-8">Aankomst vanaf @request.ArrivalTime.ToString(TimeFormat), vertrek vóór @request.DepartureTime.ToString(TimeFormat)</dd>
+                        @if (request.Travelers.Count > 0)
+                        {
+                            <h2 class="h4 mt-5 mb-1">Reisgezelschap</h2>
+                            <p class="text-muted-du small mb-3">Van iedere reisgenoot hebben we de naam en geboortedatum nodig voor de toeristenbelasting.</p>
+                            @for (int index = 0; index < request.Travelers.Count; index++)
+                            {
+                                TravelerRequest traveler = request.Travelers[index];
+                                int number = index + 2;
+                                <div class="row g-3 mb-2">
+                                    <div class="col-md-7">
+                                        <label class="form-label fw-semibold" for="@($"traveler-name-{number}")">Persoon @number: naam</label>
+                                        <InputText id="@($"traveler-name-{number}")" class="form-control" @bind-Value="traveler.Name" placeholder="Voor- en achternaam" />
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold" for="@($"traveler-birthdate-{number}")">Geboortedatum</label>
+                                        <InputDate id="@($"traveler-birthdate-{number}")" class="form-control" @bind-Value="traveler.BirthDate" />
+                                    </div>
+                                </div>
+                            }
+                        }
 
-                    <dt class="col-sm-4">Reisgezelschap</dt>
-                    <dd class="col-sm-8">@request.NumberOfGuests personen</dd>
+                        @if (info.Zones.Count > 1)
+                        {
+                            <h2 class="h4 mt-5 mb-1">Voorkeurszone</h2>
+                            <p class="text-muted-du small mb-3">Optioneel. Zonder voorkeur wijzen we een vrije @info.AccommodationTypeName toe.</p>
+                            <InputSelect class="form-select" @bind-Value="request.PreferredZone">
+                                <option value="">Geen voorkeur</option>
+                                @foreach (string zone in info.Zones)
+                                {
+                                    <option value="@zone">@zone</option>
+                                }
+                            </InputSelect>
+                        }
 
-                    <dt class="col-sm-4">Gegevens</dt>
-                    <dd class="col-sm-8">@request.Name<br />@request.Email<br />@request.PhoneNumber</dd>
-                </dl>
+                        @if (errorMessage is not null)
+                        {
+                            <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
+                        }
 
-                <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
-                <table class="table mb-0">
-                    <tbody>
-                        <tr><td>Verblijf (7 nachten)</td><td class="text-end">€ 700,00</td></tr>
-                        <tr><td>Eindschoonmaak</td><td class="text-end">€ 75,00</td></tr>
-                        <tr><td>Toeristenbelasting (4 personen × 7 nachten)</td><td class="text-end">€ 42,00</td></tr>
-                        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">€ 817,00</td></tr>
-                    </tbody>
-                </table>
+                        <button type="submit" class="btn btn-du mt-4" disabled="@isSaving">
+                            @(isSaving ? "Bezig met boeken..." : "Boeking bevestigen")
+                        </button>
+                    </EditForm>
+                </div>
 
-                @if (errorMessage is not null)
-                {
-                    <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
-                }
+                @* Right: the summary updates while the guest types. *@
+                <div class="col-lg-5">
+                    <aside class="booking-card">
+                        <h2 class="h4 mb-4">Samenvatting</h2>
+                        <dl class="row mb-0">
+                            <dt class="col-5">Verblijf</dt>
+                            <dd class="col-7">@info.AccommodationTypeName</dd>
 
-                <div class="d-flex gap-3 mt-4">
-                    <button type="button" class="btn btn-outline-secondary" @onclick="EditDetails" disabled="@isSaving">Gegevens wijzigen</button>
-                    <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
-                        @(isSaving ? "Bezig met boeken..." : "Boeking bevestigen")
-                    </button>
+                            <dt class="col-5">Zone</dt>
+                            <dd class="col-7">@(string.IsNullOrWhiteSpace(request.PreferredZone) ? "Wordt bij het boeken toegewezen" : request.PreferredZone)</dd>
+
+                            <dt class="col-5">Data</dt>
+                            <dd class="col-7">@request.ArrivalDate.ToString(DateFormat, Dutch) t/m @request.DepartureDate.ToString(DateFormat, Dutch) (@NumberOfNights nachten)</dd>
+
+                            <dt class="col-5">Aankomst</dt>
+                            <dd class="col-7">vanaf @info.ArrivalTime.ToString(TimeFormat, Dutch)</dd>
+
+                            <dt class="col-5">Vertrek</dt>
+                            <dd class="col-7">vóór @info.DepartureTime.ToString(TimeFormat, Dutch)</dd>
+
+                            <dt class="col-5">Reisgezelschap</dt>
+                            <dd class="col-7">
+                                @request.NumberOfGuests @(request.NumberOfGuests == 1 ? "persoon" : "personen")
+                                <ul class="list-unstyled small text-muted-du mb-0 mt-1">
+                                    <li>@(string.IsNullOrWhiteSpace(request.Name) ? "Hoofdboeker" : request.Name)</li>
+                                    @foreach (TravelerRequest traveler in request.Travelers)
+                                    {
+                                        <li>@(string.IsNullOrWhiteSpace(traveler.Name) ? "Reisgenoot" : traveler.Name)</li>
+                                    }
+                                </ul>
+                            </dd>
+                        </dl>
+
+                        @* The amounts are placeholders until the price calculation (US-07) exists. *@
+                        <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr><td>Verblijf (@NumberOfNights nachten)</td><td class="text-end">@PlaceholderAccommodationPrice.ToString("C", Dutch)</td></tr>
+                                <tr><td>Eindschoonmaak</td><td class="text-end">@PlaceholderCleaningFee.ToString("C", Dutch)</td></tr>
+                                <tr><td>Toeristenbelasting</td><td class="text-end">@PlaceholderTouristTax.ToString("C", Dutch)</td></tr>
+                                <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@PlaceholderTotal.ToString("C", Dutch)</td></tr>
+                                <tr><td>Aanbetaling (@info.DepositPercentage.ToString("0.##", Dutch)%)</td><td class="text-end">@Deposit.ToString("C", Dutch)</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h3 class="h5 mt-4 mb-2">Annuleringsvoorwaarden</h3>
+                        <ul class="small mb-0 ps-3">
+                            <li>Meer dan @info.FreeCancellationDaysBeforeArrival dagen voor aankomst: je krijgt alles terug.</li>
+                            <li>Tussen @info.NoRefundDaysBeforeArrival en @info.FreeCancellationDaysBeforeArrival dagen voor aankomst: je verliest de aanbetaling, de rest krijg je terug.</li>
+                            <li>Minder dan @info.NoRefundDaysBeforeArrival dagen voor aankomst: het verblijf wordt niet terugbetaald, de toeristenbelasting wel.</li>
+                        </ul>
+                    </aside>
                 </div>
             </div>
         }
@@ -95,12 +171,20 @@
 @code {
     private const string DateFormat = "ddd d MMMM yyyy";
     private const string TimeFormat = "HH:mm";
+    private const int MinimumMainBookerAge = 18;
 
-    private static readonly TimeOnly PlaceholderArrivalTime = new TimeOnly(15, 0);
-    private static readonly TimeOnly PlaceholderDepartureTime = new TimeOnly(10, 0);
+    private static readonly CultureInfo Dutch = new CultureInfo("nl-NL");
+
+    // Placeholders until the price calculation (US-07) exists.
+    private const decimal PlaceholderAccommodationPrice = 700m;
+    private const decimal PlaceholderCleaningFee = 75m;
+    private const decimal PlaceholderTouristTax = 42m;
+    private const decimal PlaceholderTotal = PlaceholderAccommodationPrice + PlaceholderCleaningFee + PlaceholderTouristTax;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
-    private bool showSummary;
+    private BookingInfoResponse? info;
+    private string? loadError;
+    private string? loadedSlug;
     private bool isSaving;
     private string? errorMessage;
 
@@ -116,6 +200,9 @@
     [SupplyParameterFromQuery(Name = "personen")]
     public int? NumberOfGuests { get; set; }
 
+    [SupplyParameterFromQuery(Name = "zone")]
+    public string? Zone { get; set; }
+
     private bool HasStay => !string.IsNullOrWhiteSpace(AccommodationTypeSlug)
         && ArrivalDate is not null
         && DepartureDate > ArrivalDate
@@ -123,7 +210,9 @@
 
     private int NumberOfNights => request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
 
-    protected override void OnParametersSet()
+    private decimal Deposit => info is null ? 0m : Math.Round(PlaceholderTotal * info.DepositPercentage / 100m, 2);
+
+    protected override async Task OnParametersSetAsync()
     {
         if (!HasStay)
             return;
@@ -132,21 +221,49 @@
         request.ArrivalDate = ArrivalDate!.Value;
         request.DepartureDate = DepartureDate!.Value;
         request.NumberOfGuests = NumberOfGuests!.Value;
-        request.ArrivalTime = PlaceholderArrivalTime;
-        request.DepartureTime = PlaceholderDepartureTime;
+        request.PreferredZone ??= Zone;
+
+        // The main booker is one of the party, so there is one traveler row fewer than guests.
+        int travelerCount = request.NumberOfGuests - 1;
+        while (request.Travelers.Count < travelerCount)
+            request.Travelers.Add(new TravelerRequest());
+        if (request.Travelers.Count > travelerCount)
+            request.Travelers.RemoveRange(travelerCount, request.Travelers.Count - travelerCount);
+
+        if (loadedSlug == request.AccommodationTypeSlug)
+            return;
+
+        ApiResponse<BookingInfoResponse> response = await BookingService.GetInfoAsync(request.AccommodationTypeSlug);
+        loadedSlug = request.AccommodationTypeSlug;
+
+        if (response.Succeeded && response.Value is not null)
+            info = response.Value;
+        else
+            loadError = response.Message ?? "Dit verblijf kon niet worden geladen.";
     }
-
-    private void ShowSummary() => showSummary = true;
-
-    private void EditDetails() => showSummary = false;
 
     private async Task ConfirmAsync()
     {
-        isSaving = true;
         errorMessage = null;
 
-        ApiResponse<BookingResponse> response = await BookingService.CreateAsync(request);
+        // DataAnnotationsValidator does not look inside the list, so check the travelers here.
+        if (request.Travelers.Any(traveler => string.IsNullOrWhiteSpace(traveler.Name) || traveler.BirthDate is null))
+        {
+            errorMessage = "Vul van iedere reisgenoot de naam en geboortedatum in.";
+            return;
+        }
 
+        if (request.BirthDate is DateOnly birthDate && birthDate.AddYears(MinimumMainBookerAge) > request.ArrivalDate)
+        {
+            errorMessage = $"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PreferredZone))
+            request.PreferredZone = null;
+
+        isSaving = true;
+        ApiResponse<BookingResponse> response = await BookingService.CreateAsync(request);
         isSaving = false;
 
         if (!response.Succeeded || response.Value is null)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Vakantiepark.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Vakantiepark.Infrastructure.Persistence.Configurations
 {
@@ -15,6 +16,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(x => x.Name).IsRequired();
             builder.Property(x => x.Email).IsRequired();
             builder.Property(x => x.PhoneNumber).IsRequired();
+
+            builder.HasMany(x => x.Travelers)
+                .WithOne()
+                .HasForeignKey(x => x.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
