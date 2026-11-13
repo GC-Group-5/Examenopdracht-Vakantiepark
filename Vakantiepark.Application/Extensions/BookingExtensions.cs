@@ -1,4 +1,3 @@
-using Vakantiepark.Application.Helpers;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
@@ -7,23 +6,35 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price)
+        // Everyone who stays becomes a BookingGuest, the main booker first.
+        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
             => new Booking()
             {
                 BookingNumber = bookingNumber,
-                Name = request.Name,
-                Email = request.Email,
-                PhoneNumber = request.PhoneNumber,
+                Name = request.Name.Trim(),
+                Email = request.Email.Trim(),
+                PhoneNumber = request.PhoneNumber.Trim(),
                 ArrivalDate = request.ArrivalDate,
                 DepartureDate = request.DepartureDate,
-                ArrivalTime = request.ArrivalTime,
-                DepartureTime = request.DepartureTime,
+                ArrivalTime = settings.ArrivalTime,
+                DepartureTime = settings.DepartureTime,
                 NumberOfGuests = request.NumberOfGuests,
                 AccommodationPrice = price.AccommodationPrice,
                 CleaningFee = price.CleaningFee,
                 TouristTax = price.TouristTax,
                 TotalPrice = price.TotalPrice,
-                AccommodationUnitId = accommodationUnitId
+                Deposit = price.Deposit,
+                AccommodationUnitId = accommodationUnitId,
+                Guests = new List<BookingGuest>()
+                    {
+                        new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
+                    }
+                    .Concat(request.CoTravellers.Select(traveller => new BookingGuest()
+                    {
+                        Name = traveller.Name.Trim(),
+                        BirthDate = traveller.BirthDate!.Value,
+                    }))
+                    .ToList(),
             };
 
         public static BookingResponse ToResponse(this Booking booking)
@@ -41,7 +52,8 @@ namespace Vakantiepark.Application.Extensions
                 AccommodationPrice = booking.AccommodationPrice,
                 CleaningFee = booking.CleaningFee,
                 TouristTax = booking.TouristTax,
-                TotalPrice = booking.TotalPrice
+                TotalPrice = booking.TotalPrice,
+                Deposit = booking.Deposit,
             };
     }
 }
