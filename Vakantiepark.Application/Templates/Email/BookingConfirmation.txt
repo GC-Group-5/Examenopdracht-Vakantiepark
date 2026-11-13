@@ -1,0 +1,27 @@
+Vakantiepark D'r op Uut
+
+Bedankt voor je boeking, {{Name}}!
+
+Je boekingsnummer is: {{BookingNumber}}
+
+JE VERBLIJF
+Verblijf:       {{AccommodationType}}
+Aankomst:       {{ArrivalDate}} vanaf {{ArrivalTime}}
+Vertrek:        {{DepartureDate}} vóór {{DepartureTime}}
+Reisgezelschap: {{NumberOfGuests}} personen: {{Party}}
+
+PRIJSSPECIFICATIE
+Verblijf:           {{AccommodationPrice}}
+Eindschoonmaak:     {{CleaningFee}}
+Toeristenbelasting: {{TouristTax}}
+Totaal:             {{TotalPrice}}
+Aanbetaling ({{DepositPercentage}}%): {{Deposit}}
+
+ANNULERINGSVOORWAARDEN
+- Meer dan {{FreeCancellationDays}} dagen voor aankomst: je krijgt alles terug.
+- Tussen {{NoRefundDays}} en {{FreeCancellationDays}} dagen voor aankomst: je verliest de aanbetaling, de rest krijg je terug.
+- Minder dan {{NoRefundDays}} dagen voor aankomst: het verblijf wordt niet terugbetaald, de toeristenbelasting wel.
+
+Bewaar je boekingsnummer goed. Met je boekingsnummer en dit e-mailadres ({{Email}}) log je in op Mijn boeking.
+
+We zien je graag op het park!

@@ -1,4 +1,7 @@
 using Vakantiepark.Application.Validations.Booking;
+using Vakantiepark.Application.Helpers;
+using Microsoft.Extensions.Logging;
+using System.Globalization;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
@@ -22,6 +25,8 @@ namespace Vakantiepark.Application.Services
         private readonly IRepository<Season> SeasonRepository;
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
         private readonly TimeProvider TimeProvider;
+        private readonly IEmailSender EmailSender;
+        private readonly ILogger<BookingService> Logger;
 
         public BookingService(
             IBookingRepository bookingRepository,
@@ -31,7 +36,9 @@ namespace Vakantiepark.Application.Services
             IBookingNumberGenerator bookingNumberGenerator,
             IRepository<Season> seasonRepository,
             IRepository<ParkSettings> parkSettingsRepository,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider,
+            IEmailSender emailSender,
+            ILogger<BookingService> logger)
         {
             BookingRepository = bookingRepository;
             AccommodationUnitRepository = accommodationUnitRepository;
@@ -41,6 +48,8 @@ namespace Vakantiepark.Application.Services
             SeasonRepository = seasonRepository;
             ParkSettingsRepository = parkSettingsRepository;
             TimeProvider = timeProvider;
+            EmailSender = emailSender;
+            Logger = logger;
         }
 
         public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)
@@ -91,7 +100,10 @@ namespace Vakantiepark.Application.Services
                 Booking booking = request.ToEntity(unit.Id, bookingNumber, price, settings);
 
                 if (await BookingRepository.TryAddAsync(booking))
+                {
+                    await SendConfirmationAsync(booking, type, settings);
                     return booking.ToResponse();
+                }
             }
 
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
@@ -149,6 +161,47 @@ namespace Vakantiepark.Application.Services
 
         private DateOnly Today()
             => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
+
+        // US-09: everything is inside the try, so a mail server that is down is logged
+        // but never undoes the booking or hides the booking number from the guest.
+        private async Task SendConfirmationAsync(Booking booking, AccommodationType type, ParkSettings settings)
+        {
+            try
+            {
+                CultureInfo dutch = new CultureInfo("nl-NL");
+                string party = string.Join(", ", booking.Guests
+                    .OrderByDescending(guest => guest.IsMainBooker)
+                    .Select(guest => guest.Name));
+
+                RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingConfirmation, new Dictionary<string, string>
+                {
+                    ["Name"] = booking.Name,
+                    ["BookingNumber"] = booking.BookingNumber,
+                    ["Email"] = booking.Email,
+                    ["AccommodationType"] = type.Name,
+                    ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["ArrivalTime"] = booking.ArrivalTime.ToString("HH:mm", dutch),
+                    ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
+                    ["NumberOfGuests"] = booking.NumberOfGuests.ToString(dutch),
+                    ["Party"] = party,
+                    ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
+                    ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
+                    ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
+                    ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["Deposit"] = booking.Deposit.ToString("C", dutch),
+                    ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
+                    ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
+                    ["NoRefundDays"] = settings.NoRefundDaysBeforeArrival.ToString(dutch)
+                });
+
+                await EmailSender.SendAsync(booking.Email, $"Bevestiging van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Could not send the confirmation email for booking {BookingNumber}.", booking.BookingNumber);
+            }
+        }
 
         private async Task<string> GenerateUniqueBookingNumberAsync()
         {
