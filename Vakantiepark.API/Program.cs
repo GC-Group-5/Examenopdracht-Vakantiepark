@@ -25,6 +25,12 @@ namespace Vakantiepark.API
                 throw new InvalidOperationException("The setting 'JWT:Key' is missing or too short. Start the application through Vakantiepark.AppHost.");
 
             EmailSettings emailSettings = CreateEmailSettings(builder.Configuration);
+            FrontendSettings frontendSettings = new FrontendSettings
+            {
+                BaseUrl = builder.Configuration["Frontend:BaseUrl"]
+                    ?? throw new InvalidOperationException("The setting 'Frontend:BaseUrl' was not found.")
+            };
+            builder.Services.AddSingleton(frontendSettings);
 
             builder.Services.RegisterAPI(jwtSettings);
             builder.Services.RegisterApplication(jwtSettings);
@@ -36,11 +42,8 @@ namespace Vakantiepark.API
 
             builder.Services.AddCors(options =>
             {
-                string frontendUrl = builder.Configuration["Frontend:BaseUrl"]
-                    ?? throw new InvalidOperationException("The setting 'Frontend:BaseUrl' was not found.");
-
                 options.AddDefaultPolicy(policy => policy
-                    .WithOrigins(frontendUrl)
+                    .WithOrigins(frontendSettings.BaseUrl)
                     .AllowAnyHeader()
                     .AllowAnyMethod());
             });
