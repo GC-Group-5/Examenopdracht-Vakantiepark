@@ -18,7 +18,7 @@ namespace Vakantiepark.Infrastructure.Helpers
         public async Task SendAsync(string toAddress, string subject, string htmlBody, string textBody)
         {
             MimeMessage message = new MimeMessage();
-            message.From.Add(MailboxAddress.Parse(Settings.FromAddress));
+            message.From.Add(new MailboxAddress("Vakantiepark D'r op Uut", Settings.FromAddress));
             message.To.Add(MailboxAddress.Parse(toAddress));
             message.Subject = subject;
             message.Body = new BodyBuilder()

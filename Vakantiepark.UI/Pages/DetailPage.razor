@@ -154,12 +154,12 @@ else
                             <input id="detail-departure" type="date" class="form-control" @bind="departureDate" min="@arrivalDate.AddDays(1).ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label small fw-semibold" for="detail-guests">Gezelschap</label>
-                            <input id="detail-guests" type="number" class="form-control" @bind="numberOfGuests" min="1" max="@(MaxPersons ?? 20)" />
-                            @if (MaxPersons is not null)
-                            {
-                                <div class="small text-muted-du mt-1">Maximaal @MaxPersons personen</div>
-                            }
+                                <label class="form-label small fw-semibold" for="detail-guests">Aantal personen</label>
+                                <input id="detail-guests" type="number" class="form-control" @bind="numberOfGuests" min="1" max="@(MaxPersons ?? 20)" />
+                                @if (MaxPersons is not null)
+                                {
+                                    <div class="form-text">Inclusief hoofdboeker, maximaal @MaxPersons personen</div>
+                                }
                         </div>
                     </div>
                     @if (stayError is not null)
