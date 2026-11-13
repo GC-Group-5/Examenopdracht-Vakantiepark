@@ -269,6 +269,9 @@ The goal is code that reads like it was written by one careful person. Match the
 
 ### Comments
 - Comment **why**, never **what**. Most methods need no comment.
+- Keep a comment to 1-3 lines of useful, relevant information: a business rule, a reason or a pitfall.
+  No blocks of text; longer explanations belong in the issue or the pull request.
+- Never edit generated code such as EF Core migrations, including their `/// <inheritdoc />` comments.
 - Use `/// <summary>` only on public contracts whose behaviour is not obvious from the name
   (for example a `DesignTimeDbContextFactory` that explains why it exists).
 - No commented-out code, no `TODO` without an issue reference, no banner comments.
