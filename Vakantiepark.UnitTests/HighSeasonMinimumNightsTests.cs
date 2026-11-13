@@ -22,6 +22,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IEmailSender> _emailSender = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
+        private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new();
         private readonly BookingService _sut;
 
         public HighSeasonMinimumNightsTests()
@@ -73,6 +74,7 @@ namespace Vakantiepark.UnitTests
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,
+                _accommodationTypeRepository.Object,
                 _emailSender.Object,
                 NullLogger<BookingService>.Instance);
         }

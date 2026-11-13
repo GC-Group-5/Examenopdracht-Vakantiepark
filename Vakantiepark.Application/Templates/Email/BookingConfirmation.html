@@ -31,7 +31,15 @@
                     <tr><td>Eindschoonmaak</td><td align="right">{{CleaningFee}}</td></tr>
                     <tr><td>Toeristenbelasting</td><td align="right">{{TouristTax}}</td></tr>
                     <tr><td style="border-top:1px solid #dddddd; font-weight:bold;">Totaal</td><td align="right" style="border-top:1px solid #dddddd; font-weight:bold;">{{TotalPrice}}</td></tr>
+                    <tr><td>Aanbetaling ({{DepositPercentage}}%)</td><td align="right">{{Deposit}}</td></tr>
                 </table>
+
+                <h3 style="margin:0 0 8px; font-size:16px; color:#073d2b;">Annuleringsvoorwaarden</h3>
+                <ul style="margin:0 0 24px; padding-left:20px;">
+                    <li>Meer dan {{FreeCancellationDays}} dagen voor aankomst: je krijgt alles terug.</li>
+                    <li>Tussen {{NoRefundDays}} en {{FreeCancellationDays}} dagen voor aankomst: je verliest de aanbetaling, de rest krijg je terug.</li>
+                    <li>Minder dan {{NoRefundDays}} dagen voor aankomst: het verblijf wordt niet terugbetaald, de toeristenbelasting wel.</li>
+                </ul>
 
                 <p style="margin:0 0 8px;">Bewaar je boekingsnummer goed. Met je boekingsnummer en dit e-mailadres ({{Email}}) log je in op <strong>Mijn boeking</strong>.</p>
                 <p style="margin:0;">We zien je graag op het park!</p>

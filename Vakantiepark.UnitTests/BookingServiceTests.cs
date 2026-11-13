@@ -19,6 +19,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
+        private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new();
         private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly Guid _firstUnitId = Guid.NewGuid();
         private readonly Guid _secondUnitId = Guid.NewGuid();
@@ -42,7 +43,16 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.Generate())
                 .Returns("K7M2XQ9P");
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
-            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            // The mail needs the deposit percentage and cancellation rules.
+            _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new ParkSettings
+            {
+                DepositPercentage = 30m,
+                FreeCancellationDaysBeforeArrival = 42,
+                NoRefundDaysBeforeArrival = 14
+            }]);
+            _accommodationTypeRepository
+                .Setup(x => x.GetBySlugAsync(It.IsAny<string>()))
+                .ReturnsAsync(TestData.CreateAccommodationType(t => t.Name = "Eik Luxe 6"));
 
             _sut = new BookingService(
                 _bookingRepository.Object,
@@ -51,6 +61,7 @@ namespace Vakantiepark.UnitTests
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,
+                _accommodationTypeRepository.Object,
                 _emailSender.Object,
                 NullLogger<BookingService>.Instance);
         }
@@ -143,6 +154,57 @@ namespace Vakantiepark.UnitTests
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
 
             Assert.Equal(CreateBookingRequestValidation.NotAvailableMessage, exception.Message);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_SendsOneConfirmationEmailToGuest()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+
+            await _sut.CreateAsync(request);
+
+            _emailSender.Verify(x => x.SendAsync(
+                request.Email,
+                It.Is<string>(subject => subject.Contains("K7M2XQ9P")),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_EmailContainsStayDepositAndCancellationRules()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("K7M2XQ9P") && html.Contains("Eik Luxe 6") && html.Contains("Aanbetaling (30%)") && html.Contains("42 dagen")),
+                It.Is<string>(text => text.Contains("K7M2XQ9P") && text.Contains("ANNULERINGSVOORWAARDEN"))), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_AllUnitsBooked_SendsNoEmail()
+        {
+            _bookingRepository
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .ReturnsAsync([_firstUnitId, _secondUnitId]);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_EmailFails_KeepsBookingAndReturnsBookingNumber()
+        {
+            _emailSender
+                .Setup(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("Mail server down"));
+
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal("K7M2XQ9P", response.BookingNumber);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
     }
 }

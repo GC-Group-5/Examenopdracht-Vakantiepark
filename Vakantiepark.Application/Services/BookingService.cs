@@ -23,6 +23,7 @@ namespace Vakantiepark.Application.Services
         private readonly IBookingNumberGenerator BookingNumberGenerator;
         private readonly IRepository<Season> SeasonRepository;
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
+        private readonly IAccommodationTypeRepository AccommodationTypeRepository;
         private readonly IEmailSender EmailSender;
         private readonly ILogger<BookingService> Logger;
 
@@ -33,6 +34,7 @@ namespace Vakantiepark.Application.Services
             IBookingNumberGenerator bookingNumberGenerator,
             IRepository<Season> seasonRepository,
             IRepository<ParkSettings> parkSettingsRepository,
+            IAccommodationTypeRepository accommodationTypeRepository,
             IEmailSender emailSender,
             ILogger<BookingService> logger)
         {
@@ -42,6 +44,7 @@ namespace Vakantiepark.Application.Services
             BookingNumberGenerator = bookingNumberGenerator;
             SeasonRepository = seasonRepository;
             ParkSettingsRepository = parkSettingsRepository;
+            AccommodationTypeRepository = accommodationTypeRepository;
             EmailSender = emailSender;
             Logger = logger;
         }
@@ -71,7 +74,7 @@ namespace Vakantiepark.Application.Services
             if (!await BookingRepository.TryAddAsync(booking))
                 throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
 
-            await SendConfirmationAsync(booking, request.AccommodationTypeSlug);
+            await SendConfirmationAsync(booking, request.AccommodationTypeSlug, price);
             return booking.ToResponse();
         }
 
@@ -120,11 +123,18 @@ namespace Vakantiepark.Application.Services
             throw new InvalidOperationException("Could not generate a unique booking number.");
         }
 
-        private async Task SendConfirmationAsync(Booking booking, string accommodationType)
+        // Everything is inside the try: a missing setting or a mail server that is down is logged,
+        // but never undoes the booking or hides the booking number from the guest.
+        private async Task SendConfirmationAsync(Booking booking, string accommodationTypeSlug, PriceSpecificationResponse price)
         {
             try
             {
                 CultureInfo dutch = new CultureInfo("nl-NL");
+
+                string accommodationType = (await AccommodationTypeRepository.GetBySlugAsync(accommodationTypeSlug))?.Name
+                    ?? accommodationTypeSlug;
+                ParkSettings settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault()
+                    ?? throw new InvalidOperationException("The park settings were not found.");
 
                 RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingConfirmation, new Dictionary<string, string>
                 {
@@ -140,14 +150,17 @@ namespace Vakantiepark.Application.Services
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
-                    ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch)
+                    ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["Deposit"] = price.Deposit.ToString("C", dutch),
+                    ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
+                    ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
+                    ["NoRefundDays"] = settings.NoRefundDaysBeforeArrival.ToString(dutch)
                 });
 
                 await EmailSender.SendAsync(booking.Email, $"Bevestiging van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);
             }
             catch (Exception exception)
             {
-                // The booking is already saved, so a failed email must not undo it or hide the booking number.
                 Logger.LogError(exception, "Could not send the confirmation email for booking {BookingNumber}.", booking.BookingNumber);
             }
         }
