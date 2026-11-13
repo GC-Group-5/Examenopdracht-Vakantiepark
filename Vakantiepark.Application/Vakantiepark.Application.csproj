@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Templates\Email\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Vakantiepark.Domain\Vakantiepark.Domain.csproj" />
     <ProjectReference Include="..\Vakantiepark.Shared\Vakantiepark.Shared.csproj" />
   </ItemGroup>

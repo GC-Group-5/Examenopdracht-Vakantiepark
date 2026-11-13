@@ -1,0 +1,281 @@
+@page "/accommodaties/{TypeSlug}"
+@using Vakantiepark.Shared.DTOs.Accommodation
+@using Vakantiepark.UI.Application.Interfaces
+@inject IHttpService HttpService
+@inject NavigationManager NavigationManager
+
+@if (isLoading)
+{
+    <div class="container py-5 text-center">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Bezig met laden...</span>
+        </div>
+    </div>
+}
+else if (loadError is not null)
+{
+    <section class="page-head">
+        <div class="container">
+            <div class="eyebrow">Oeps</div>
+            <h1 class="page-title mt-2">Het verblijf kon niet worden geladen.</h1>
+            <p class="page-intro mt-4">@loadError</p>
+        </div>
+    </section>
+}
+else if (!accommodationFound)
+{
+    <section class="page-head">
+        <div class="container">
+            <div class="eyebrow">404 · Verblijf niet gevonden</div>
+            <h1 class="page-title mt-2">Dit verblijf bestaat niet.</h1>
+            <p class="page-intro mt-4">
+                We kunnen het verblijf dat je zoekt niet vinden. Misschien is de link verouderd
+                of staat er een typefout in het adres.
+            </p>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <a class="btn btn-du" href="/accommodaties">Bekijk alle verblijven</a>
+                <a class="btn btn-du-light" href="/">Naar de homepage</a>
+            </div>
+        </div>
+    </section>
+}
+else
+{
+<section class="detail-hero">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="accommodaties">Verblijven</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Name</li>
+            </ol>
+        </nav>
+
+        @if (Images.Count > 0)
+        {
+            <div class="mosaic">
+                <img class="tall" src="@Images[0]" alt="@Name" />
+                <div class="stack">
+                    @foreach (string image in Images.Skip(1).Take(2))
+                    {
+                        <img src="@image" alt="@Name" />
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="detail-meta">
+            <div class="row">
+                <div class="col-xl-9">
+                    <div class="detail-meta-card">
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                            @if (!string.IsNullOrWhiteSpace(Category))
+                            {
+                                <span class="eyebrow">@Category</span>
+                            }
+                            @if (MaxPersons is not null)
+                            {
+                                <span class="count-pill">Tot @MaxPersons personen</span>
+                            }
+                        </div>
+                        <h1 class="page-title mb-3">@Name</h1>
+                        @if (!string.IsNullOrWhiteSpace(Description))
+                        {
+                            <p class="lead text-muted-du mb-0">@Description</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-lg-8">
+                <div class="eyebrow">Dit kun je verwachten</div>
+                @if (!string.IsNullOrWhiteSpace(Introduction))
+                {
+                    <h2 class="section-title">@Introduction</h2>
+                }
+
+                @if (Features.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        @foreach (AccommodationFeatureResponse feature in Features)
+                        {
+                            <span class="feature-chip">@FormatFeature(feature)</span>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Zone))
+                {
+                    @if (Category == "HolidayHome")
+                    {
+                        <div class="zone-card mt-5">
+                            <h3 class="h4">Waar op het park?</h3>
+                            <p class="mb-0 text-muted-du">Dit vakantiehuis staat op zone(s): <strong>@Zone</strong></p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="zone-card mt-5">
+                            <h3 class="h4">Waar op het park?</h3>
+                            <p class="mb-0 text-muted-du">Deze camping staat op zone(s): <strong>@Zone</strong></p>
+                        </div>
+                    }
+                }
+
+                @if (!string.IsNullOrWhiteSpace(FloorPlanImage))
+                {
+                    <section class="mt-5 pt-4">
+                        <div class="eyebrow">Indeling</div>
+                        <h2 class="section-title mb-4">Plattegrond</h2>
+                        <div class="floor-card">
+                            <img src="@FloorPlanImage" alt="Plattegrond van @Name" />
+                        </div>
+                    </section>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <aside class="booking-card">
+                    <div class="eyebrow">Zoek &amp; boek</div>
+                    <h2 class="h2 mt-2">Wanneer wil je d'r op uut?</h2>
+                    <p class="small text-muted-du">Controleer de beschikbaarheid voor deze accommodatie.</p>
+                    <div class="row g-2 mt-1">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold" for="detail-arrival">Aankomst</label>
+                            <input id="detail-arrival" type="date" class="form-control" @bind="arrivalDate" min="@Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold" for="detail-departure">Vertrek</label>
+                            <input id="detail-departure" type="date" class="form-control" @bind="departureDate" min="@arrivalDate.AddDays(1).ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-12">
+                                <label class="form-label small fw-semibold" for="detail-guests">Aantal personen</label>
+                                <input id="detail-guests" type="number" class="form-control" @bind="numberOfGuests" min="1" max="@(MaxPersons ?? 20)" />
+                                @if (MaxPersons is not null)
+                                {
+                                    <div class="form-text">Inclusief hoofdboeker, maximaal @MaxPersons personen</div>
+                                }
+                        </div>
+                    </div>
+                    @if (stayError is not null)
+                    {
+                        <div class="alert alert-danger small mt-3 mb-0" role="alert">@stayError</div>
+                    }
+                    <button type="button" class="btn btn-du w-100 mt-3" @onclick="CheckAvailability">Controleer beschikbaarheid</button>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
+}
+
+@code {
+    [Parameter]
+    public string? TypeSlug { get; set; }
+
+    private string Name { get; set; } = "Accommodatie";
+    private string? Category { get; set; }
+    private int? MaxPersons { get; set; }
+    private string? Description { get; set; }
+    private string? Introduction { get; set; }
+    private string? Zone { get; set; }
+    private string? FloorPlanImage { get; set; }
+    private List<string> Images { get; set; } = [];
+    private List<AccommodationFeatureResponse> Features { get; set; } = [];
+    private bool isLoading = true;
+
+    // The stay the guest picks here is handed to the booking page, which checks availability and price.
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly arrivalDate = Today.AddDays(14);
+    private DateOnly departureDate = Today.AddDays(21);
+    private int numberOfGuests = 2;
+    private string? stayError;
+
+    private void CheckAvailability()
+    {
+        stayError = null;
+
+        if (arrivalDate < Today)
+            stayError = "Kies een aankomstdatum vanaf vandaag.";
+        else if (departureDate <= arrivalDate)
+            stayError = "De vertrekdatum moet na de aankomstdatum liggen.";
+        else if (numberOfGuests < 1 || (MaxPersons is int max && numberOfGuests > max))
+            stayError = MaxPersons is int maxPersons ? $"Kies 1 tot {maxPersons} personen." : "Kies minimaal 1 persoon.";
+
+        if (stayError is not null)
+            return;
+
+        NavigationManager.NavigateTo(
+            $"/zoek-en-boek?type={Uri.EscapeDataString(TypeSlug ?? string.Empty)}" +
+            $"&aankomst={arrivalDate:yyyy-MM-dd}&vertrek={departureDate:yyyy-MM-dd}&personen={numberOfGuests}");
+    }
+    private bool accommodationFound;
+    private string? loadError;
+
+    private static string FormatFeature(AccommodationFeatureResponse feature)
+        => feature.Key switch
+        {
+            "bedrooms" when feature.NumberValue is decimal bedrooms
+                => $"{bedrooms:0} {(bedrooms == 1 ? "slaapkamer" : "slaapkamers")}",
+            "maxPets" when feature.NumberValue is 0
+                => "Geen huisdieren toegestaan",
+            "maxPets" when feature.NumberValue is decimal maxPets
+                => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
+            _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
+            _ => feature.OptionName ?? feature.Name,
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(TypeSlug))
+        {
+            isLoading = false;
+            return;
+        }
+
+        // Fetch all accommodations and filter by TypeSlug
+        var response = await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
+
+        if (response.Succeeded && response.Value != null)
+        {
+            List<AccommodationResponse> matchingAccommodations = response.Value
+                .Where(accommodation => accommodation.TypeSlug == TypeSlug)
+                .ToList();
+            AccommodationResponse? accommodation = matchingAccommodations.FirstOrDefault();
+
+            if (accommodation != null)
+            {
+                accommodationFound = true;
+                Name = accommodation.TypeName;
+                Category = accommodation.Category;
+                MaxPersons = accommodation.MaxPersons;
+                Zone = string.Join(", ", matchingAccommodations
+                    .Select(accommodation => accommodation.Zone)
+                    .Where(zone => !string.IsNullOrWhiteSpace(zone))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(zone => zone, StringComparer.OrdinalIgnoreCase));
+                Features = accommodation.Features;
+
+                // Generate image paths based on TypeSlug
+                Images = new List<string>
+                {
+                    $"img/accommodaties/{TypeSlug}/1.webp",
+                    $"img/accommodaties/{TypeSlug}/2.webp",
+                    $"img/accommodaties/{TypeSlug}/3.webp",
+                };
+                FloorPlanImage = $"img/accommodaties/{TypeSlug}/plattegrond.webp";
+            }
+        }
+        else
+        {
+            loadError = response.Message ?? "Probeer het later opnieuw.";
+        }
+
+        isLoading = false;
+    }
+}

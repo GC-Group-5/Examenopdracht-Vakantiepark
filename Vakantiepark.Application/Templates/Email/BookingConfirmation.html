@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bevestiging van je boeking</title>
+</head>
+<!-- Same colours and fonts as the website (Vakantiepark.UI/wwwroot/css/theme.css).
+     Email clients ignore <style> and CSS variables, so every style is inline. -->
+<body style="margin:0; padding:0; background-color:#f7f4ec; font-family:Inter, -apple-system, 'Segoe UI', Arial, sans-serif; color:#183129; line-height:1.5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f4ec;">
+        <tr>
+            <td align="center" style="padding:32px 16px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+
+                    <!-- Header: park name in the logo style -->
+                    <tr>
+                        <td style="padding:0 0 20px;">
+                            <span style="font-family:Georgia, 'Times New Roman', serif; font-size:26px; font-weight:bold; color:#073d2b;">D'r op Uut</span>
+                            <span style="font-size:12px; letter-spacing:3px; text-transform:uppercase; font-weight:800; color:#0b5d3b;">&nbsp;Vakantiepark</span>
+                        </td>
+                    </tr>
+
+                    <!-- Card -->
+                    <tr>
+                        <td style="background-color:#ffffff; border:1px solid #dfe5dc; border-top:5px solid #49a8aa; border-radius:16px; padding:32px;">
+
+                            <p style="margin:0 0 8px; font-size:12px; letter-spacing:3px; text-transform:uppercase; font-weight:800; color:#0b5d3b;">Boeking bevestigd</p>
+                            <h1 style="margin:0 0 16px; font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.2; color:#073d2b;">Bedankt voor je boeking, {{Name}}!</h1>
+                            <p style="margin:0 0 24px; color:#6e786f;">We hebben je boeking ontvangen. Hieronder vind je alle details.</p>
+
+                            <!-- Booking number -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+                                <tr>
+                                    <td style="background-color:#f7f4ec; border-left:4px solid #70b943; border-radius:8px; padding:16px 20px;">
+                                        <p style="margin:0; font-size:13px; color:#6e786f;">Je boekingsnummer</p>
+                                        <p style="margin:4px 0 0; font-size:26px; font-weight:bold; letter-spacing:1px; color:#0b5d3b;">{{BookingNumber}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Stay -->
+                            <h2 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:20px; color:#073d2b;">Je verblijf</h2>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px; font-size:15px;">
+                                <tr><td style="padding:8px 0; border-bottom:1px solid #dfe5dc; color:#6e786f; width:40%;">Verblijf</td><td style="padding:8px 0; border-bottom:1px solid #dfe5dc; font-weight:600;">{{AccommodationType}}</td></tr>
+                                <tr><td style="padding:8px 0; border-bottom:1px solid #dfe5dc; color:#6e786f;">Aankomst</td><td style="padding:8px 0; border-bottom:1px solid #dfe5dc;">{{ArrivalDate}} vanaf {{ArrivalTime}}</td></tr>
+                                <tr><td style="padding:8px 0; border-bottom:1px solid #dfe5dc; color:#6e786f;">Vertrek</td><td style="padding:8px 0; border-bottom:1px solid #dfe5dc;">{{DepartureDate}} vóór {{DepartureTime}}</td></tr>
+                                <tr><td style="padding:8px 0; color:#6e786f; vertical-align:top;">Reisgezelschap</td><td style="padding:8px 0;">{{NumberOfGuests}} personen: {{Party}}</td></tr>
+                            </table>
+
+                            <!-- Price -->
+                            <h2 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:20px; color:#073d2b;">Prijsspecificatie</h2>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px; font-size:15px;">
+                                <tr><td style="padding:6px 0;">Verblijf</td><td align="right" style="padding:6px 0;">{{AccommodationPrice}}</td></tr>
+                                <tr><td style="padding:6px 0;">Eindschoonmaak</td><td align="right" style="padding:6px 0;">{{CleaningFee}}</td></tr>
+                                <tr><td style="padding:6px 0;">Toeristenbelasting</td><td align="right" style="padding:6px 0;">{{TouristTax}}</td></tr>
+                                <tr><td style="padding:10px 0; border-top:2px solid #073d2b; font-weight:bold; color:#073d2b;">Totaal</td><td align="right" style="padding:10px 0; border-top:2px solid #073d2b; font-weight:bold; color:#073d2b;">{{TotalPrice}}</td></tr>
+                                <tr><td style="padding:6px 0; color:#0b5d3b; font-weight:600;">Aanbetaling ({{DepositPercentage}}%)</td><td align="right" style="padding:6px 0; color:#0b5d3b; font-weight:600;">{{Deposit}}</td></tr>
+                            </table>
+
+                            <!-- Cancellation -->
+                            <h2 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:20px; color:#073d2b;">Annuleringsvoorwaarden</h2>
+                            <ul style="margin:0 0 28px; padding-left:20px; font-size:15px;">
+                                <li style="margin-bottom:6px;">Meer dan {{FreeCancellationDays}} dagen voor aankomst: je krijgt alles terug.</li>
+                                <li style="margin-bottom:6px;">Tussen {{NoRefundDays}} en {{FreeCancellationDays}} dagen voor aankomst: je verliest de aanbetaling, de rest krijg je terug.</li>
+                                <li>Minder dan {{NoRefundDays}} dagen voor aankomst: het verblijf wordt niet terugbetaald, de toeristenbelasting wel.</li>
+                            </ul>
+
+                            <p style="margin:0 0 16px;">Bewaar je boekingsnummer goed. Met je boekingsnummer en dit e-mailadres ({{Email}}) log je in op <strong style="color:#0b5d3b;">Mijn boeking</strong>.</p>
+
+                            <!-- Button in the style of .btn-du on the website -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                                <tr>
+                                    <td style="background-color:#0b5d3b; border-radius:999px;">
+                                        <a href="{{MyBookingUrl}}" style="display:inline-block; padding:12px 28px; font-weight:bold; font-size:15px; color:#ffffff; text-decoration:none;">Naar Mijn boeking</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:17px; color:#073d2b;">We zien je graag op het park!</p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer bar -->
+                    <tr>
+                        <td style="padding:20px 8px 0; text-align:center; font-size:12px; color:#6e786f;">
+                            Vakantiepark D'r op Uut · Je ontvangt deze e-mail omdat je een verblijf hebt geboekt.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

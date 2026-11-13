@@ -5,13 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Vakantiepark.Infrastructure.Persistence;
 using Vakantiepark.Infrastructure.Repositories;
 using Vakantiepark.Infrastructure.Helpers;
+using Vakantiepark.Infrastructure.Settings;
 
 namespace Vakantiepark.Infrastructure
 {
     public static class Dependencies
     {
-        public static IServiceCollection RegisterInfrastructure(this IServiceCollection services, string connectionString, bool seedTestData)
+        public static IServiceCollection RegisterInfrastructure(this IServiceCollection services, string connectionString, EmailSettings emailSettings, bool seedTestData)
         {
+            services.AddSingleton(emailSettings);
             services.RegisterPersistence(connectionString, seedTestData);
             services.RegisterRepositories();
             services.RegisterHelpers();
@@ -49,6 +51,7 @@ namespace Vakantiepark.Infrastructure
         {
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
             services.AddSingleton<IBookingNumberGenerator, BookingNumberGenerator>();
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
 
             return services;
         }

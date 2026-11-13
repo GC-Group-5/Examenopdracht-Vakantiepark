@@ -14,10 +14,34 @@ var postgres = builder.AddPostgres("postgres")
 
 var database = postgres.AddDatabase("vakantiepark");
 
+// Local mailbox: every email from the API lands here, so development never mails real guests by accident.
+var mailPit = builder.AddMailPit("mailpit");
+
+// Optional, per developer: Mailpit also relays every message to a real SMTP server (e.g. Gmail),
+// so it shows up in a real inbox too. Only active when "Parameters:mail-relay-host" is set in this project's user-secrets.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Parameters:mail-relay-host"]))
+{
+    var relayHost = builder.AddParameter("mail-relay-host");
+    var relayPort = builder.AddParameter("mail-relay-port");
+    var relayUsername = builder.AddParameter("mail-relay-username");
+    var relayPassword = builder.AddParameter("mail-relay-password", secret: true);
+
+    mailPit
+        .WithEnvironment("MP_SMTP_RELAY_ALL", "true")
+        .WithEnvironment("MP_SMTP_RELAY_HOST", relayHost)
+        .WithEnvironment("MP_SMTP_RELAY_PORT", relayPort)
+        .WithEnvironment("MP_SMTP_RELAY_STARTTLS", "true")
+        .WithEnvironment("MP_SMTP_RELAY_AUTH", "plain")
+        .WithEnvironment("MP_SMTP_RELAY_USERNAME", relayUsername)
+        .WithEnvironment("MP_SMTP_RELAY_PASSWORD", relayPassword);
+}
+
 var api = builder.AddProject<Projects.Vakantiepark_API>("api")
     .WithReference(database)
+    .WithReference(mailPit)
     .WithEnvironment("JWT__Key", jwtKey)
-    .WaitFor(database);
+    .WaitFor(database)
+    .WaitFor(mailPit);
 
 // Not proxied, so the UI really runs on https://localhost:4200 (its launchSettings port).
 // The API only allows that origin (CORS and JWT audience), and the browser opens it on start.

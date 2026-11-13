@@ -1,4 +1,7 @@
 @page "/"
+@using Vakantiepark.Shared.DTOs.Accommodation
+@using Vakantiepark.UI.Application.Interfaces
+@inject IHttpService HttpService
 
 <PageTitle>Vakantiepark D'r op Uut</PageTitle>
 
@@ -49,33 +52,46 @@
                 <div class="eyebrow">Verblijven</div>
                 <h2 class="section-title mb-0">Van knus tot royaal</h2>
             </div>
-            <a class="fw-bold text-decoration-none" href="accommodaties">Alle 12 verblijfstypes bekijken →</a>
+            <a class="fw-bold text-decoration-none" href="accommodaties">Alle verblijfstypes bekijken →</a>
         </div>
         <div class="row g-4">
-            @foreach (Highlight highlight in Highlights)
+            @if (accommodations != null && accommodations.Count > 0)
             {
-                <div class="col-md-6 col-xl-3">
-                    <a class="text-decoration-none" href="@($"accommodaties/{highlight.Slug}")">
-                        <article class="type-card">
-                            <img src="@($"img/accommodaties/{highlight.Slug}/1.webp")" alt="@highlight.ImageAlt" loading="lazy" />
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between gap-3 align-items-start">
-                                    <div>
-                                        <div class="eyebrow">@highlight.Category · @highlight.Count stuks</div>
-                                        <h3 class="h3 mt-2 mb-0">@highlight.Name</h3>
+                @foreach (var accommodation in accommodations
+                    .DistinctBy(accommodation => accommodation.TypeSlug)
+                    .Take(4))
+                {
+                    <div class="col-md-6 col-xl-3">
+                        <a class="text-decoration-none" href="@($"accommodaties/{accommodation.TypeSlug}")">
+                            <article class="type-card">
+                                <img src="@($"img/accommodaties/{accommodation.TypeSlug}/1.webp")" alt="@accommodation.TypeName" loading="lazy" />
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between gap-3 align-items-start">
+                                        <div>
+                                            <div class="eyebrow">@accommodation.Category · @accommodation.MaxPersons pers.</div>
+                                            <h3 class="h3 mt-2 mb-0">@accommodation.TypeName</h3>
+                                        </div>
+                                        <span class="count-pill text-nowrap">tot @accommodation.MaxPersons pers.</span>
                                     </div>
-                                    <span class="count-pill text-nowrap">tot @highlight.MaxPersons pers.</span>
+                                    <p class="text-muted-du mt-3">@accommodation.TypeName</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (AccommodationFeatureResponse feature in accommodation.Features.Take(3))
+                                        {
+                                            <span class="feature-chip">@FormatFeature(feature)</span>
+                                        }
+                                    </div>
                                 </div>
-                                <p class="text-muted-du mt-3">@highlight.Description</p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    @foreach (string feature in highlight.Features)
-                                    {
-                                        <span class="feature-chip">@feature</span>
-                                    }
-                                </div>
-                            </div>
-                        </article>
-                    </a>
+                            </article>
+                        </a>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-12 text-center py-5">
+                    <h3 class="h5">Geen verblijven gevonden</h3>
+                    <p class="text-muted-du">Er zijn op dit moment geen verblijven beschikbaar die aan uw criteria voldoen.</p>
+                    <a class="btn btn-du" href="accommodaties">Bekijk alle verblijven</a>
                 </div>
             }
         </div>
@@ -124,22 +140,32 @@
 </section>
 
 @code {
-    // Static selection for the homepage; the full overview with data from the API is built in US-04.
-    private static readonly List<Highlight> Highlights =
-    [
-        new("berk-4", "Berk 4", "Vakantiewoning", 32, 4,
-            "Compact en sfeervol voor een ontspannen verblijf met z'n tweeën of met het gezin.",
-            ["2 slaapkamers", "1 badkamer", "Huisdieren mogelijk"], "Vakantiewoning Berk 4 van rode baksteen met terras"),
-        new("eik-luxe-6", "Eik Luxe 6", "Vakantiewoning", 18, 6,
-            "Onze luxe zespersoons woning met extra comfort en vaak een eigen wellness.",
-            ["3 slaapkamers", "2 badkamers", "Sauna mogelijk"], "Vakantiewoning Eik Luxe 6 met terras en tuin"),
-        new("bosvilla-10", "Bosvilla 10", "Vakantiewoning", 18, 10,
-            "Een royale villa voor grote gezelschappen, rustig gelegen met veel binnen- en buitenruimte.",
-            ["5 slaapkamers", "2–3 badkamers", "Sauna mogelijk"], "Bosvilla 10 met rieten dak en grote tuin"),
-        new("tentplaats-comfort", "Tentplaats Comfort", "Kampeerplaats", 10, 6,
-            "Kamperen met nét wat meer gemak, zoals stroom en op veel plaatsen een wateraansluiting.",
-            ["Stroom 10/16A", "Water mogelijk", "Auto bij de plaats mogelijk"], "Tentplaats Comfort met tent en stroomkast op het gras"),
-    ];
+    private List<AccommodationResponse>? accommodations;
 
-    private sealed record Highlight(string Slug, string Name, string Category, int Count, int MaxPersons, string Description, string[] Features, string ImageAlt);
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
+
+        if (response.Succeeded)
+        {
+            accommodations = response.Value ?? [];
+        }
+        else
+        {
+            Console.WriteLine(response.Message ?? "Could not load accommodations.");
+        }
+    }
+
+    private static string FormatFeature(AccommodationFeatureResponse feature)
+        => feature.Key switch
+        {
+            "bedrooms" when feature.NumberValue is decimal bedrooms
+                => $"{bedrooms:0} {(bedrooms == 1 ? "slaapkamer" : "slaapkamers")}",
+            "maxPets" when feature.NumberValue is 0
+                => "Geen huisdieren toegestaan",
+            "maxPets" when feature.NumberValue is decimal maxPets
+                => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
+            _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
+            _ => feature.OptionName ?? feature.Name,
+        };
 }
