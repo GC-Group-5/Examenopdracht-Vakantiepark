@@ -39,9 +39,13 @@ namespace Vakantiepark.Application.Services
 
         public async Task<List<AccommodationTypeResponse>> GetTypesAsync()
         {
+            // Holiday homes first, then from small to large (by default price), like the template.
             List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
             return accommodations
                 .GroupBy(accommodation => accommodation.Type.Slug)
+                .OrderBy(units => units.First().Type.Category)
+                .ThenBy(units => units.First().Type.DefaultPricePerNight)
+                .ThenBy(units => units.First().Type.Name)
                 .Select(units => units.ToTypeResponse())
                 .ToList();
         }

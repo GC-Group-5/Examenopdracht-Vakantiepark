@@ -17,10 +17,12 @@ var database = postgres.AddDatabase("vakantiepark");
 var api = builder.AddProject<Projects.Vakantiepark_API>("api")
     .WithReference(database)
     .WithEnvironment("JWT__Key", jwtKey)
+    .WithHttpHealthCheck("/health", endpointName: "https")
     .WaitFor(database);
 
 // Not proxied, so the UI really runs on https://localhost:4200 (its launchSettings port).
 // The API only allows that origin (CORS and JWT audience), and the browser opens it on start.
+// WaitFor uses the API's health check, so the UI starts once migrations and seeding are done.
 builder.AddProject<Projects.Vakantiepark_UI>("ui")
     .WithEndpoint("https", endpoint => endpoint.IsProxied = false)
     .WaitFor(api);

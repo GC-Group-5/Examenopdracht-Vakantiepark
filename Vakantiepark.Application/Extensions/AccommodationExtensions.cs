@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Helpers;
 using Vakantiepark.Shared.DTOs.Accommodation;
 using Vakantiepark.Domain.Entities;
 
@@ -45,16 +46,24 @@ namespace Vakantiepark.Application.Extensions
 
         public static AccommodationTypeResponse ToTypeResponse(this IGrouping<string, Accommodation> units)
         {
-            Accommodation first = units.First();
+            List<Accommodation> unitList = units.ToList();
+            AccommodationType type = unitList.First().Type;
 
             return new AccommodationTypeResponse()
             {
-                Slug = first.Type.Slug,
-                Name = first.Type.Name,
-                Category = first.Type.Category.ToString(),
-                MaxPersons = units.Max(unit => unit.MaxPersons),
-                UnitCount = units.Count(),
-                Features = units
+                Slug = type.Slug,
+                Name = type.Name,
+                Category = type.Category.ToString(),
+                Description = type.Description,
+                MaxPersons = unitList.Max(unit => unit.MaxPersons),
+                UnitCount = unitList.Count,
+                Zones = unitList
+                    .Select(unit => unit.Zone.Name)
+                    .Distinct()
+                    .OrderBy(zone => zone)
+                    .ToList(),
+                Highlights = AccommodationTypeHighlights.For(unitList),
+                Features = unitList
                     .SelectMany(unit => unit.Features)
                     .GroupBy(value => value.Feature.Key)
                     .Select(values => new TypeFeatureResponse()

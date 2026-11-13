@@ -1,6 +1,4 @@
-@page "/"
-@using Vakantiepark.Shared.DTOs.Accommodation
-@using Vakantiepark.UI.Application.Interfaces
+﻿@page "/"
 @inject IHttpService HttpService
 
 <PageTitle>Vakantiepark D'r op Uut</PageTitle>
@@ -52,49 +50,27 @@
                 <div class="eyebrow">Verblijven</div>
                 <h2 class="section-title mb-0">Van knus tot royaal</h2>
             </div>
-            <a class="fw-bold text-decoration-none" href="accommodaties">Alle @AccommodationTypes.Count verblijfstypes bekijken →</a>
+            <a class="fw-bold text-decoration-none" href="accommodaties">Alle @(types?.Count ?? 12) verblijfstypes bekijken →</a>
         </div>
-        <div class="row g-4">
-            @if (accommodations != null && accommodations.Count > 0)
-            {
-                @foreach (var accommodation in accommodations
-                    .DistinctBy(accommodation => accommodation.TypeSlug)
-                    .Take(4))
+        @if (types is null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Bezig met laden...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (AccommodationTypeResponse type in FeaturedTypes)
                 {
-                    <div class="col-md-6 col-xl-3">
-                        <a class="text-decoration-none" href="@($"accommodaties/{accommodation.TypeSlug}")">
-                            <article class="type-card">
-                                <img src="@($"img/accommodaties/{accommodation.TypeSlug}/1.webp")" alt="@accommodation.TypeName" loading="lazy" />
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between gap-3 align-items-start">
-                                        <div>
-                                            <div class="eyebrow">@FormatCategory.Format(accommodation.Category) · @CountByType(accommodation.TypeSlug) stuks</div>
-                                            <h3 class="h3 mt-2 mb-0">@accommodation.TypeName</h3>
-                                        </div>
-                                        <span class="count-pill text-nowrap">tot @accommodation.MaxPersons pers.</span>
-                                    </div>
-                                    <p class="text-muted-du mt-3">@accommodation.TypeName</p>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        @foreach (AccommodationFeatureResponse feature in accommodation.Features.Take(3))
-                                        {
-                                            <span class="feature-chip">@FeatureText.Format(feature)</span>
-                                        }
-                                    </div>
-                                </div>
-                            </article>
-                        </a>
+                    <div class="col-md-6 col-xl-4">
+                        <AccommodationTypeCard Type="type" />
                     </div>
                 }
-            }
-            else
-            {
-                <div class="col-12 text-center py-5">
-                    <h3 class="h5">Geen verblijven gevonden</h3>
-                    <p class="text-muted-du">Er zijn op dit moment geen verblijven beschikbaar die aan uw criteria voldoen.</p>
-                    <a class="btn btn-du" href="accommodaties">Bekijk alle verblijven</a>
-                </div>
-            }
-        </div>
+            </div>
+        }
     </div>
 </section>
 
@@ -140,28 +116,24 @@
 </section>
 
 @code {
-    private List<AccommodationResponse>? accommodations;
+    // The same four types as the template's homepage.
+    private static readonly string[] FeaturedSlugs = ["berk-4", "eik-luxe-6", "bosvilla-10", "tentplaats-comfort"];
 
-    private List<AccommodationResponse> AccommodationTypes
-        => accommodations?
-            .DistinctBy(accommodation => accommodation.TypeSlug)
-            .ToList() ?? [];
+    private List<AccommodationTypeResponse>? types;
 
-    private int CountByType(string typeSlug)
-        => accommodations?.Count(accommodation => accommodation.TypeSlug == typeSlug) ?? 0;
+    private List<AccommodationTypeResponse> FeaturedTypes
+        => FeaturedSlugs
+            .Select(slug => types?.FirstOrDefault(type => type.Slug == slug))
+            .Where(type => type is not null)
+            .Select(type => type!)
+            .ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
+        ApiResponse<List<AccommodationTypeResponse>> response =
+            await HttpService.GetAsync<List<AccommodationTypeResponse>>("AccommodationType");
 
-        if (response.Succeeded)
-        {
-            accommodations = response.Value ?? [];
-        }
-        else
-        {
-            Console.WriteLine(response.Message ?? "Could not load accommodations.");
-        }
+        // Without the API the homepage still works, just without cards.
+        types = response.Succeeded ? response.Value ?? [] : [];
     }
-
 }

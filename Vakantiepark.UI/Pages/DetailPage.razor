@@ -1,6 +1,4 @@
-@page "/accommodaties/{TypeSlug}"
-@using Vakantiepark.Shared.DTOs.Accommodation
-@using Vakantiepark.UI.Application.Interfaces
+﻿@page "/accommodaties/{TypeSlug}"
 @inject IHttpService HttpService
 
 @if (isLoading)
@@ -13,6 +11,7 @@
 }
 else if (loadError is not null)
 {
+    <PageTitle>Verblijven | Vakantiepark D'r op Uut</PageTitle>
     <section class="page-head">
         <div class="container">
             <div class="eyebrow">Oeps</div>
@@ -21,8 +20,9 @@ else if (loadError is not null)
         </div>
     </section>
 }
-else if (!accommodationFound)
+else if (type is null)
 {
+    <PageTitle>Verblijf niet gevonden | Vakantiepark D'r op Uut</PageTitle>
     <section class="page-head">
         <div class="container">
             <div class="eyebrow">404 · Verblijf niet gevonden</div>
@@ -40,194 +40,117 @@ else if (!accommodationFound)
 }
 else
 {
-<section class="detail-hero">
-    <div class="container">
-        <nav aria-label="breadcrumb" class="mb-3">
-            <ol class="breadcrumb small">
-                <li class="breadcrumb-item"><a href="accommodaties">Verblijven</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Name</li>
-            </ol>
-        </nav>
+    <PageTitle>@type.Name | Vakantiepark D'r op Uut</PageTitle>
 
-        @if (Images.Count > 0)
-        {
+    <section class="detail-hero">
+        <div class="container">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb small">
+                    <li class="breadcrumb-item"><a href="/accommodaties">Verblijven</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@type.Name</li>
+                </ol>
+            </nav>
             <div class="mosaic">
-                <img class="tall" src="@Images[0]" alt="@Name" />
+                <img class="tall" src="@Image(1)" alt="@type.Name" />
                 <div class="stack">
-                    @foreach (string image in Images.Skip(1).Take(2))
+                    @foreach (int number in StackImages)
                     {
-                        <img src="@image" alt="@Name" />
+                        <img src="@Image(number)" alt="" />
                     }
                 </div>
             </div>
-        }
-
-        <div class="detail-meta">
-            <div class="row">
-                <div class="col-xl-9">
-                    <div class="detail-meta-card">
-                        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                            @if (!string.IsNullOrWhiteSpace(Category))
-                            {
-                                <span class="eyebrow">@FormatCategory.Format(Category) · @AccommodationCount op het park</span>
-                            }
-                            @if (MaxPersons is not null)
-                            {
-                                <span class="count-pill">Tot @MaxPersons personen</span>
-                            }
+            <div class="detail-meta">
+                <div class="row">
+                    <div class="col-xl-9">
+                        <div class="detail-meta-card">
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                <span class="eyebrow">@FormatCategory.Format(type.Category) · @type.UnitCount op het park</span>
+                                <span class="count-pill">Tot @type.MaxPersons personen</span>
+                            </div>
+                            <h1 class="page-title mb-3">@type.Name</h1>
+                            <p class="lead text-muted-du mb-0">@type.Description</p>
                         </div>
-                        <h1 class="page-title mb-3">@Name</h1>
-                        @if (!string.IsNullOrWhiteSpace(Description))
-                        {
-                            <p class="lead text-muted-du mb-0">@Description</p>
-                        }
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<section class="section-pad">
-    <div class="container">
-        <div class="row g-5">
-            <div class="col-lg-8">
-                <div class="eyebrow">Dit kun je verwachten</div>
-                <h2 class="section-title">Comfort met een Achterhoekse knipoog.</h2>
-                @if (!string.IsNullOrWhiteSpace(Introduction))
-                {
-                    <h2 class="section-title">@Introduction</h2>
-                }
-
-                @if (Features.Count > 0)
-                {
+    <section class="section-pad">
+        <div class="container">
+            <div class="row g-5">
+                <div class="col-lg-8">
+                    <div class="eyebrow">Dit kun je verwachten</div>
+                    <h2 class="section-title">Comfort met een Achterhoekse knipoog.</h2>
+                    <p class="text-muted-du mt-4">Niet iedere fysieke @(IsHolidayHome ? "woning" : "plaats") binnen dit type is exact hetzelfde. Eigenschappen zoals ligging, huisdieren, laadpunt of extra voorzieningen kunnen per eenheid verschillen.</p>
                     <div class="d-flex flex-wrap gap-2 mt-4">
-                        @foreach (AccommodationFeatureResponse feature in Features)
+                        @foreach (string highlight in type.Highlights)
                         {
-                            <span class="feature-chip">@FeatureText.Format(feature)</span>
+                            <span class="feature-chip">@highlight</span>
                         }
                     </div>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(Zone))
-                {
-                    @if (Category == "HolidayHome")
-                    {
-                        <div class="zone-card mt-5">
-                            <h3 class="h4">Waar op het park?</h3>
-                            <p class="mb-0 text-muted-du">Dit vakantiehuis staat op zone(s): <strong>@Zone</strong></p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="zone-card mt-5">
-                            <h3 class="h4">Waar op het park?</h3>
-                            <p class="mb-0 text-muted-du">Deze camping staat op zone(s): <strong>@Zone</strong></p>
-                        </div>
-                    }
-                }
-
-                @if (!string.IsNullOrWhiteSpace(FloorPlanImage))
-                {
-                    <section class="mt-5 pt-4">
-                        <div class="eyebrow">Indeling</div>
-                        <h2 class="section-title mb-4">Plattegrond</h2>
-                        <div class="floor-card">
-                            <img src="@FloorPlanImage" alt="Plattegrond van @Name" />
-                        </div>
-                    </section>
-                }
-            </div>
-
-            <div class="col-lg-4">
-                <aside class="booking-card">
-                    <div class="eyebrow">Zoek &amp; boek</div>
-                    <h2 class="h2 mt-2">Wanneer wil je d'r op uut?</h2>
-                    <p class="small text-muted-du">Controleer de beschikbaarheid voor deze accommodatie.</p>
-                    <div class="row g-2 mt-1">
-                        <div class="col-6">
-                            <div class="fake-input">Aankomst<br /><b>dd-mm-jjjj</b></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="fake-input">Vertrek<br /><b>dd-mm-jjjj</b></div>
-                        </div>
-                        <div class="col-12">
-                            <div class="fake-input">Gezelschap<br /><b>@(MaxPersons is null ? "Aantal personen" : $"Maximaal {MaxPersons} personen")</b></div>
-                        </div>
+                    <div class="zone-card mt-5">
+                        <h3 class="h4">Waar op het park?</h3>
+                        <p class="mb-0 text-muted-du">Dit type vind je op het park in: <strong>@string.Join(", ", type.Zones)</strong>.</p>
                     </div>
-                    <a href="@($"/zoek-en-boek?type={TypeSlug}")" class="btn btn-du w-100 mt-3">Controleer beschikbaarheid</a>
-                </aside>
+                    @if (IsHolidayHome)
+                    {
+                        <section class="mt-5 pt-4">
+                            <div class="eyebrow">Indeling</div>
+                            <h2 class="section-title mb-4">Plattegrond</h2>
+                            <div class="floor-card">
+                                <img src="@($"img/accommodaties/{type.Slug}/plattegrond.webp")" alt="Plattegrond @type.Name" />
+                            </div>
+                        </section>
+                    }
+                </div>
+                <div class="col-lg-4">
+                    <aside class="booking-card">
+                        <div class="eyebrow">Zoek &amp; boek</div>
+                        <h3 class="h2 mt-2">Wanneer wil je d'r op uut?</h3>
+                        <p class="small text-muted-du">Kies je data en reisgezelschap en zie direct of dit verblijf vrij is.</p>
+                        <div class="row g-2 mt-1">
+                            <div class="col-6"><div class="fake-input">Aankomst<br /><b>dd-mm-jjjj</b></div></div>
+                            <div class="col-6"><div class="fake-input">Vertrek<br /><b>dd-mm-jjjj</b></div></div>
+                            <div class="col-12"><div class="fake-input">Gezelschap<br /><b>1–@type.MaxPersons personen</b></div></div>
+                        </div>
+                        <a href="@($"/zoek-en-boek?type={type.Slug}")" class="btn btn-du w-100 mt-3">Controleer beschikbaarheid</a>
+                    </aside>
+                </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 }
 
 @code {
     [Parameter]
-    public string? TypeSlug { get; set; }
+    public string TypeSlug { get; set; } = string.Empty;
 
-    private string Name { get; set; } = "Accommodatie";
-    private string? Category { get; set; }
-    private int? MaxPersons { get; set; }
-    private int AccommodationCount { get; set; }
-    private string? Description { get; set; }
-    private string? Introduction { get; set; }
-    private string? Zone { get; set; }
-    private string? FloorPlanImage { get; set; }
-    private List<string> Images { get; set; } = [];
-    private List<AccommodationFeatureResponse> Features { get; set; } = [];
+    private AccommodationTypeResponse? type;
     private bool isLoading = true;
-    private bool accommodationFound;
     private string? loadError;
 
-    protected override async Task OnInitializedAsync()
+    private bool IsHolidayHome => type?.Category == "HolidayHome";
+
+    // Holiday homes have three photos, camping pitches two.
+    private IEnumerable<int> StackImages => IsHolidayHome ? new[] { 2, 3 } : new[] { 2 };
+
+    private string Image(int number) => $"img/accommodaties/{type?.Slug}/{number}.webp";
+
+    // The list of 12 types is small; loading it lets an unknown slug show "niet gevonden"
+    // and a failing API an error, which the single-type endpoint can't tell apart here.
+    protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(TypeSlug))
-        {
-            isLoading = false;
-            return;
-        }
+        isLoading = true;
+        loadError = null;
 
-        // Fetch all accommodations and filter by TypeSlug
-        var response = await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
+        ApiResponse<List<AccommodationTypeResponse>> response =
+            await HttpService.GetAsync<List<AccommodationTypeResponse>>("AccommodationType");
 
-        if (response.Succeeded && response.Value != null)
-        {
-            List<AccommodationResponse> matchingAccommodations = response.Value
-                .Where(accommodation => accommodation.TypeSlug == TypeSlug)
-                .ToList();
-            AccommodationResponse? accommodation = matchingAccommodations.FirstOrDefault();
-
-
-            if (accommodation != null)
-            {
-                accommodationFound = true;
-                Name = accommodation.TypeName;
-                Category = accommodation.Category;
-                AccommodationCount = matchingAccommodations.Count;
-                MaxPersons = accommodation.MaxPersons;
-                Zone = string.Join(", ", matchingAccommodations
-                    .Select(accommodation => accommodation.Zone)
-                    .Where(zone => !string.IsNullOrWhiteSpace(zone))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(zone => zone, StringComparer.OrdinalIgnoreCase));
-                Features = accommodation.Features;
-
-                bool isHolidayHome = Category == "HolidayHome";
-
-                // Generate image paths based on TypeSlug
-                Images = isHolidayHome
-                    ? new List<string> { $"img/accommodaties/{accommodation.TypeSlug}/1.webp", $"img/accommodaties/{accommodation.TypeSlug}/2.webp", $"img/accommodaties/{accommodation.TypeSlug}/3.webp" }
-                    : new List<string> { $"img/accommodaties/{accommodation.TypeSlug}/1.webp", $"img/accommodaties/{accommodation.TypeSlug}/2.webp" };
-
-                FloorPlanImage = isHolidayHome ? $"img/accommodaties/{accommodation.TypeSlug}/plattegrond.webp" : null;
-            }
-        }
+        if (response.Succeeded)
+            type = (response.Value ?? []).FirstOrDefault(item => item.Slug.Equals(TypeSlug, StringComparison.OrdinalIgnoreCase));
         else
-        {
             loadError = response.Message ?? "Probeer het later opnieuw.";
-        }
 
         isLoading = false;
     }
