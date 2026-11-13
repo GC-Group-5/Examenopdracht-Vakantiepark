@@ -5,14 +5,26 @@
 
 <PageTitle>Alle verblijven - Vakantiepark D'r op Uut</PageTitle>
 
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Verblijven</div>
+        <h1 class="page-title mt-2">Waar ga jij d'r op uut?</h1>
+        <p class="page-intro mt-4">De dataset bevat @AccommodationCount("HolidayHome") vakantiewoningen en @AccommodationCount("CampingPitch") kampeerplaatsen. Op de website presenteren we ze per verblijfstype; de zoek- en boekmodule bepaalt straks welke fysieke eenheid beschikbaar is.</p>
+    </div>
+</section>
+
+<div class="stat-band">
+    <div class="container">
+        <div class="row text-center text-md-start">
+            <div class="col-4 stat-item"><strong>@AccommodationCount("HolidayHome")</strong><div class="small text-muted-du">vakantiewoningen</div></div>
+            <div class="col-4 stat-item"><strong>@AccommodationCount("CampingPitch")</strong><div class="small text-muted-du">kampeerplaatsen</div></div>
+            <div class="col-4 stat-item"><strong>@AccommodationTypes.Count</strong><div class="small text-muted-du">verblijfstypes</div></div>
+        </div>
+    </div>
+</div>
+
 <section class="section-pad">
     <div class="container">
-        <div class="mb-5">
-            <div class="eyebrow">Verblijven</div>
-            <h1 class="page-title mb-3">Alle verblijfstypes</h1>
-            <p class="lead text-muted-du mb-0">Bekijk alle 12 verblijfstypes en kies de accommodatie die bij jullie past.</p>
-        </div>
-
         @if (accommodations is null && errorMessage is null)
         {
             <p class="text-muted-du">De verblijven worden geladen...</p>
@@ -40,7 +52,7 @@
                                      alt="@accommodation.TypeName"
                                      loading="lazy" />
                                 <div class="card-body">
-                                    <div class="eyebrow">@accommodation.Category · @accommodation.MaxPersons pers.</div>
+                                    <div class="eyebrow">@FormatCategory(accommodation) · @CountByType(accommodation.TypeSlug) stuks</div>
                                     <h2 class="h3 mt-2 mb-0">@accommodation.TypeName</h2>
                                     <p class="text-muted-du mt-3">Bekijk de eigenschappen en foto's van dit verblijfstype.</p>
                                     <div class="d-flex flex-wrap gap-2">
@@ -68,6 +80,12 @@
             .DistinctBy(accommodation => accommodation.TypeSlug)
             .ToList() ?? [];
 
+    private int AccommodationCount(string category)
+        => accommodations?.Count(accommodation => accommodation.Category == category) ?? 0;
+
+    private int CountByType(string typeSlug)
+        => accommodations?.Count(accommodation => accommodation.TypeSlug == typeSlug) ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
         ApiResponse<List<AccommodationResponse>> response =
@@ -93,5 +111,13 @@
                 => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
             _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
             _ => feature.OptionName ?? feature.Name,
+        };
+
+    private static string FormatCategory(AccommodationResponse accommodation)
+        => accommodation.Category switch
+        {
+            "CampingPitch" => "Kampeerplaats",
+            "HolidayHome" => "Vakantiewoning",
+            _ => accommodation.Category,
         };
 }

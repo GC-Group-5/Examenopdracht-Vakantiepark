@@ -52,7 +52,7 @@
                 <div class="eyebrow">Verblijven</div>
                 <h2 class="section-title mb-0">Van knus tot royaal</h2>
             </div>
-            <a class="fw-bold text-decoration-none" href="accommodaties">Alle verblijfstypes bekijken →</a>
+            <a class="fw-bold text-decoration-none" href="accommodaties">Alle @AccommodationTypes.Count verblijfstypes bekijken →</a>
         </div>
         <div class="row g-4">
             @if (accommodations != null && accommodations.Count > 0)
@@ -68,7 +68,7 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between gap-3 align-items-start">
                                         <div>
-                                            <div class="eyebrow">@accommodation.Category · @accommodation.MaxPersons pers.</div>
+                                            <div class="eyebrow">@FormatCategory(accommodation) · @CountByType(accommodation.TypeSlug) stuks</div>
                                             <h3 class="h3 mt-2 mb-0">@accommodation.TypeName</h3>
                                         </div>
                                         <span class="count-pill text-nowrap">tot @accommodation.MaxPersons pers.</span>
@@ -142,6 +142,14 @@
 @code {
     private List<AccommodationResponse>? accommodations;
 
+    private List<AccommodationResponse> AccommodationTypes
+        => accommodations?
+            .DistinctBy(accommodation => accommodation.TypeSlug)
+            .ToList() ?? [];
+
+    private int CountByType(string typeSlug)
+        => accommodations?.Count(accommodation => accommodation.TypeSlug == typeSlug) ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
         var response = await HttpService.GetAsync<List<AccommodationResponse>>("Accommodation");
@@ -167,5 +175,13 @@
                 => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
             _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
             _ => feature.OptionName ?? feature.Name,
+        };
+
+    private static string FormatCategory(AccommodationResponse accommodation)
+        => accommodation.Category switch
+        {
+            "CampingPitch" => "Kampeerplaats",
+            "HolidayHome" => "Vakantiewoning",
+            _ => accommodation.Category,
         };
 }

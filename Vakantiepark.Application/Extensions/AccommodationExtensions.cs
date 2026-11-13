@@ -42,5 +42,38 @@ namespace Vakantiepark.Application.Extensions
                     .Select(option => new FeatureOptionResponse() { Value = option.Value, Name = option.Name })
                     .ToList(),
             };
+
+        public static AccommodationTypeResponse ToTypeResponse(this IGrouping<string, Accommodation> units)
+        {
+            Accommodation first = units.First();
+
+            return new AccommodationTypeResponse()
+            {
+                Slug = first.Type.Slug,
+                Name = first.Type.Name,
+                Category = first.Type.Category.ToString(),
+                MaxPersons = units.Max(unit => unit.MaxPersons),
+                UnitCount = units.Count(),
+                Features = units
+                    .SelectMany(unit => unit.Features)
+                    .GroupBy(value => value.Feature.Key)
+                    .Select(values => new TypeFeatureResponse()
+                    {
+                        Key = values.Key,
+                        Name = values.First().Feature.Name,
+                        ValueType = values.First().Feature.ValueType.ToString(),
+                        UnitCount = values.Count(),
+                        MinNumber = values.Min(value => value.NumberValue),
+                        MaxNumber = values.Max(value => value.NumberValue),
+                        OptionNames = values
+                            .Where(value => value.Option is not null)
+                            .Select(value => value.Option!.Name)
+                            .Distinct()
+                            .ToList(),
+                    })
+                    .OrderBy(feature => feature.Name)
+                    .ToList(),
+            };
+        }
     }
 }

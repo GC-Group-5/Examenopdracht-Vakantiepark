@@ -69,7 +69,7 @@ else
                         <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
                             @if (!string.IsNullOrWhiteSpace(Category))
                             {
-                                <span class="eyebrow">@Category</span>
+                                <span class="eyebrow">@FormatCategory(Category) · @AccommodationCount op het park</span>
                             }
                             @if (MaxPersons is not null)
                             {
@@ -93,6 +93,7 @@ else
         <div class="row g-5">
             <div class="col-lg-8">
                 <div class="eyebrow">Dit kun je verwachten</div>
+                <h2 class="section-title">Comfort met een Achterhoekse knipoog.</h2>
                 @if (!string.IsNullOrWhiteSpace(Introduction))
                 {
                     <h2 class="section-title">@Introduction</h2>
@@ -169,6 +170,7 @@ else
     private string Name { get; set; } = "Accommodatie";
     private string? Category { get; set; }
     private int? MaxPersons { get; set; }
+    private int AccommodationCount { get; set; }
     private string? Description { get; set; }
     private string? Introduction { get; set; }
     private string? Zone { get; set; }
@@ -210,11 +212,13 @@ else
                 .ToList();
             AccommodationResponse? accommodation = matchingAccommodations.FirstOrDefault();
 
+
             if (accommodation != null)
             {
                 accommodationFound = true;
                 Name = accommodation.TypeName;
                 Category = accommodation.Category;
+                AccommodationCount = matchingAccommodations.Count;
                 MaxPersons = accommodation.MaxPersons;
                 Zone = string.Join(", ", matchingAccommodations
                     .Select(accommodation => accommodation.Zone)
@@ -223,14 +227,14 @@ else
                     .OrderBy(zone => zone, StringComparer.OrdinalIgnoreCase));
                 Features = accommodation.Features;
 
+                bool isHolidayHome = Category == "HolidayHome";
+
                 // Generate image paths based on TypeSlug
-                Images = new List<string>
-                {
-                    $"img/accommodaties/{TypeSlug}/1.webp",
-                    $"img/accommodaties/{TypeSlug}/2.webp",
-                    $"img/accommodaties/{TypeSlug}/3.webp",
-                };
-                FloorPlanImage = $"img/accommodaties/{TypeSlug}/plattegrond.webp";
+                Images = isHolidayHome
+                    ? new List<string> { $"img/accommodaties/{accommodation.TypeSlug}/1.webp", $"img/accommodaties/{accommodation.TypeSlug}/2.webp", $"img/accommodaties/{accommodation.TypeSlug}/3.webp" }
+                    : new List<string> { $"img/accommodaties/{accommodation.TypeSlug}/1.webp", $"img/accommodaties/{accommodation.TypeSlug}/2.webp" };
+
+                FloorPlanImage = isHolidayHome ? $"img/accommodaties/{accommodation.TypeSlug}/plattegrond.webp" : null;
             }
         }
         else
@@ -240,4 +244,12 @@ else
 
         isLoading = false;
     }
+
+    private static string FormatCategory(string? category)
+        => category switch
+        {
+            "CampingPitch" => "Kampeerplaats",
+            "HolidayHome" => "Vakantiewoning",
+            _ => category ?? "Verblijf",
+        };
 }

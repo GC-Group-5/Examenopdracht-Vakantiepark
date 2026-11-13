@@ -36,5 +36,28 @@ namespace Vakantiepark.Application.Services
             List<Feature> features = await FeatureRepository.GetAllWithOptionsAsync();
             return features.Select(feature => feature.ToResponse()).ToList();
         }
+
+        public async Task<List<AccommodationTypeResponse>> GetTypesAsync()
+        {
+            List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            return accommodations
+                .GroupBy(accommodation => accommodation.Type.Slug)
+                .Select(units => units.ToTypeResponse())
+                .ToList();
+        }
+
+        public async Task<AccommodationTypeResponse> GetTypeBySlugAsync(string slug)
+        {
+            List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            IGrouping<string, Accommodation>? units = accommodations
+                .Where(accommodation => accommodation.Type.Slug.Equals(slug.Trim(), StringComparison.OrdinalIgnoreCase))
+                .GroupBy(accommodation => accommodation.Type.Slug)
+                .SingleOrDefault();
+
+            if (units is null)
+                throw new KeyNotFoundException("Verblijfstype niet gevonden.");
+
+            return units.ToTypeResponse();
+        }
     }
 }

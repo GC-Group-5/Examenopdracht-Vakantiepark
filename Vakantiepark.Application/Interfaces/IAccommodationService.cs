@@ -7,5 +7,7 @@ namespace Vakantiepark.Application.Interfaces
         Task<List<AccommodationResponse>> GetAllAsync();
         Task<AccommodationResponse> GetByCodeAsync(string code);
         Task<List<FeatureResponse>> GetFeaturesAsync();
+        Task<List<AccommodationTypeResponse>> GetTypesAsync();
+        Task<AccommodationTypeResponse> GetTypeBySlugAsync(string slug);
     }
 }
