@@ -4,6 +4,7 @@ using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Services;
+using Vakantiepark.Application.Settings;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
 using Xunit;
@@ -58,6 +59,7 @@ namespace Vakantiepark.UnitTests
                 _parkSettingsRepository.Object,
                 new FixedTimeProvider(DateTimeOffset.UtcNow),
                 _emailSender.Object,
+                new FrontendSettings { BaseUrl = "https://localhost:4200" },
                 NullLogger<BookingService>.Instance);
         }
 
@@ -289,6 +291,19 @@ namespace Vakantiepark.UnitTests
                     && html.Contains("30 dagen")
                     && html.Contains("15:00")),
                 It.Is<string>(text => text.Contains("K7M2XQ9P") && text.Contains("ANNULERINGSVOORWAARDEN"))), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_EmailContainsPersonalMyBookingLink()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            const string link = "https://localhost:4200/mijn-boeking?nummer=K7M2XQ9P";
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains(link)),
+                It.Is<string>(text => text.Contains(link))), Times.Once);
         }
 
         [Fact]

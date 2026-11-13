@@ -1,5 +1,6 @@
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Helpers;
+using Vakantiepark.Application.Settings;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using Vakantiepark.Domain.Interfaces.Repositories;
@@ -26,6 +27,7 @@ namespace Vakantiepark.Application.Services
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
         private readonly TimeProvider TimeProvider;
         private readonly IEmailSender EmailSender;
+        private readonly FrontendSettings FrontendSettings;
         private readonly ILogger<BookingService> Logger;
 
         public BookingService(
@@ -38,6 +40,7 @@ namespace Vakantiepark.Application.Services
             IRepository<ParkSettings> parkSettingsRepository,
             TimeProvider timeProvider,
             IEmailSender emailSender,
+            FrontendSettings frontendSettings,
             ILogger<BookingService> logger)
         {
             BookingRepository = bookingRepository;
@@ -49,6 +52,7 @@ namespace Vakantiepark.Application.Services
             ParkSettingsRepository = parkSettingsRepository;
             TimeProvider = timeProvider;
             EmailSender = emailSender;
+            FrontendSettings = frontendSettings;
             Logger = logger;
         }
 
@@ -173,6 +177,9 @@ namespace Vakantiepark.Application.Services
                     .OrderByDescending(guest => guest.IsMainBooker)
                     .Select(guest => guest.Name));
 
+                // Personal link to "Mijn boeking" (US-11): the booking number is filled in, the guest logs in with their email.
+                string myBookingUrl = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking?nummer={Uri.EscapeDataString(booking.BookingNumber)}";
+
                 RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingConfirmation, new Dictionary<string, string>
                 {
                     ["Name"] = booking.Name,
@@ -192,7 +199,8 @@ namespace Vakantiepark.Application.Services
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
                     ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
-                    ["NoRefundDays"] = settings.NoRefundDaysBeforeArrival.ToString(dutch)
+                    ["NoRefundDays"] = settings.NoRefundDaysBeforeArrival.ToString(dutch),
+                    ["MyBookingUrl"] = myBookingUrl
                 });
 
                 await EmailSender.SendAsync(booking.Email, $"Bevestiging van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);

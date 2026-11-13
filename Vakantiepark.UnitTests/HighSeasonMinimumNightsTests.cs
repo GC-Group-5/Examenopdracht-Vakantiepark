@@ -2,6 +2,7 @@ using Moq;
 using Microsoft.Extensions.Logging.Abstractions;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
+using Vakantiepark.Application.Settings;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
@@ -64,6 +65,7 @@ namespace Vakantiepark.UnitTests
                 _parkSettingsRepository.Object,
                 new FixedTimeProvider(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero)),
                 _emailSender.Object,
+                new FrontendSettings { BaseUrl = "https://localhost:4200" },
                 NullLogger<BookingService>.Instance);
         }
 
