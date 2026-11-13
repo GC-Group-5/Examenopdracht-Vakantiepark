@@ -1,4 +1,5 @@
 using Moq;
+using Microsoft.Extensions.Logging.Abstractions;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Domain.Entities;
@@ -19,6 +20,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new();
         private readonly Mock<IPriceService> _priceService = new();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new();
+        private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
         private readonly BookingService _sut;
@@ -60,7 +62,9 @@ namespace Vakantiepark.UnitTests
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,
-                new FixedTimeProvider(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero)));
+                new FixedTimeProvider(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero)),
+                _emailSender.Object,
+                NullLogger<BookingService>.Instance);
         }
 
         private static CreateBookingRequest Stay(int arrivalMonth, int arrivalDay, int departureMonth, int departureDay)

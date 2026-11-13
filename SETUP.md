@@ -123,6 +123,27 @@ builder.AddProject<Projects.Vakantiepark_UI>("ui")
   parameter with a generated value, passed to the API with `WithEnvironment`. Never in `appsettings.json`.
 - A local mailbox (Mailpit) is added to the AppHost in US-09, so development never sends real email.
 
+### Email (Mailpit)
+
+Every email the API sends (e.g. the booking confirmation) lands in **Mailpit**: open the `mailpit`
+link in the Aspire dashboard. This works out of the box, no settings or secrets needed.
+
+**Optional: also receive the mail in your own inbox.** Mailpit can relay every message to a real
+SMTP server. This is per developer and lives only in *your* AppHost user-secrets, never in git:
+
+1. Create an app password for your own Gmail account (2-step verification must be on):
+   <https://myaccount.google.com/apppasswords>.
+2. Right-click **Vakantiepark.AppHost → Manage User Secrets** and add these lines next to the
+   existing `Parameters:` lines (keep those!):
+   ```json
+   "Parameters:mail-relay-host": "smtp.gmail.com",
+   "Parameters:mail-relay-port": "587",
+   "Parameters:mail-relay-username": "you@gmail.com",
+   "Parameters:mail-relay-password": "your 16-character app password"
+   ```
+3. Restart the app. Mail now shows up in Mailpit **and** in the recipient's inbox, so only use
+   your own addresses when testing. Remove the four lines to switch the relay off again.
+
 ### Ports and settings
 
 | Where | Setting | Value |
@@ -229,6 +250,6 @@ Priority, Estimate, Size and Sprint filled in. Keep the status of your own items
 - [ ] `dotnet test Vakantiepark.slnx` passes.
 - [ ] Docker Desktop is running.
 - [ ] Running `Vakantiepark.AppHost` opens the Aspire dashboard with `postgres`, `vakantiepark`,
-      `api`, `ui` and `pgadmin` all healthy.
+      `api`, `ui`, `pgadmin` and `mailpit` all healthy.
 - [ ] https://localhost:5001/api shows Swagger.
 - [ ] https://localhost:4200 shows the homepage.

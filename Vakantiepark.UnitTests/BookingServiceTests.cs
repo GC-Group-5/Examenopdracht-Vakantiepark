@@ -1,4 +1,5 @@
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Microsoft.Extensions.Logging.Abstractions;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Booking;
@@ -17,6 +18,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationTypeRepository> _accommodationTypeRepository = new Mock<IAccommodationTypeRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
+        private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly Mock<IRepository<Season>> _seasonRepository = new Mock<IRepository<Season>>();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new Mock<IRepository<ParkSettings>>();
         private readonly Accommodation _firstUnit = TestData.CreateAccommodation("EL6-001", "Waterkant");
@@ -54,7 +56,9 @@ namespace Vakantiepark.UnitTests
                 _bookingNumberGenerator.Object,
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,
-                new FixedTimeProvider(DateTimeOffset.UtcNow));
+                new FixedTimeProvider(DateTimeOffset.UtcNow),
+                _emailSender.Object,
+                NullLogger<BookingService>.Instance);
         }
 
         [Fact]
@@ -252,6 +256,64 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(30, quote.FreeCancellationDaysBeforeArrival);
             Assert.Equal(7, quote.NoRefundDaysBeforeArrival);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        // US-09: confirmation email.
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_SendsOneConfirmationEmailToGuest()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+
+            await _sut.CreateAsync(request);
+
+            _emailSender.Verify(x => x.SendAsync(
+                request.Email,
+                It.Is<string>(subject => subject.Contains("K7M2XQ9P")),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_EmailContainsStayPartyDepositAndCancellationRules()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("K7M2XQ9P")
+                    && html.Contains("Eik Luxe 6")
+                    && html.Contains("Els Jansen")
+                    && html.Contains("Aanbetaling (20%)")
+                    && html.Contains("30 dagen")
+                    && html.Contains("15:00")),
+                It.Is<string>(text => text.Contains("K7M2XQ9P") && text.Contains("ANNULERINGSVOORWAARDEN"))), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_AllUnitsBooked_SendsNoEmail()
+        {
+            _bookingRepository
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .ReturnsAsync(new List<Guid> { _firstUnit.Id, _secondUnit.Id });
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
+
+            _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_EmailFails_KeepsBookingAndReturnsBookingNumber()
+        {
+            _emailSender
+                .Setup(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("Mail server down"));
+
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal("K7M2XQ9P", response.BookingNumber);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
         }
     }
 }
