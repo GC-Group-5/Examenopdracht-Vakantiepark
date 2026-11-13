@@ -19,6 +19,7 @@ namespace Vakantiepark.Infrastructure.Persistence
         public DbSet<ParkSettings> ParkSettings => Set<ParkSettings>();
         public DbSet<TouristTaxRate> TouristTaxRates => Set<TouristTaxRate>();
         public DbSet<Season> Seasons => Set<Season>();
+        public DbSet<MaintenancePeriod> MaintenancePeriods => Set<MaintenancePeriod>();
         public DbSet<AccommodationTypePrice> AccommodationTypePrices => Set<AccommodationTypePrice>();
         public DbSet<User> Users => Set<User>();
 
@@ -43,6 +44,7 @@ namespace Vakantiepark.Infrastructure.Persistence
             builder.Entity<ParkSettings>(options => options.Configure());
             builder.Entity<TouristTaxRate>(options => options.Configure());
             builder.Entity<Season>(options => options.Configure());
+            builder.Entity<MaintenancePeriod>(options => options.Configure());
             builder.Entity<AccommodationTypePrice>(options => options.Configure());
             builder.Entity<User>(options => options.Configure());
         }

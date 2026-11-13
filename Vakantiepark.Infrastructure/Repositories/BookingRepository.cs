@@ -47,5 +47,14 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Select(x => x.AccommodationUnitId)
                 .Distinct()
                 .ToListAsync();
+
+        public async Task<List<Booking>> GetByUnitIdInPeriodAsync(Guid unitId, DateOnly startDate, DateOnly endDate)
+            => await Set
+                .AsNoTracking()
+                .Where(x => x.DeletedAt == null)
+                .Where(x => x.AccommodationUnitId == unitId)
+                .Where(x => x.ArrivalDate < endDate && x.DepartureDate > startDate)
+                .OrderBy(x => x.ArrivalDate)
+                .ToListAsync();
     }
 }
