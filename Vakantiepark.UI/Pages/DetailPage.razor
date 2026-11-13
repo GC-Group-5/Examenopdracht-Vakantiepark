@@ -2,6 +2,7 @@
 @using Vakantiepark.Shared.DTOs.Accommodation
 @using Vakantiepark.UI.Application.Interfaces
 @inject IHttpService HttpService
+@inject NavigationManager NavigationManager
 
 @if (isLoading)
 {
@@ -145,16 +146,27 @@ else
                     <p class="small text-muted-du">Controleer de beschikbaarheid voor deze accommodatie.</p>
                     <div class="row g-2 mt-1">
                         <div class="col-6">
-                            <div class="fake-input">Aankomst<br /><b>dd-mm-jjjj</b></div>
+                            <label class="form-label small fw-semibold" for="detail-arrival">Aankomst</label>
+                            <input id="detail-arrival" type="date" class="form-control" @bind="arrivalDate" min="@Today.ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-6">
-                            <div class="fake-input">Vertrek<br /><b>dd-mm-jjjj</b></div>
+                            <label class="form-label small fw-semibold" for="detail-departure">Vertrek</label>
+                            <input id="detail-departure" type="date" class="form-control" @bind="departureDate" min="@arrivalDate.AddDays(1).ToString("yyyy-MM-dd")" />
                         </div>
                         <div class="col-12">
-                            <div class="fake-input">Gezelschap<br /><b>@(MaxPersons is null ? "Aantal personen" : $"Maximaal {MaxPersons} personen")</b></div>
+                            <label class="form-label small fw-semibold" for="detail-guests">Gezelschap</label>
+                            <input id="detail-guests" type="number" class="form-control" @bind="numberOfGuests" min="1" max="@(MaxPersons ?? 20)" />
+                            @if (MaxPersons is not null)
+                            {
+                                <div class="small text-muted-du mt-1">Maximaal @MaxPersons personen</div>
+                            }
                         </div>
                     </div>
-                    <a href="@($"/zoek-en-boek?type={TypeSlug}")" class="btn btn-du w-100 mt-3">Controleer beschikbaarheid</a>
+                    @if (stayError is not null)
+                    {
+                        <div class="alert alert-danger small mt-3 mb-0" role="alert">@stayError</div>
+                    }
+                    <button type="button" class="btn btn-du w-100 mt-3" @onclick="CheckAvailability">Controleer beschikbaarheid</button>
                 </aside>
             </div>
         </div>
@@ -176,6 +188,32 @@ else
     private List<string> Images { get; set; } = [];
     private List<AccommodationFeatureResponse> Features { get; set; } = [];
     private bool isLoading = true;
+
+    // The stay the guest picks here is handed to the booking page, which checks availability and price.
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly arrivalDate = Today.AddDays(14);
+    private DateOnly departureDate = Today.AddDays(21);
+    private int numberOfGuests = 2;
+    private string? stayError;
+
+    private void CheckAvailability()
+    {
+        stayError = null;
+
+        if (arrivalDate < Today)
+            stayError = "Kies een aankomstdatum vanaf vandaag.";
+        else if (departureDate <= arrivalDate)
+            stayError = "De vertrekdatum moet na de aankomstdatum liggen.";
+        else if (numberOfGuests < 1 || (MaxPersons is int max && numberOfGuests > max))
+            stayError = MaxPersons is int maxPersons ? $"Kies 1 tot {maxPersons} personen." : "Kies minimaal 1 persoon.";
+
+        if (stayError is not null)
+            return;
+
+        NavigationManager.NavigateTo(
+            $"/zoek-en-boek?type={Uri.EscapeDataString(TypeSlug ?? string.Empty)}" +
+            $"&aankomst={arrivalDate:yyyy-MM-dd}&vertrek={departureDate:yyyy-MM-dd}&personen={numberOfGuests}");
+    }
     private bool accommodationFound;
     private string? loadError;
 
