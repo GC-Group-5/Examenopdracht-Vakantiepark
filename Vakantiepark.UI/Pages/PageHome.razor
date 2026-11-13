@@ -1,4 +1,5 @@
-@page "/"
+﻿@page "/"
+@inject IHttpService HttpService
 
 <PageTitle>Vakantiepark D'r op Uut</PageTitle>
 
@@ -49,36 +50,27 @@
                 <div class="eyebrow">Verblijven</div>
                 <h2 class="section-title mb-0">Van knus tot royaal</h2>
             </div>
-            <a class="fw-bold text-decoration-none" href="accommodaties">Alle 12 verblijfstypes bekijken →</a>
+            <a class="fw-bold text-decoration-none" href="accommodaties">Alle @(types?.Count ?? 12) verblijfstypes bekijken →</a>
         </div>
-        <div class="row g-4">
-            @foreach (Highlight highlight in Highlights)
-            {
-                <div class="col-md-6 col-xl-3">
-                    <a class="text-decoration-none" href="@($"accommodaties/{highlight.Slug}")">
-                        <article class="type-card">
-                            <img src="@($"img/accommodaties/{highlight.Slug}/1.webp")" alt="@highlight.ImageAlt" loading="lazy" />
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between gap-3 align-items-start">
-                                    <div>
-                                        <div class="eyebrow">@highlight.Category · @highlight.Count stuks</div>
-                                        <h3 class="h3 mt-2 mb-0">@highlight.Name</h3>
-                                    </div>
-                                    <span class="count-pill text-nowrap">tot @highlight.MaxPersons pers.</span>
-                                </div>
-                                <p class="text-muted-du mt-3">@highlight.Description</p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    @foreach (string feature in highlight.Features)
-                                    {
-                                        <span class="feature-chip">@feature</span>
-                                    }
-                                </div>
-                            </div>
-                        </article>
-                    </a>
+        @if (types is null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Bezig met laden...</span>
                 </div>
-            }
-        </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (AccommodationTypeResponse type in FeaturedTypes)
+                {
+                    <div class="col-md-6 col-xl-4">
+                        <AccommodationTypeCard Type="type" />
+                    </div>
+                }
+            </div>
+        }
     </div>
 </section>
 
@@ -124,22 +116,24 @@
 </section>
 
 @code {
-    // Static selection for the homepage; the full overview with data from the API is built in US-04.
-    private static readonly List<Highlight> Highlights =
-    [
-        new("berk-4", "Berk 4", "Vakantiewoning", 32, 4,
-            "Compact en sfeervol voor een ontspannen verblijf met z'n tweeën of met het gezin.",
-            ["2 slaapkamers", "1 badkamer", "Huisdieren mogelijk"], "Vakantiewoning Berk 4 van rode baksteen met terras"),
-        new("eik-luxe-6", "Eik Luxe 6", "Vakantiewoning", 18, 6,
-            "Onze luxe zespersoons woning met extra comfort en vaak een eigen wellness.",
-            ["3 slaapkamers", "2 badkamers", "Sauna mogelijk"], "Vakantiewoning Eik Luxe 6 met terras en tuin"),
-        new("bosvilla-10", "Bosvilla 10", "Vakantiewoning", 18, 10,
-            "Een royale villa voor grote gezelschappen, rustig gelegen met veel binnen- en buitenruimte.",
-            ["5 slaapkamers", "2–3 badkamers", "Sauna mogelijk"], "Bosvilla 10 met rieten dak en grote tuin"),
-        new("tentplaats-comfort", "Tentplaats Comfort", "Kampeerplaats", 10, 6,
-            "Kamperen met nét wat meer gemak, zoals stroom en op veel plaatsen een wateraansluiting.",
-            ["Stroom 10/16A", "Water mogelijk", "Auto bij de plaats mogelijk"], "Tentplaats Comfort met tent en stroomkast op het gras"),
-    ];
+    // The same four types as the template's homepage.
+    private static readonly string[] FeaturedSlugs = ["berk-4", "eik-luxe-6", "bosvilla-10", "tentplaats-comfort"];
 
-    private sealed record Highlight(string Slug, string Name, string Category, int Count, int MaxPersons, string Description, string[] Features, string ImageAlt);
+    private List<AccommodationTypeResponse>? types;
+
+    private List<AccommodationTypeResponse> FeaturedTypes
+        => FeaturedSlugs
+            .Select(slug => types?.FirstOrDefault(type => type.Slug == slug))
+            .Where(type => type is not null)
+            .Select(type => type!)
+            .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<AccommodationTypeResponse>> response =
+            await HttpService.GetAsync<List<AccommodationTypeResponse>>("AccommodationType");
+
+        // Without the API the homepage still works, just without cards.
+        types = response.Succeeded ? response.Value ?? [] : [];
+    }
 }
