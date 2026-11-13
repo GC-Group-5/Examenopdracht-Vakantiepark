@@ -69,7 +69,7 @@ else
                         <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
                             @if (!string.IsNullOrWhiteSpace(Category))
                             {
-                                <span class="eyebrow">@FormatCategory(Category) · @AccommodationCount op het park</span>
+                                <span class="eyebrow">@FormatCategory.Format(Category) · @AccommodationCount op het park</span>
                             }
                             @if (MaxPersons is not null)
                             {
@@ -104,7 +104,7 @@ else
                     <div class="d-flex flex-wrap gap-2 mt-4">
                         @foreach (AccommodationFeatureResponse feature in Features)
                         {
-                            <span class="feature-chip">@FormatFeature(feature)</span>
+                            <span class="feature-chip">@FeatureText.Format(feature)</span>
                         }
                     </div>
                 }
@@ -181,19 +181,6 @@ else
     private bool accommodationFound;
     private string? loadError;
 
-    private static string FormatFeature(AccommodationFeatureResponse feature)
-        => feature.Key switch
-        {
-            "bedrooms" when feature.NumberValue is decimal bedrooms
-                => $"{bedrooms:0} {(bedrooms == 1 ? "slaapkamer" : "slaapkamers")}",
-            "maxPets" when feature.NumberValue is 0
-                => "Geen huisdieren toegestaan",
-            "maxPets" when feature.NumberValue is decimal maxPets
-                => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
-            _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
-            _ => feature.OptionName ?? feature.Name,
-        };
-
     protected override async Task OnInitializedAsync()
     {
         if (string.IsNullOrEmpty(TypeSlug))
@@ -244,12 +231,4 @@ else
 
         isLoading = false;
     }
-
-    private static string FormatCategory(string? category)
-        => category switch
-        {
-            "CampingPitch" => "Kampeerplaats",
-            "HolidayHome" => "Vakantiewoning",
-            _ => category ?? "Verblijf",
-        };
 }

@@ -52,13 +52,13 @@
                                      alt="@accommodation.TypeName"
                                      loading="lazy" />
                                 <div class="card-body">
-                                    <div class="eyebrow">@FormatCategory(accommodation) · @CountByType(accommodation.TypeSlug) stuks</div>
+                                    <div class="eyebrow">@FormatCategory.Format(accommodation.Category) · @CountByType(accommodation.TypeSlug) stuks</div>
                                     <h2 class="h3 mt-2 mb-0">@accommodation.TypeName</h2>
                                     <p class="text-muted-du mt-3">Bekijk de eigenschappen en foto's van dit verblijfstype.</p>
                                     <div class="d-flex flex-wrap gap-2">
                                         @foreach (AccommodationFeatureResponse feature in accommodation.Features.Take(3))
                                         {
-                                            <span class="feature-chip">@FormatFeature(feature)</span>
+                                            <span class="feature-chip">@FeatureText.Format(feature)</span>
                                         }
                                     </div>
                                 </div>
@@ -100,24 +100,4 @@
         errorMessage = response.Message ?? "De verblijven konden niet worden geladen.";
     }
 
-    private static string FormatFeature(AccommodationFeatureResponse feature)
-        => feature.Key switch
-        {
-            "bedrooms" when feature.NumberValue is decimal bedrooms
-                => $"{bedrooms:0} {(bedrooms == 1 ? "slaapkamer" : "slaapkamers")}",
-            "maxPets" when feature.NumberValue is 0
-                => "Geen huisdieren toegestaan",
-            "maxPets" when feature.NumberValue is decimal maxPets
-                => $"Maximaal {maxPets:0} {(maxPets == 1 ? "huisdier" : "huisdieren")}",
-            _ when feature.NumberValue is decimal number => $"{number:0.##} {feature.Name}",
-            _ => feature.OptionName ?? feature.Name,
-        };
-
-    private static string FormatCategory(AccommodationResponse accommodation)
-        => accommodation.Category switch
-        {
-            "CampingPitch" => "Kampeerplaats",
-            "HolidayHome" => "Vakantiewoning",
-            _ => accommodation.Category,
-        };
 }
