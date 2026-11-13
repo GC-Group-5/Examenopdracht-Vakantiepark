@@ -10,6 +10,9 @@ namespace Vakantiepark.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public AccommodationCategory Category { get; set; }
 
+        // Short intro text shown on the overview and the detail page (taken from the template).
+        public string Description { get; set; } = string.Empty;
+
         // Applies to every night that falls outside a season with its own price.
         public decimal DefaultPricePerNight { get; set; }
 

@@ -19,7 +19,10 @@ var api = builder.AddProject<Projects.Vakantiepark_API>("api")
     .WithEnvironment("JWT__Key", jwtKey)
     .WaitFor(database);
 
+// Not proxied, so the UI really runs on https://localhost:4200 (its launchSettings port).
+// The API only allows that origin (CORS and JWT audience), and the browser opens it on start.
 builder.AddProject<Projects.Vakantiepark_UI>("ui")
+    .WithEndpoint("https", endpoint => endpoint.IsProxied = false)
     .WaitFor(api);
 
 builder.Build().Run();

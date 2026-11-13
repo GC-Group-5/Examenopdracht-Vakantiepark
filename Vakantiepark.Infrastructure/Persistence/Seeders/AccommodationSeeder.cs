@@ -68,6 +68,25 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             ["wifiCoverage"] = [("limited", "Beperkt"), ("standard", "Standaard"), ("good", "Goed")],
         };
 
+        // Intro text per type, copied word for word from the website template
+        // (accommodaties/*.html and verblijven.html). The export only lists units, so the
+        // type texts are not in it. An unknown type stops the import.
+        public static readonly IReadOnlyDictionary<string, string> TypeDescriptions = new Dictionary<string, string>
+        {
+            ["Berk 4"] = "Compact en sfeervol voor een ontspannen verblijf met z’n tweeën of met het gezin.",
+            ["Berk 6"] = "Een fijne familiewoning met extra leefruimte, midden in het groen.",
+            ["Eik 6"] = "Comfortabel en eigentijds, met ruimte om samen te koken, eten en ontspannen.",
+            ["Eik Luxe 6"] = "Onze luxe zespersoons variant met extra comfort en op veel woningen wellnessvoorzieningen.",
+            ["Beuk 8"] = "Ruim genoeg voor twee gezinnen of een vriendengroep, zonder dat het massaal aanvoelt.",
+            ["Wilg 4 Mindervalide"] = "Gelijkvloers en toegankelijk ingericht, met extra aandacht voor bewegingsruimte en comfort.",
+            ["Bosvilla 10"] = "Een royale villa voor grotere gezelschappen, rustig gelegen en met veel binnen- en buitenruimte.",
+            ["Tentplaats Basis"] = "Een groene kampeerplek voor wie graag eenvoudig en dicht bij de natuur verblijft.",
+            ["Tentplaats Comfort"] = "Kamperen met nét wat meer gemak, zoals stroom en op veel plaatsen een wateraansluiting.",
+            ["Caravanplaats"] = "Een ruime plaats met voorzieningen voor caravan en auto, omgeven door groen.",
+            ["Camperplaats"] = "Een verharde camperplaats met praktische aansluitingen voor een comfortabel verblijf.",
+            ["Camperplaats XL"] = "Extra breed en extra ruim voor grotere campers, met uitgebreide aansluitmogelijkheden.",
+        };
+
         // The export uses camelCase names and snake_case categories ('holiday_home').
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
         {
@@ -77,7 +96,19 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
         public static async Task SeedAccommodationsAsync(this ApplicationDBContext context, CancellationToken cancellationToken = default)
         {
             if (await context.Accommodations.AnyAsync(cancellationToken))
+            {
+                // Databases imported before descriptions existed get them once; a text the
+                // beheerder has written is never overwritten.
+                List<AccommodationType> withoutDescription = await context.AccommodationTypes
+                    .Where(type => type.Description == string.Empty)
+                    .ToListAsync(cancellationToken);
+
+                foreach (AccommodationType type in withoutDescription)
+                    type.Description = DescriptionOf(type.Name);
+
+                await context.SaveChangesAsync(cancellationToken);
                 return;
+            }
 
             AccommodationImport import = BuildImport(LoadExport(), DateTime.UtcNow);
 
@@ -87,6 +118,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             context.Accommodations.AddRange(import.Accommodations);
             await context.SaveChangesAsync(cancellationToken);
         }
+
+        private static string DescriptionOf(string typeName) =>
+            TypeDescriptions.TryGetValue(typeName, out string? description)
+                ? description
+                : throw new InvalidOperationException($"Voor type '{typeName}' is geen omschrijving in de seeder.");
 
         public static AccommodationExport LoadExport()
         {
@@ -110,6 +146,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     Slug = group.Key.ToLowerInvariant().Replace(' ', '-'),
                     Name = group.Key,
                     Category = group.First().Category,
+                    Description = DescriptionOf(group.Key),
                     CreatedAt = now,
                 });
 

@@ -12,6 +12,7 @@ namespace Vakantiepark.Application.Extensions
                 Name = accommodation.Name,
                 TypeName = accommodation.Type.Name,
                 TypeSlug = accommodation.Type.Slug,
+                TypeDescription = accommodation.Type.Description,
                 Category = accommodation.Type.Category.ToString(),
                 Zone = accommodation.Zone.Name,
                 MaxPersons = accommodation.MaxPersons,
