@@ -39,155 +39,202 @@
                 <a class="btn btn-du mt-4" href="accommodaties">Kies een ander verblijf</a>
             </div>
         }
-        else if (!showSummary)
+        else
         {
-            <EditForm Model="request" OnValidSubmit="ShowSummary" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
-                <DataAnnotationsValidator />
+            @* No align-items-start on the row: the card column must stretch, or the sticky card cannot move. *@
+            <div class="row g-4">
+                <div class="col-lg-5 col-xl-4 order-lg-2">
+                    @* The stay being booked, like a listing card: sticky next to the form on large screens, on top on a phone. *@
+                    <aside class="booking-card zoek-sidebar">
+                        <img class="boek-card-image" src="@($"img/accommodaties/{AccommodationTypeSlug}/1.webp")" alt="@quote.AccommodationTypeName"
+                             onerror="this.onerror=null;this.src='img/placeholder-image.svg'" />
+                        <div class="eyebrow">Jouw verblijf</div>
+                        <h2 class="h3 mt-2 mb-1">@quote.AccommodationTypeName</h2>
+                        <p class="small text-muted-du mb-3">@(quote.Zone is null ? "Geen voorkeurszone" : $"Zone {quote.Zone}")</p>
 
-                <h2 class="h5 mb-3">Hoofdboeker</h2>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-guests">Aantal personen</label>
-                        <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" step="1" />
-                        <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
-                        <InputSelect id="booking-pets" class="form-select" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync">
-                            <option value="0">Geen</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                        </InputSelect>
-                        <div class="form-text">Geen huisdieren? Laat op Geen staan.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-name">Naam</label>
-                        <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
-                        <ValidationMessage For="() => request.Name" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-birthdate">Geboortedatum</label>
-                        <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" autocomplete="bday" />
-                        <ValidationMessage For="() => request.BirthDate" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
-                        <InputText id="booking-email" type="email" class="form-control" @bind-Value="request.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
-                        <ValidationMessage For="() => request.Email" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold" for="booking-phone">Telefoonnummer</label>
-                        <InputText id="booking-phone" type="tel" class="form-control" @bind-Value="request.PhoneNumber" placeholder="06 12345678" autocomplete="tel" />
-                        <ValidationMessage For="() => request.PhoneNumber" />
-                    </div>
+                        <dl class="row small mb-0">
+                            <dt class="col-5">Aankomst</dt>
+                            <dd class="col-7">@quote.ArrivalDate.ToString(DateFormat)<br /><span class="text-muted-du">vanaf @quote.ArrivalTime.ToString(TimeFormat)</span></dd>
+                            <dt class="col-5">Vertrek</dt>
+                            <dd class="col-7">@quote.DepartureDate.ToString(DateFormat)<br /><span class="text-muted-du">vóór @quote.DepartureTime.ToString(TimeFormat)</span></dd>
+                            <dt class="col-5">Gezelschap</dt>
+                            <dd class="col-7">
+                                @quote.NumberOfGuests @(quote.NumberOfGuests == 1 ? "persoon" : "personen")@(request.NumberOfPets > 0 ? $", {request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}" : "")
+                                @if (request.WheelchairAccessible)
+                                {
+                                    <br /><span class="text-muted-du">rolstoeltoegankelijk</span>
+                                }
+                            </dd>
+                        </dl>
+
+                        <hr />
+                        <h3 class="h6 mb-2">Prijsspecificatie</h3>
+                        @if (isRefreshingQuote)
+                        {
+                            <p class="small text-muted-du mb-0" role="status">De prijs wordt bijgewerkt…</p>
+                        }
+                        else
+                        {
+                            <table class="table table-sm small mb-0">
+                                <tbody>
+                                    <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@quote.Price.AccommodationPrice.ToString("C")</td></tr>
+                                    <tr><td>Eindschoonmaak</td><td class="text-end">@quote.Price.CleaningFee.ToString("C")</td></tr>
+                                    <tr><td>Toeristenbelasting (@quote.NumberOfGuests × @NumberOfNights)</td><td class="text-end">@quote.Price.TouristTax.ToString("C")</td></tr>
+                                    <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@quote.Price.TotalPrice.ToString("C")</td></tr>
+                                    <tr><td>Aanbetaling (@quote.DepositPercentage.ToString("0.##")%)</td><td class="text-end">@quote.Price.Deposit.ToString("C")</td></tr>
+                                </tbody>
+                            </table>
+                        }
+                    </aside>
                 </div>
-
-                @if (request.CoTravellers.Count > 0)
-                {
-                    <h2 class="h5 mt-5 mb-3">Reisgenoten</h2>
-                    <p class="text-muted-du small">We hebben van iedereen naam en geboortedatum nodig voor de toeristenbelasting.</p>
-                    @for (int index = 0; index < request.CoTravellers.Count; index++)
+                <div class="col-lg-7 col-xl-8 order-lg-1">
+                    @if (!showSummary)
                     {
-                        int number = index + 2;
-                        TravellerRequest traveller = request.CoTravellers[index];
-                        <div class="row g-3 mb-2">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="traveller-name-@number">Persoon @number: naam</label>
-                                <InputText id="@($"traveller-name-{number}")" class="form-control" @bind-Value="traveller.Name" placeholder="Voor- en achternaam" />
+                        <EditForm Model="request" OnValidSubmit="ShowSummary" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                            <DataAnnotationsValidator />
+
+                            <h2 class="h5 mb-3">Hoofdboeker</h2>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-guests">Aantal personen</label>
+                                    <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" step="1" />
+                                    <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
+                                    <InputSelect id="booking-pets" class="form-select" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync">
+                                        <option value="0">Geen</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                    </InputSelect>
+                                    <div class="form-text">Geen huisdieren? Laat op Geen staan.</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
+                                        <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-name">Naam</label>
+                                    <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
+                                    <ValidationMessage For="() => request.Name" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-birthdate">Geboortedatum</label>
+                                    <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" autocomplete="bday" />
+                                    <ValidationMessage For="() => request.BirthDate" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
+                                    <InputText id="booking-email" type="email" class="form-control" @bind-Value="request.Email" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+                                    <ValidationMessage For="() => request.Email" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="booking-phone">Telefoonnummer</label>
+                                    <InputText id="booking-phone" type="tel" class="form-control" @bind-Value="request.PhoneNumber" placeholder="06 12345678" autocomplete="tel" />
+                                    <ValidationMessage For="() => request.PhoneNumber" />
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="traveller-birthdate-@number">Persoon @number: geboortedatum</label>
-                                <InputDate id="@($"traveller-birthdate-{number}")" class="form-control" @bind-Value="traveller.BirthDate" />
+
+                            @if (request.CoTravellers.Count > 0)
+                            {
+                                <h2 class="h5 mt-5 mb-3">Reisgenoten</h2>
+                                <p class="text-muted-du small">We hebben van iedereen naam en geboortedatum nodig voor de toeristenbelasting.</p>
+                                @for (int index = 0; index < request.CoTravellers.Count; index++)
+                                {
+                                    int number = index + 2;
+                                    TravellerRequest traveller = request.CoTravellers[index];
+                                    <div class="row g-3 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold" for="traveller-name-@number">Persoon @number: naam</label>
+                                            <InputText id="@($"traveller-name-{number}")" class="form-control" @bind-Value="traveller.Name" placeholder="Voor- en achternaam" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold" for="traveller-birthdate-@number">Persoon @number: geboortedatum</label>
+                                            <InputDate id="@($"traveller-birthdate-{number}")" class="form-control" @bind-Value="traveller.BirthDate" />
+                                        </div>
+                                    </div>
+                                }
+                            }
+
+                            @if (quoteErrorMessage is not null)
+                            {
+                                <div class="alert alert-warning mt-4 mb-0" role="alert">@quoteErrorMessage</div>
+                            }
+
+                            @if (errorMessage is not null)
+                            {
+                                <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
+                            }
+
+                            <button type="submit" class="btn btn-du mt-4" disabled="@(isRefreshingQuote || quoteErrorMessage is not null)">
+                                @(isRefreshingQuote ? "Verblijf wordt gecontroleerd…" : "Naar de samenvatting")
+                            </button>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                            <h2 class="h4 mb-4">Samenvatting</h2>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Verblijf</dt>
+                                <dd class="col-sm-8">@quote.AccommodationTypeName</dd>
+
+                                <dt class="col-sm-4">Zone</dt>
+                                <dd class="col-sm-8">@(quote.Zone ?? "Geen voorkeur")</dd>
+
+                                <dt class="col-sm-4">Huisdieren</dt>
+                                <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+
+                                @if (request.WheelchairAccessible)
+                                {
+                                    <dt class="col-sm-4">Toegankelijkheid</dt>
+                                    <dd class="col-sm-8">Rolstoeltoegankelijk</dd>
+                                }
+
+                                <dt class="col-sm-4">Data</dt>
+                                <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
+
+                                <dt class="col-sm-4">Aankomst en vertrek</dt>
+                                <dd class="col-sm-8">Aankomst vanaf @quote.ArrivalTime.ToString(TimeFormat), vertrek vóór @quote.DepartureTime.ToString(TimeFormat)</dd>
+
+                                <dt class="col-sm-4">Reisgezelschap</dt>
+                                <dd class="col-sm-8">
+                                    <ul class="list-unstyled mb-0">
+                                        <li>@request.Name (@request.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(request.BirthDate) · hoofdboeker</li>
+                                        @foreach (TravellerRequest traveller in request.CoTravellers)
+                                        {
+                                            <li>@traveller.Name (@traveller.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(traveller.BirthDate)</li>
+                                        }
+                                    </ul>
+                                </dd>
+
+                                <dt class="col-sm-4">Contactgegevens</dt>
+                                <dd class="col-sm-8">@request.Email<br />@request.PhoneNumber</dd>
+                            </dl>
+
+                            <h3 class="h5 mt-4 mb-2">Annuleringsvoorwaarden</h3>
+                            <ul class="mb-0">
+                                <li>Tot @quote.FreeCancellationDaysBeforeArrival dagen voor aankomst annuleer je kosteloos.</li>
+                                <li>Daarna tot @quote.NoRefundDaysBeforeArrival dagen voor aankomst vervalt de aanbetaling.</li>
+                                <li>Binnen @quote.NoRefundDaysBeforeArrival dagen voor aankomst betaal je het volledige verblijf; de toeristenbelasting krijg je terug.</li>
+                            </ul>
+
+                            @if (errorMessage is not null)
+                            {
+                                <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
+                            }
+
+                            <div class="d-flex flex-wrap gap-3 mt-4">
+                                <button type="button" class="btn btn-outline-secondary" @onclick="EditDetails" disabled="@isSaving">Gegevens wijzigen</button>
+                                <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
+                                    @(isSaving ? "Bezig met boeken…" : "Boeking bevestigen")
+                                </button>
                             </div>
                         </div>
                     }
-                }
-
-                @if (quoteErrorMessage is not null)
-                {
-                    <div class="alert alert-warning mt-4 mb-0" role="alert">@quoteErrorMessage</div>
-                }
-
-                @if (errorMessage is not null)
-                {
-                    <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
-                }
-
-                <button type="submit" class="btn btn-du mt-4" disabled="@(isRefreshingQuote || quoteErrorMessage is not null)">
-                    @(isRefreshingQuote ? "Verblijf wordt gecontroleerd…" : "Naar de samenvatting")
-                </button>
-            </EditForm>
-        }
-        else
-        {
-            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
-                <h2 class="h4 mb-4">Samenvatting</h2>
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Verblijf</dt>
-                    <dd class="col-sm-8">@quote.AccommodationTypeName</dd>
-
-                    <dt class="col-sm-4">Zone</dt>
-                    <dd class="col-sm-8">@(quote.Zone ?? "Geen voorkeur")</dd>
-
-                    <dt class="col-sm-4">Huisdieren</dt>
-                    <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
-
-                    @if (request.WheelchairAccessible)
-                    {
-                        <dt class="col-sm-4">Toegankelijkheid</dt>
-                        <dd class="col-sm-8">Rolstoeltoegankelijk</dd>
-                    }
-
-                    <dt class="col-sm-4">Data</dt>
-                    <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
-
-                    <dt class="col-sm-4">Aankomst en vertrek</dt>
-                    <dd class="col-sm-8">Aankomst vanaf @quote.ArrivalTime.ToString(TimeFormat), vertrek vóór @quote.DepartureTime.ToString(TimeFormat)</dd>
-
-                    <dt class="col-sm-4">Reisgezelschap</dt>
-                    <dd class="col-sm-8">
-                        <ul class="list-unstyled mb-0">
-                            <li>@request.Name (@request.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(request.BirthDate) · hoofdboeker</li>
-                            @foreach (TravellerRequest traveller in request.CoTravellers)
-                            {
-                                <li>@traveller.Name (@traveller.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(traveller.BirthDate)</li>
-                            }
-                        </ul>
-                    </dd>
-
-                    <dt class="col-sm-4">Contactgegevens</dt>
-                    <dd class="col-sm-8">@request.Email<br />@request.PhoneNumber</dd>
-                </dl>
-
-                <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
-                <table class="table mb-0">
-                    <tbody>
-                        <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@quote.Price.AccommodationPrice.ToString("C")</td></tr>
-                        <tr><td>Eindschoonmaak</td><td class="text-end">@quote.Price.CleaningFee.ToString("C")</td></tr>
-                        <tr><td>Toeristenbelasting (@quote.NumberOfGuests × @NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@quote.Price.TouristTax.ToString("C")</td></tr>
-                        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@quote.Price.TotalPrice.ToString("C")</td></tr>
-                        <tr><td>Aanbetaling (@quote.DepositPercentage.ToString("0.##")% van het totaal)</td><td class="text-end">@quote.Price.Deposit.ToString("C")</td></tr>
-                    </tbody>
-                </table>
-
-                <h3 class="h5 mt-4 mb-2">Annuleringsvoorwaarden</h3>
-                <ul class="mb-0">
-                    <li>Tot @quote.FreeCancellationDaysBeforeArrival dagen voor aankomst annuleer je kosteloos.</li>
-                    <li>Daarna tot @quote.NoRefundDaysBeforeArrival dagen voor aankomst vervalt de aanbetaling.</li>
-                    <li>Binnen @quote.NoRefundDaysBeforeArrival dagen voor aankomst betaal je het volledige verblijf; de toeristenbelasting krijg je terug.</li>
-                </ul>
-
-                @if (errorMessage is not null)
-                {
-                    <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
-                }
-
-                <div class="d-flex flex-wrap gap-3 mt-4">
-                    <button type="button" class="btn btn-outline-secondary" @onclick="EditDetails" disabled="@isSaving">Gegevens wijzigen</button>
-                    <button type="button" class="btn btn-du" @onclick="ConfirmAsync" disabled="@isSaving">
-                        @(isSaving ? "Bezig met boeken…" : "Boeking bevestigen")
-                    </button>
                 </div>
             </div>
         }
@@ -309,6 +356,13 @@
     private async Task OnPetsChangedAsync(int newPets)
     {
         request.NumberOfPets = newPets;
+        await OnPartyChangedAsync();
+    }
+
+    // Only accessible units may be picked, so the quote is checked again.
+    private async Task OnWheelchairChangedAsync(bool wheelchairAccessible)
+    {
+        request.WheelchairAccessible = wheelchairAccessible;
         await OnPartyChangedAsync();
     }
 

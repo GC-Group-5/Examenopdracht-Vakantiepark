@@ -345,6 +345,32 @@ a {
     box-shadow: 0 12px 35px rgba(18,49,40,.08);
 }
 
+/* Search filters (PageZoeken): never taller than the screen below the menu, so the search
+   button stays reachable while the card is sticky; the button sticks to the bottom of the card. */
+@media (min-width:992px) {
+    .zoek-sidebar {
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+    }
+
+    .zoek-sidebar .zoek-submit {
+        position: sticky;
+        bottom: -1.5rem;
+        background: #fff;
+        padding: .75rem 0 1.5rem;
+    }
+}
+
+/* Photo across the top of the booking card (PageBooking), edge to edge like a listing card. */
+.boek-card-image {
+    display: block;
+    width: calc(100% + 3rem);
+    height: 210px;
+    margin: -1.5rem -1.5rem 1.25rem;
+    object-fit: cover;
+    border-radius: 1.7rem 1.7rem 0 0;
+}
+
 .zone-card {
     background: var(--du-cream);
     border-radius: 1.6rem;
