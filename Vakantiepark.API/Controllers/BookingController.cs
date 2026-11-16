@@ -1,4 +1,5 @@
 using Vakantiepark.Application.Interfaces;
+using Vakantiepark.Domain.Filters;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,19 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] DateOnly arrivalDate,
             [FromQuery] DateOnly departureDate,
             [FromQuery] int numberOfGuests,
-            [FromQuery] string? preferredZone)
+            [FromQuery] string? preferredZone,
+            [FromQuery] int numberOfPets = 0,
+            [FromQuery] bool wheelchairAccessible = false)
         {
             try
             {
-                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, preferredZone);
+                AccommodationUnitFilter filter = new AccommodationUnitFilter()
+                {
+                    NumberOfGuests = numberOfGuests,
+                    NumberOfPets = numberOfPets,
+                    WheelchairAccessible = wheelchairAccessible,
+                };
+                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, filter, preferredZone);
                 return Ok(ApiResponse<BookingQuoteResponse>.Ok(quote));
             }
             catch (ArgumentException exception)

@@ -63,7 +63,14 @@
             return;
         }
 
-        NavigationManager.NavigateTo(GetSafeReturnUrl());
+        if (response.Value is null)
+        {
+            errorMessage = "Inloggen is niet gelukt.";
+            request.Password = string.Empty;
+            return;
+        }
+
+        NavigationManager.NavigateTo(GetRedirectUrl(response.Value));
     }
 
     // Only redirect within this site, so a link with a foreign returnUrl can't send someone to another website.
@@ -73,5 +80,20 @@
             return "beheer";
 
         return ReturnUrl.TrimStart('/');
+    }
+
+    private string GetRedirectUrl(TokenResponse token)
+    {
+        string returnUrl = GetSafeReturnUrl();
+
+        if (string.Equals(token.Role, Roles.Schoonmaker, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(returnUrl, "beheer", StringComparison.OrdinalIgnoreCase))
+            return "beheer-schoonmaker";
+
+        if (!string.Equals(token.Role, Roles.Schoonmaker, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(returnUrl, "beheer-schoonmaker", StringComparison.OrdinalIgnoreCase))
+            return "beheer";
+
+        return returnUrl;
     }
 }

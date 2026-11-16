@@ -1,4 +1,4 @@
-using Vakantiepark.Domain.Interfaces.Repositories;
+﻿using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Extensions;
 using Vakantiepark.Shared.DTOs.Accommodation;
@@ -10,11 +10,13 @@ namespace Vakantiepark.Application.Services
     {
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
         private readonly IFeatureRepository FeatureRepository;
+        private readonly IRepository<Zone> ZoneRepository;
 
-        public AccommodationService(IAccommodationUnitRepository accommodationUnitRepository, IFeatureRepository featureRepository)
+        public AccommodationService(IAccommodationUnitRepository accommodationUnitRepository, IFeatureRepository featureRepository, IRepository<Zone> zoneRepository)
         {
             AccommodationUnitRepository = accommodationUnitRepository;
             FeatureRepository = featureRepository;
+            ZoneRepository = zoneRepository;
         }
 
         public async Task<List<AccommodationResponse>> GetAllAsync()
@@ -62,6 +64,22 @@ namespace Vakantiepark.Application.Services
                 throw new KeyNotFoundException("Verblijfstype niet gevonden.");
 
             return units.ToTypeResponse();
+        }
+
+        public async Task<List<ZoneOptionResponse>> GetZoneOptionsAsync()
+        {
+            List<Zone> zones = (await ZoneRepository.GetAllAsync()).ToList();
+
+            return zones
+                .OrderBy(zone => zone.Category)
+                .ThenBy(zone => zone.Name)
+                .Select(zone => new ZoneOptionResponse
+                {
+                    Id = zone.Id,
+                    Name = zone.Name,
+                    Category = zone.Category.ToString(),
+                })
+                .ToList();
         }
     }
 }

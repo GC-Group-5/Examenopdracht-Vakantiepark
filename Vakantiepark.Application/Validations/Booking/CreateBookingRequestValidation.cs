@@ -10,7 +10,7 @@ namespace Vakantiepark.Application.Validations.Booking
         public const int MinimumMainBookerAge = 18;
 
         // Checks that do not need the database.
-        public static void ValidateStay(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, DateOnly today)
+        public static void ValidateStay(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, DateOnly today)
         {
             if (string.IsNullOrWhiteSpace(accommodationTypeSlug))
                 throw new ArgumentException("Kies een verblijf.");
@@ -23,11 +23,14 @@ namespace Vakantiepark.Application.Validations.Booking
 
             if (numberOfGuests < 1)
                 throw new ArgumentException("Kies met hoeveel personen je komt.");
+
+            if (numberOfPets < 0)
+                throw new ArgumentException("Het aantal huisdieren kan niet negatief zijn.");
         }
 
         public static void Validate(this CreateBookingRequest request, DateOnly today)
         {
-            ValidateStay(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, today);
+            ValidateStay(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfPets, today);
 
             if (request.BirthDate is null)
                 throw new ArgumentException("Vul je geboortedatum in.");
