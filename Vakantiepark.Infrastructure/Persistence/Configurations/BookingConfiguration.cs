@@ -13,6 +13,9 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(x => x.BookingNumber).IsRequired().HasMaxLength(20);
             builder.HasIndex(x => x.BookingNumber).IsUnique();
 
+            builder.Property(x => x.AccessToken).IsRequired().HasMaxLength(64);
+            builder.HasIndex(x => x.AccessToken).IsUnique();
+
             builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
             builder.Property(x => x.Email).IsRequired().HasMaxLength(254);
             builder.Property(x => x.PhoneNumber).IsRequired().HasMaxLength(30);
