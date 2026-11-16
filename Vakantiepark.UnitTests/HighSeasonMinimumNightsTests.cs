@@ -2,6 +2,7 @@ using Moq;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Booking;
@@ -37,7 +38,7 @@ namespace Vakantiepark.UnitTests
             _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<ParkSettings> { TestData.CreateParkSettings() });
             _accommodationTypeRepository.Setup(x => x.GetBySlugAsync("berk-4")).ReturnsAsync(TestData.CreateAccommodationType());
             _accommodationUnitRepository
-                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { TestData.CreateAccommodation("BK4-001") });
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
@@ -126,7 +127,7 @@ namespace Vakantiepark.UnitTests
         public async Task GetQuoteAsync_FiveNightsInHighSeason_IsRejectedBeforeTheGuestFillsInDetails()
         {
             await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.GetQuoteAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 15), 4, null));
+                () => _sut.GetQuoteAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 15), new AccommodationUnitFilter { NumberOfGuests = 4 }, null));
         }
     }
 }

@@ -16,6 +16,9 @@ namespace Vakantiepark.Shared.DTOs.Booking
         [Range(0, 10, ErrorMessage = "Kies maximaal 10 huisdieren.")]
         public int NumberOfPets { get; set; }
 
+        // From the search: only units that are wheelchair accessible may be picked.
+        public bool WheelchairAccessible { get; set; }
+
         // Optional zone name from the search, e.g. 'Waterkant'.
         public string? PreferredZone { get; set; }
 

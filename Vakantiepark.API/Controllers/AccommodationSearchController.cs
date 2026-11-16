@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Vakantiepark.Application.Interfaces;
+using Vakantiepark.Domain.Filters;
 using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Accommodation;
 
@@ -23,12 +24,20 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] DateOnly departureDate,
             [FromQuery] int numberOfGuests,
             [FromQuery] int numberOfPets = 0,
-            [FromQuery] Guid? zoneId = null)
+            [FromQuery] Guid? zoneId = null,
+            [FromQuery] string? category = null,
+            [FromQuery] bool wheelchairAccessible = false)
         {
             try
             {
+                AccommodationUnitFilter filter = new AccommodationUnitFilter()
+                {
+                    NumberOfGuests = numberOfGuests,
+                    NumberOfPets = numberOfPets,
+                    WheelchairAccessible = wheelchairAccessible,
+                };
                 AccommodationSearchResponse result = await SearchService.SearchAsync(
-                    accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, numberOfPets, zoneId);
+                    accommodationTypeSlug, category, arrivalDate, departureDate, filter, zoneId);
 
                 return Ok(ApiResponse<AccommodationSearchResponse>.Ok(result));
             }

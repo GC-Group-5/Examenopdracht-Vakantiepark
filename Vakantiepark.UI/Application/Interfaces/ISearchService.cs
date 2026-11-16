@@ -7,6 +7,6 @@ namespace Vakantiepark.UI.Application.Interfaces
     {
         Task<ApiResponse<List<AccommodationResponse>>> GetAccommodationsAsync();
         Task<ApiResponse<List<ZoneOptionResponse>>> GetZoneOptionsAsync();
-        Task<ApiResponse<AccommodationSearchResponse>> SearchAsync(string? accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, Guid? zoneId);
+        Task<ApiResponse<AccommodationSearchResponse>> SearchAsync(string? accommodationTypeSlug, string? category, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, bool wheelchairAccessible, Guid? zoneId);
     }
 }

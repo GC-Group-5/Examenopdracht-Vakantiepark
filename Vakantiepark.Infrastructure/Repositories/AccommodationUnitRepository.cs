@@ -15,11 +15,12 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Select(x => x.Id)
                 .ToListAsync();
 
-        public async Task<List<Accommodation>> GetBookableUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
+        public async Task<List<Accommodation>> GetInServiceUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
             => await InService(accommodationTypeSlug, arrivalDate, departureDate)
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.Zone)
-                .Where(x => x.MaxPersons >= numberOfGuests)
+                .Include(x => x.Features).ThenInclude(x => x.Feature)
                 .OrderBy(x => x.Code)
                 .ToListAsync();
 

@@ -19,21 +19,29 @@
     <div class="container">
         <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
             <div class="row g-3">
-                <div class="col-12 col-lg-4">
+                <div class="col-12 col-lg-3">
+                    <label class="form-label fw-semibold" for="search-category">Soort verblijf</label>
+                    <select id="search-category" class="form-select" @bind="SelectedCategory" @bind:after="OnCategoryChanged">
+                        <option value="">Alles</option>
+                        <option value="HolidayHome">Vakantiewoningen</option>
+                        <option value="CampingPitch">Kampeerplaatsen</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-3">
                     <label class="form-label fw-semibold" for="search-type">Verblijf</label>
                     <select id="search-type" class="form-select" @bind="SelectedTypeSlug">
                         <option value="">Alle verblijven</option>
-                        @foreach (TypeOption type in TypeOptions)
+                        @foreach (TypeOption type in VisibleTypeOptions)
                         {
                             <option value="@type.Slug">@type.Name (@type.CategoryLabel)</option>
                         }
                     </select>
                 </div>
-                <div class="col-6 col-lg-2">
+                <div class="col-6 col-lg-3">
                     <label class="form-label fw-semibold" for="search-arrival">Aankomst</label>
                     <InputDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" min="@Today" />
                 </div>
-                <div class="col-6 col-lg-2">
+                <div class="col-6 col-lg-3">
                     <label class="form-label fw-semibold" for="search-departure">Vertrek</label>
                     <InputDate id="search-departure" class="form-control" @bind-Value="DepartureDate" min="@Today" />
                 </div>
@@ -50,7 +58,7 @@
                         <option value="3">3</option>
                     </select>
                 </div>
-                <div class="col-12 col-lg-4">
+                <div class="col-12 col-lg-3">
                     <label class="form-label fw-semibold" for="search-zone">Voorkeurszone</label>
                     <select id="search-zone" class="form-select" @bind="SelectedZoneId">
                         <option value="">Geen voorkeur</option>
@@ -60,7 +68,13 @@
                         }
                     </select>
                 </div>
-                <div class="col-12 col-lg-4 d-flex align-items-end">
+                <div class="col-12 col-lg-2 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input id="search-wheelchair" class="form-check-input" type="checkbox" @bind="WheelchairAccessible" />
+                        <label class="form-check-label" for="search-wheelchair">Rolstoeltoegankelijk</label>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-3 d-flex align-items-end">
                     <button type="button" class="btn btn-du w-100 py-3" @onclick="SearchAsync" disabled="@isSearching">
                         @(isSearching ? "Zoeken…" : "Beschikbaarheid zoeken")
                     </button>
@@ -81,7 +95,7 @@
         {
             <div class="p-4 border rounded-4 bg-white shadow-sm mt-4" role="status">Ik zoek beschikbare verblijven…</div>
         }
-        else if (results is not null && results.Count > 0)
+        else if (results is not null && results.Count > 0 && searched is not null)
         {
             <div class="row g-4 mt-4">
                 @foreach (AccommodationTypeAvailability availability in results)
@@ -90,7 +104,7 @@
                         <article class="type-card zoek-result-card">
                             <img src="@($"img/accommodaties/{availability.Slug}/1.webp")"
                                  alt="@availability.Name" loading="lazy"
-                                 onerror="this.src='img/accommodaties/berk-4/1.webp'" />
+                                 onerror="this.onerror=null;this.src='img/placeholder-image.svg'" />
                             <div class="card-body">
                                 <div class="d-flex justify-content-between gap-3 align-items-start">
                                     <div>
@@ -108,10 +122,10 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
                                     <div>
-                                        <div class="small text-muted-du">Totaal voor @NightsLabel</div>
+                                        <div class="small text-muted-du">Totaal voor @NightsLabel(searched)</div>
                                         <div class="zoek-price">@availability.TotalPrice.ToString("C")</div>
                                     </div>
-                                    <a class="btn btn-du" href="@BookingUrl(availability.Slug)">Bekijken en boeken</a>
+                                    <a class="btn btn-du" href="@BookingUrl(availability.Slug, searched)">Bekijken en boeken</a>
                                 </div>
                             </div>
                         </article>
@@ -127,6 +141,11 @@
     private List<ZoneOptionResponse> allZones = [];
     private List<AccommodationTypeAvailability>? results;
 
+    // The criteria of the last search: the booking link and the night count use these,
+    // so changing a field after searching never sends the guest on with other values.
+    private SearchCriteria? searched;
+
+    private string SelectedCategory = "";
     private string SelectedTypeSlug = "";
 
     [SupplyParameterFromQuery(Name = "type")]
@@ -135,6 +154,7 @@
     private string SelectedZoneId = "";
     private int NumberOfGuests = 2;
     private int NumberOfPets = 0;
+    private bool WheelchairAccessible;
     private DateOnly ArrivalDate = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
     private DateOnly DepartureDate = DateOnly.FromDateTime(DateTime.Today).AddDays(11);
 
@@ -144,10 +164,22 @@
 
     private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
-    private List<ZoneOptionResponse> AvailableZones =>
-        string.IsNullOrWhiteSpace(SelectedTypeSlug)
-            ? allZones
-            : allZones.Where(zone => zone.Category == TypeCategoryOf(SelectedTypeSlug)).ToList();
+    private List<TypeOption> VisibleTypeOptions =>
+        string.IsNullOrWhiteSpace(SelectedCategory)
+            ? TypeOptions
+            : TypeOptions.Where(type => type.Category == SelectedCategory).ToList();
+
+    // Zones of the chosen type's category, else of the chosen category, else all.
+    private List<ZoneOptionResponse> AvailableZones
+    {
+        get
+        {
+            string category = string.IsNullOrWhiteSpace(SelectedTypeSlug) ? SelectedCategory : TypeCategoryOf(SelectedTypeSlug);
+            return string.IsNullOrWhiteSpace(category)
+                ? allZones
+                : allZones.Where(zone => zone.Category == category).ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,6 +216,16 @@
 
     protected override void OnParametersSet() => ApplyQueryType();
 
+    // A type or zone of the other category no longer fits, so it is cleared.
+    private void OnCategoryChanged()
+    {
+        if (!VisibleTypeOptions.Any(type => type.Slug == SelectedTypeSlug))
+            SelectedTypeSlug = "";
+
+        if (!AvailableZones.Any(zone => zone.Id.ToString() == SelectedZoneId))
+            SelectedZoneId = "";
+    }
+
     private async Task SearchAsync()
     {
         errorMessage = null;
@@ -202,11 +244,16 @@
         }
 
         Guid? zoneId = Guid.TryParse(SelectedZoneId, out Guid parsedZone) ? parsedZone : null;
+        SearchCriteria criteria = new SearchCriteria(
+            string.IsNullOrWhiteSpace(SelectedTypeSlug) ? null : SelectedTypeSlug,
+            string.IsNullOrWhiteSpace(SelectedCategory) ? null : SelectedCategory,
+            ArrivalDate, DepartureDate, NumberOfGuests, NumberOfPets, WheelchairAccessible,
+            zoneId, allZones.FirstOrDefault(zone => zone.Id == zoneId)?.Name);
 
         isSearching = true;
         ApiResponse<AccommodationSearchResponse> response = await SearchService.SearchAsync(
-            string.IsNullOrWhiteSpace(SelectedTypeSlug) ? null : SelectedTypeSlug,
-            ArrivalDate, DepartureDate, NumberOfGuests, NumberOfPets, zoneId);
+            criteria.TypeSlug, criteria.Category, criteria.ArrivalDate, criteria.DepartureDate,
+            criteria.NumberOfGuests, criteria.NumberOfPets, criteria.WheelchairAccessible, criteria.ZoneId);
         isSearching = false;
 
         if (!response.Succeeded || response.Value is null)
@@ -215,30 +262,33 @@
             return;
         }
 
+        searched = criteria;
         results = response.Value.Results;
         searchMessage = response.Value.Message;
     }
 
-    private string BookingUrl(string slug)
+    // Everything the guest searched on travels to the booking page (US-36).
+    private static string BookingUrl(string slug, SearchCriteria criteria)
     {
         string url = $"/zoek-en-boek?type={Uri.EscapeDataString(slug)}"
-            + $"&aankomst={ArrivalDate:yyyy-MM-dd}"
-            + $"&vertrek={DepartureDate:yyyy-MM-dd}";
+            + $"&aankomst={criteria.ArrivalDate:yyyy-MM-dd}"
+            + $"&vertrek={criteria.DepartureDate:yyyy-MM-dd}"
+            + $"&personen={criteria.NumberOfGuests}"
+            + $"&huisdieren={criteria.NumberOfPets}";
 
-        ZoneOptionResponse? zone = allZones.FirstOrDefault(candidate => candidate.Id.ToString() == SelectedZoneId);
-        if (zone is not null)
-            url += $"&zone={Uri.EscapeDataString(zone.Name)}";
+        if (criteria.WheelchairAccessible)
+            url += "&rolstoel=true";
+
+        if (criteria.ZoneName is not null)
+            url += $"&zone={Uri.EscapeDataString(criteria.ZoneName)}";
 
         return url;
     }
 
-    private string NightsLabel
+    private static string NightsLabel(SearchCriteria criteria)
     {
-        get
-        {
-            int nights = DepartureDate.DayNumber - ArrivalDate.DayNumber;
-            return $"{nights} {(nights == 1 ? "nacht" : "nachten")}";
-        }
+        int nights = criteria.DepartureDate.DayNumber - criteria.ArrivalDate.DayNumber;
+        return $"{nights} {(nights == 1 ? "nacht" : "nachten")}";
     }
 
     private string TypeCategoryOf(string slug) =>
@@ -252,4 +302,8 @@
     };
 
     private sealed record TypeOption(string Slug, string Name, string Category, string CategoryLabel);
+
+    private sealed record SearchCriteria(
+        string? TypeSlug, string? Category, DateOnly ArrivalDate, DateOnly DepartureDate,
+        int NumberOfGuests, int NumberOfPets, bool WheelchairAccessible, Guid? ZoneId, string? ZoneName);
 }

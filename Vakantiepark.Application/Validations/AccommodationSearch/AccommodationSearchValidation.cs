@@ -1,4 +1,5 @@
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Application.Validations.AccommodationSearch
 {
@@ -18,6 +19,18 @@ namespace Vakantiepark.Application.Validations.AccommodationSearch
 
             if (departureDate <= arrivalDate)
                 throw new ArgumentException("De vertrekdatum moet na de aankomstdatum liggen.");
+        }
+
+        // Optional filter on holiday homes or camping pitches; empty means both.
+        public static AccommodationCategory? ParseCategory(string? category)
+        {
+            if (string.IsNullOrWhiteSpace(category))
+                return null;
+
+            if (Enum.TryParse(category, true, out AccommodationCategory parsed) && Enum.IsDefined(parsed))
+                return parsed;
+
+            throw new ArgumentException("Kies vakantiewoning of kampeerplaats als soort verblijf.");
         }
 
         // US-06: when the period falls (partly) in a high season, the whole stay must

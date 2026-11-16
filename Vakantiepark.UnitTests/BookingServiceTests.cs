@@ -5,6 +5,7 @@ using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Filters;
 using Xunit;
 using Moq;
 
@@ -29,7 +30,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetBySlugAsync("eik-luxe-6"))
                 .ReturnsAsync(TestData.CreateAccommodationType(type => { type.Slug = "eik-luxe-6"; type.Name = "Eik Luxe 6"; }));
             _accommodationUnitRepository
-                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _firstUnit, _secondUnit });
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
@@ -156,7 +157,7 @@ namespace Vakantiepark.UnitTests
         public async Task CreateAsync_NoUnitFitsTheParty_ThrowsArgumentException()
         {
             _accommodationUnitRepository
-                .Setup(x => x.GetBookableUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(new List<Accommodation>());
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
@@ -242,7 +243,7 @@ namespace Vakantiepark.UnitTests
         {
             DateOnly arrival = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
 
-            BookingQuoteResponse quote = await _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), 4, "Waterkant");
+            BookingQuoteResponse quote = await _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), new AccommodationUnitFilter { NumberOfGuests = 4 }, "Waterkant");
 
             Assert.Equal("Eik Luxe 6", quote.AccommodationTypeName);
             Assert.Equal("Waterkant", quote.Zone);
@@ -253,5 +254,46 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(7, quote.NoRefundDaysBeforeArrival);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
+
+        [Fact]
+        public async Task CreateAsync_PetsRequested_UnitWithoutPetsIsSkipped()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 1));
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _secondUnit.Id)), Times.Once);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.AccommodationUnitId == _firstUnit.Id)), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_MorePetsThanAnyUnitAllows_ThrowsNoPlaceMessage()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 3)));
+
+            Assert.Equal("Eik Luxe 6 heeft geen plek voor 4 personen met 3 huisdieren. Kies een ander verblijf.", exception.Message);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetQuoteAsync_WheelchairAccessibleButNoAccessibleUnit_ThrowsNoPlaceMessage()
+        {
+            DateOnly arrival = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+            AccommodationUnitFilter filter = new AccommodationUnitFilter { NumberOfGuests = 2, WheelchairAccessible = true };
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), filter, null));
+
+            Assert.Contains("geen rolstoeltoegankelijke plek", exception.Message);
+        }
+
+        private static AccommodationFeature MaxPets(int maxPets) => new AccommodationFeature()
+        {
+            NumberValue = maxPets,
+            Feature = new Feature() { Key = "maxPets", Name = "Maximaal aantal huisdieren" },
+        };
     }
 }

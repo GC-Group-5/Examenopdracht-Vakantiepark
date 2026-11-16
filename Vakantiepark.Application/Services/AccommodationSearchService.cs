@@ -1,6 +1,8 @@
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.AccommodationSearch;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
+using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Accommodation;
 using Vakantiepark.Shared.DTOs.Price;
@@ -9,7 +11,8 @@ namespace Vakantiepark.Application.Services
 {
     // US-06: find bookable stays. Availability is per physical unit: the unit must be
     // free for the whole period (no overlapping active booking; a departure day and an
-    // arrival day may be the same) and must fit the party size, pets and preferred zone.
+    // arrival day may be the same) and must fit the party (AccommodationUnitFilter, the
+    // same rule the booking uses), the category and the preferred zone.
     // Zones belong to one category and never change the price. The price is taken from
     // the price service so every screen shows the same amount.
     public class AccommodationSearchService : IAccommodationSearchService
@@ -46,9 +49,10 @@ namespace Vakantiepark.Application.Services
             PriceService = priceService;
         }
 
-        public async Task<AccommodationSearchResponse> SearchAsync(string? accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, Guid? zoneId)
+        public async Task<AccommodationSearchResponse> SearchAsync(string? accommodationTypeSlug, string? category, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, Guid? zoneId)
         {
-            arrivalDate.ValidateSearchPeriod(departureDate, numberOfGuests, numberOfPets);
+            arrivalDate.ValidateSearchPeriod(departureDate, filter.NumberOfGuests, filter.NumberOfPets);
+            AccommodationCategory? searchedCategory = AccommodationSearchValidation.ParseCategory(category);
 
             List<Season> seasons = (await SeasonRepository.GetAllAsync()).ToList();
             ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
@@ -65,6 +69,9 @@ namespace Vakantiepark.Application.Services
                 types = searchedType is null ? [] : [searchedType];
             }
 
+            if (searchedCategory is not null)
+                types = types.Where(type => type.Category == searchedCategory).ToList();
+
             if (zoneId is not null)
             {
                 Zone? zone = await ZoneRepository.GetByIdAsync(zoneId.Value);
@@ -74,6 +81,9 @@ namespace Vakantiepark.Application.Services
                 // Criterion: only zones of the chosen type's category are offered.
                 if (types.Count == 1 && zone.Category != types[0].Category)
                     throw new ArgumentException("Kies een zone die bij het geselecteerde verblijfstype hoort.");
+
+                if (searchedCategory is not null && zone.Category != searchedCategory)
+                    throw new ArgumentException("Kies een zone die bij de gekozen soort verblijf hoort.");
             }
 
             List<Accommodation> units = await UnitRepository.GetAllWithDetailsAsync();
@@ -93,6 +103,7 @@ namespace Vakantiepark.Application.Services
             {
                 List<Accommodation> freeUnits = units
                     .Where(unit => unit.TypeId == type.Id)
+                    .Where(filter.Matches)
                     .Where(unit => zoneId is null || unit.ZoneId == zoneId)
                     .Where(unit => !bookedUnitIds.Contains(unit.Id))
                     .Where(unit => !maintenanceUnitIds.Contains(unit.Id))
@@ -101,7 +112,7 @@ namespace Vakantiepark.Application.Services
                 if (freeUnits.Count == 0)
                     continue;
 
-                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, numberOfGuests);
+                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests);
 
                 results.Add(new AccommodationTypeAvailability
                 {

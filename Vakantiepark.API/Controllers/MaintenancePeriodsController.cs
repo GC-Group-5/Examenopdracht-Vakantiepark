@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Maintenance;
+
 
 namespace Vakantiepark.API.Controllers
 {
@@ -17,7 +19,7 @@ namespace Vakantiepark.API.Controllers
         {
             MaintenanceService = maintenanceService;
         }
-
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetOverviewAsync([FromQuery] string accommodationUnitCode)
         {
@@ -32,6 +34,7 @@ namespace Vakantiepark.API.Controllers
             }
         }
 
+        [Authorize]
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] CreateMaintenancePeriodRequest request)
         {
@@ -46,6 +49,7 @@ namespace Vakantiepark.API.Controllers
             }
         }
 
+        [Authorize]
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateMaintenancePeriodRequest request)
         {

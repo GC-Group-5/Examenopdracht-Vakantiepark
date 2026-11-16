@@ -53,7 +53,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
-                        <InputSelect id="booking-pets" class="form-select" @bind-Value="request.NumberOfPets">
+                        <InputSelect id="booking-pets" class="form-select" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync">
                             <option value="0">Geen</option>
                             <option value="1">1</option>
                             <option value="2">2</option>
@@ -133,6 +133,12 @@
                     <dt class="col-sm-4">Huisdieren</dt>
                     <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
 
+                    @if (request.WheelchairAccessible)
+                    {
+                        <dt class="col-sm-4">Toegankelijkheid</dt>
+                        <dd class="col-sm-8">Rolstoeltoegankelijk</dd>
+                    }
+
                     <dt class="col-sm-4">Data</dt>
                     <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
 
@@ -193,6 +199,9 @@
     private const string BirthDateFormat = "d-M-yyyy";
     private const string TimeFormat = "HH:mm";
     private const string QuoteFailedMessage = "Dit verblijf kan nu niet worden geboekt.";
+    private const int DefaultGuests = 2;
+    private const int MaxGuests = 20;
+    private const int MaxPets = 3;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
     private BookingQuoteResponse? quote;
@@ -216,8 +225,15 @@
     [SupplyParameterFromQuery(Name = "zone")]
     public string? PreferredZone { get; set; }
 
-    // The party size is filled in on this form, not carried through the URL.
-    private const int DefaultGuests = 2;
+    // The party from the search (US-36); the guest can still change persons and pets here.
+    [SupplyParameterFromQuery(Name = "personen")]
+    public int? Guests { get; set; }
+
+    [SupplyParameterFromQuery(Name = "huisdieren")]
+    public int? Pets { get; set; }
+
+    [SupplyParameterFromQuery(Name = "rolstoel")]
+    public bool? Wheelchair { get; set; }
 
     private bool HasStay => !string.IsNullOrWhiteSpace(AccommodationTypeSlug)
         && ArrivalDate is not null
@@ -233,8 +249,10 @@
         request.AccommodationTypeSlug = AccommodationTypeSlug!;
         request.ArrivalDate = ArrivalDate!.Value;
         request.DepartureDate = DepartureDate!.Value;
-        request.NumberOfGuests = DefaultGuests;
-        request.NumberOfPets = 0;
+        // A hand-edited URL with an impossible value falls back to the default.
+        request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
+        request.NumberOfPets = Pets is >= 0 and <= MaxPets ? Pets.Value : 0;
+        request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
         request.CoTravellers = Enumerable.Range(0, request.NumberOfGuests - 1)
             .Select(_ => new TravellerRequest())
@@ -253,7 +271,8 @@
 
     private async Task<ApiResponse<BookingQuoteResponse>> RequestQuoteAsync() =>
         await BookingService.GetQuoteAsync(
-            request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.PreferredZone);
+            request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate,
+            request.NumberOfGuests, request.NumberOfPets, request.WheelchairAccessible, request.PreferredZone);
 
     // Refreshes the quote while the form stays on screen, so a party change does not
     // tear down the form; a rejected party size is shown inline and can be corrected.
@@ -283,6 +302,13 @@
     private async Task OnGuestsChangedAsync(int newGuests)
     {
         request.NumberOfGuests = newGuests;
+        await OnPartyChangedAsync();
+    }
+
+    // Pets decide which units may be picked, so the quote is checked again.
+    private async Task OnPetsChangedAsync(int newPets)
+    {
+        request.NumberOfPets = newPets;
         await OnPartyChangedAsync();
     }
 
