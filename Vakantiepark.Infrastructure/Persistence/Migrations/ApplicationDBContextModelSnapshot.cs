@@ -232,6 +232,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("access_token");
+
                     b.Property<decimal>("AccommodationPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -319,6 +325,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_bookings");
+
+                    b.HasIndex("AccessToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_bookings_access_token");
 
                     b.HasIndex("AccommodationUnitId")
                         .HasDatabaseName("ix_bookings_accommodation_unit_id");
