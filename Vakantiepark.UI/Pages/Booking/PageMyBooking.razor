@@ -1,0 +1,203 @@
+@page "/mijn-boeking"
+@page "/mijn-boeking/{Token}"
+@using Vakantiepark.Shared.DTOs.Booking
+@inject IBookingService BookingService
+@inject IAuthService AuthService
+
+<PageTitle>Mijn boeking | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Mijn boeking</div>
+        <h1 class="page-title mt-2">@(booking is null ? "Bekijk je boeking" : $"Boeking {booking.BookingNumber}")</h1>
+        @if (booking is not null)
+        {
+            <p class="page-intro mt-3 mb-0">
+                @booking.AccommodationTypeName · @booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat)
+            </p>
+        }
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        @if (isLoading)
+        {
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm" role="status">Je boeking wordt opgehaald…</div>
+        }
+        else if (booking is null)
+        {
+            <EditForm Model="request" OnValidSubmit="FindAsync" class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <DataAnnotationsValidator />
+
+                @if (errorMessage is not null)
+                {
+                    <div class="alert alert-warning" role="alert">@errorMessage</div>
+                }
+
+                <p class="text-muted-du">Vul je boekingsnummer en het e-mailadres van de hoofdboeker in. Je vindt ze allebei in de bevestigingsmail.</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="find-number">Boekingsnummer</label>
+                        <InputText id="find-number" class="form-control" @bind-Value="request.BookingNumber" placeholder="Bijvoorbeeld K7M2XQ9P" autocomplete="off" />
+                        <ValidationMessage For="() => request.BookingNumber" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="find-email">E-mailadres</label>
+                        <InputText id="find-email" type="email" class="form-control" @bind-Value="request.Email" autocomplete="email" />
+                        <ValidationMessage For="() => request.Email" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-du mt-4" disabled="@isSearching">
+                    @(isSearching ? "Bezig met zoeken…" : "Boeking bekijken")
+                </button>
+            </EditForm>
+        }
+        else
+        {
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                    <h2 class="h4 mb-0">Je boeking</h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill @StatusClass fs-6">@booking.Status</span>
+                        @if (isLoggedInAsGuest)
+                        {
+                            <button type="button" class="btn btn-du-light btn-sm" @onclick="LogoutAsync">Uitloggen</button>
+                        }
+                    </div>
+                </div>
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Boekingsnummer</dt>
+                    <dd class="col-sm-8">@booking.BookingNumber</dd>
+
+                    <dt class="col-sm-4">Verblijf</dt>
+                    <dd class="col-sm-8">@booking.AccommodationTypeName · zone @booking.Zone</dd>
+
+                    <dt class="col-sm-4">Data</dt>
+                    <dd class="col-sm-8">@booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
+
+                    <dt class="col-sm-4">Aankomst en vertrek</dt>
+                    <dd class="col-sm-8">Aankomst vanaf @booking.ArrivalTime.ToString(TimeFormat), vertrek vóór @booking.DepartureTime.ToString(TimeFormat)</dd>
+
+                    <dt class="col-sm-4">Reisgezelschap</dt>
+                    <dd class="col-sm-8">
+                        <ul class="list-unstyled mb-0">
+                            @foreach (GuestResponse guest in booking.Guests)
+                            {
+                                <li>@guest.Name (@guest.BirthDate.ToString(BirthDateFormat))@(guest.IsMainBooker ? " · hoofdboeker" : null)</li>
+                            }
+                        </ul>
+                    </dd>
+
+                    <dt class="col-sm-4">Huisdieren</dt>
+                    <dd class="col-sm-8">@(booking.NumberOfPets == 0 ? "Geen" : $"{booking.NumberOfPets} {(booking.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+
+                    <dt class="col-sm-4">Contactgegevens</dt>
+                    <dd class="col-sm-8">@booking.Name<br />@booking.Email<br />@booking.PhoneNumber</dd>
+                </dl>
+
+                <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
+                <table class="table mb-0">
+                    <tbody>
+                        <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@booking.AccommodationPrice.ToString("C")</td></tr>
+                        <tr><td>Eindschoonmaak</td><td class="text-end">@booking.CleaningFee.ToString("C")</td></tr>
+                        <tr><td>Toeristenbelasting</td><td class="text-end">@booking.TouristTax.ToString("C")</td></tr>
+                        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@booking.TotalPrice.ToString("C")</td></tr>
+                        <tr><td>Aanbetaling</td><td class="text-end">@booking.Deposit.ToString("C")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private const string DateFormat = "ddd d MMMM yyyy";
+    private const string BirthDateFormat = "d-M-yyyy";
+    private const string TimeFormat = "HH:mm";
+
+    [Parameter]
+    public string? Token { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private readonly GuestLoginRequest request = new GuestLoginRequest();
+    private MyBookingResponse? booking;
+    private string? errorMessage;
+    private bool isLoading;
+    private bool isSearching;
+    private bool isLoggedInAsGuest;
+
+    private int NumberOfNights => booking is null ? 0 : booking.DepartureDate.DayNumber - booking.ArrivalDate.DayNumber;
+
+    private string StatusClass => booking?.Status switch
+    {
+        BookingStatuses.Geannuleerd => "text-bg-danger",
+        BookingStatuses.Afgerond => "text-bg-secondary",
+        _ => "text-bg-success",
+    };
+
+    private const string LoadFailedMessage = "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
+
+    // Via the link from the email, or for a guest who is already logged in.
+    protected override async Task OnParametersSetAsync()
+    {
+        booking = null;
+        errorMessage = null;
+
+        if (!string.IsNullOrWhiteSpace(Token))
+        {
+            isLoading = true;
+            Show(await BookingService.GetMineByTokenAsync(Token));
+            isLoading = false;
+            return;
+        }
+
+        AuthenticationState state = await AuthenticationState;
+        if (state.User.IsInRole(Roles.Gast))
+        {
+            isLoading = true;
+            await LoadMineAsync();
+            isLoading = false;
+        }
+    }
+
+    // Booking number + email is the normal guest login (/Auth/Guest); the token it returns fetches the booking.
+    private async Task FindAsync()
+    {
+        isSearching = true;
+        errorMessage = null;
+
+        ApiResponse<TokenResponse> login = await AuthService.GuestLoginAsync(request);
+        if (login.Succeeded)
+            await LoadMineAsync();
+        else
+            errorMessage = login.Message ?? LoadFailedMessage;
+
+        isSearching = false;
+    }
+
+    private async Task LoadMineAsync()
+    {
+        ApiResponse<MyBookingResponse> response = await BookingService.GetMineAsync();
+        Show(response);
+        isLoggedInAsGuest = response.Succeeded;
+    }
+
+    private void Show(ApiResponse<MyBookingResponse> response)
+    {
+        booking = response.Succeeded ? response.Value : null;
+        errorMessage = response.Succeeded ? null : response.Message ?? LoadFailedMessage;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        booking = null;
+        isLoggedInAsGuest = false;
+        request.BookingNumber = string.Empty;
+        request.Email = string.Empty;
+    }
+}
