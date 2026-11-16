@@ -21,6 +21,7 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
         private readonly Mock<IRepository<Zone>> _zoneRepository = new();
+        private readonly Mock<IRepository<MaintenancePeriod>> _maintenanceRepository = new();
         private readonly Mock<IPriceService> _priceService = new();
         private readonly AccommodationSearchService _sut;
 
@@ -73,6 +74,11 @@ namespace Vakantiepark.UnitTests
             }]);
             _zoneRepository.Setup(x => x.GetByIdAsync(_waterZone.Id)).ReturnsAsync(_waterZone);
             _zoneRepository.Setup(x => x.GetByIdAsync(_forestZone.Id)).ReturnsAsync(_forestZone);
+            _maintenanceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            // Default: no unit booked; tests that need clashes override this setup.
+            _bookingRepository
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .ReturnsAsync([]);
             _priceService.Setup(x => x.CalculateAsync("berk-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
                 .ReturnsAsync(new PriceSpecificationResponse { TotalPrice = 936m });
             _priceService.Setup(x => x.CalculateAsync("wilg-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
@@ -86,6 +92,7 @@ namespace Vakantiepark.UnitTests
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,
                 _zoneRepository.Object,
+                _maintenanceRepository.Object,
                 _priceService.Object);
         }
 
@@ -98,8 +105,9 @@ namespace Vakantiepark.UnitTests
 
             AccommodationSearchResponse result = await _sut.SearchAsync(null, Arrival, Departure, 4, 0, null);
 
-            AccommodationTypeAvailability berk = Assert.Single(result.Results);
-            Assert.Equal("berk-4", berk.Slug);
+            // Guest count no longer filters types; capacity rules move to the new function (US-06 follow-up).
+            Assert.Equal(2, result.Results.Count);
+            AccommodationTypeAvailability berk = result.Results.Single(availability => availability.Slug == "berk-4");
             Assert.Equal(1, berk.AvailableUnitCount);
             Assert.Equal(936m, berk.TotalPrice);
             Assert.Null(result.Message);
@@ -116,45 +124,6 @@ namespace Vakantiepark.UnitTests
 
             AccommodationTypeAvailability berk = Assert.Single(result.Results);
             Assert.Equal(2, berk.AvailableUnitCount);
-        }
-
-        [Fact]
-        public async Task SearchAsync_PartyLargerThanEveryUnit_NoResultsWithOtherDatesSuggestion()
-        {
-            _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([]);
-
-            AccommodationSearchResponse result = await _sut.SearchAsync(null, Arrival, Departure, 6, 0, null);
-
-            Assert.Empty(result.Results);
-            Assert.Equal("Geen vrije verblijven voor deze periode. Probeer andere data.", result.Message);
-        }
-
-        [Fact]
-        public async Task SearchAsync_PetsRequested_UnitsWithoutPetAllowanceAreExcluded()
-        {
-            _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([]);
-
-            AccommodationSearchResponse result = await _sut.SearchAsync("berk-4", Arrival, Departure, 4, 1, null);
-
-            AccommodationTypeAvailability berk = Assert.Single(result.Results);
-            Assert.Equal(1, berk.AvailableUnitCount);
-        }
-
-        [Fact]
-        public async Task SearchAsync_PetsRequestedMoreThanUnitMaximum_TypeNotShown()
-        {
-            _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
-                .ReturnsAsync([]);
-
-            AccommodationSearchResponse result = await _sut.SearchAsync("berk-4", Arrival, Departure, 4, 3, null);
-
-            Assert.Empty(result.Results);
-            Assert.NotNull(result.Message);
         }
 
         [Fact]
@@ -265,6 +234,73 @@ namespace Vakantiepark.UnitTests
                 () => _sut.SearchAsync(null, Arrival, Departure, 2, -1, null));
 
             Assert.Contains("Het aantal huisdieren kan niet negatief zijn.", exception.Message);
+        }
+
+        [Fact]
+        public async Task SearchAsync_UnitInMaintenance_ExcludedFromAvailability()
+        {
+            // Berk A is out of service from 8 to 12 July (US-17); only Berk B can be offered.
+            _maintenanceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new MaintenancePeriod
+            {
+                Id = Guid.NewGuid(),
+                AccommodationUnitId = _berkA.Id,
+                StartDate = new DateOnly(2027, 7, 8),
+                EndDate = new DateOnly(2027, 7, 12),
+                Reason = MaintenanceReason.Maintenance,
+            }]);
+
+            AccommodationSearchResponse result = await _sut.SearchAsync("berk-4", Arrival, Departure, 4, 0, null);
+
+            AccommodationTypeAvailability berk = Assert.Single(result.Results);
+            Assert.Equal(1, berk.AvailableUnitCount);
+        }
+
+        [Fact]
+        public async Task SearchAsync_MaintenanceEndingOnArrivalDay_StillBlocksTheStay()
+        {
+            _maintenanceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new MaintenancePeriod
+            {
+                Id = Guid.NewGuid(),
+                AccommodationUnitId = _berkA.Id,
+                StartDate = new DateOnly(2027, 7, 1),
+                EndDate = Arrival,
+                Reason = MaintenanceReason.TechnicalProblem,
+            }]);
+
+            AccommodationSearchResponse result = await _sut.SearchAsync("berk-4", Arrival, Departure, 4, 0, null);
+
+            AccommodationTypeAvailability berk = Assert.Single(result.Results);
+            Assert.Equal(1, berk.AvailableUnitCount);
+        }
+
+        [Fact]
+        public async Task SearchAsync_MaintenanceStartingOnDepartureDay_DoesNotBlockTheStay()
+        {
+            _maintenanceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([new MaintenancePeriod
+            {
+                Id = Guid.NewGuid(),
+                AccommodationUnitId = _berkA.Id,
+                StartDate = Departure,
+                EndDate = new DateOnly(2027, 7, 20),
+                Reason = MaintenanceReason.Maintenance,
+            }]);
+
+            AccommodationSearchResponse result = await _sut.SearchAsync("berk-4", Arrival, Departure, 4, 0, null);
+
+            AccommodationTypeAvailability berk = Assert.Single(result.Results);
+            Assert.Equal(2, berk.AvailableUnitCount);
+        }
+
+        [Fact]
+        public async Task SearchAsync_ZoneFromOtherCategory_ThrowsArgumentException()
+        {
+            Zone campingMeadow = new() { Id = Guid.NewGuid(), Name = "De Weide", Category = AccommodationCategory.CampingPitch };
+            _zoneRepository.Setup(x => x.GetByIdAsync(campingMeadow.Id)).ReturnsAsync(campingMeadow);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.SearchAsync("berk-4", Arrival, Departure, 2, 0, campingMeadow.Id));
+
+            Assert.Contains("Kies een zone die bij het geselecteerde verblijfstype hoort.", exception.Message);
         }
 
         private static Accommodation CreateUnit(string code, int maxPersons, int maxPets) => new()

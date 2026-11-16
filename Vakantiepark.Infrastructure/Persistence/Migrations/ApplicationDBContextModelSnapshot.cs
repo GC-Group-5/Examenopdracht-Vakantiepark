@@ -291,6 +291,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("number_of_guests");
 
+                    b.Property<int>("NumberOfPets")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_pets");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(30)

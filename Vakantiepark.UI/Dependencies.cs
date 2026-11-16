@@ -43,6 +43,7 @@ namespace Vakantiepark.UI
         private static IServiceCollection RegisterServices(this IServiceCollection services)
         {
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<ISearchService, SearchService>();
 
             return services;
         }
