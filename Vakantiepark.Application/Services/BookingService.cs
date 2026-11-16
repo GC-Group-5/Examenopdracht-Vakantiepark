@@ -22,6 +22,7 @@ namespace Vakantiepark.Application.Services
         public const string InvalidLinkMessage = "Deze link is ongeldig.";
         public const string ExpiredLinkMessage = "Deze link is verlopen. Je kunt je boeking nog bekijken door in te loggen met je boekingsnummer en e-mailadres.";
         public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
+        public const string CannotCancelMessage = "Deze boeking kan niet meer geannuleerd worden. Annuleren kan tot de dag van aankomst.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -136,7 +137,7 @@ namespace Vakantiepark.Application.Services
             if (booking.DepartureDate < Today())
                 throw new ArgumentException(ExpiredLinkMessage);
 
-            return ToMyBookingResponse(booking, GetStatus(booking));
+            return ToMyBookingResponse(booking, GetStatus(booking), await GetParkSettingsAsync(), Today());
         }
 
         // One message for every wrong combination, so it never reveals which of the two is wrong.
@@ -147,7 +148,69 @@ namespace Vakantiepark.Application.Services
             if (booking is null)
                 throw new ArgumentException(NotFoundMessage);
 
-            return ToMyBookingResponse(booking, GetStatus(booking));
+            return ToMyBookingResponse(booking, GetStatus(booking), await GetParkSettingsAsync(), Today());
+        }
+
+        public async Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access)
+        {
+            Booking booking = await FindOwnBookingAsync(access);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            if (!CancellationPolicy.CanCancel(booking, Today()))
+                throw new ArgumentException(CannotCancelMessage);
+
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+
+            return new CancellationQuoteResponse()
+            {
+                DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, Today()),
+                TotalPrice = booking.TotalPrice,
+                CancellationFee = fee,
+                Explanation = ExplainFee(booking, settings, fee),
+            };
+        }
+
+        // The fee is calculated again here; an amount from the browser is never used.
+        public async Task<MyBookingResponse> CancelAsync(BookingAccessRequest access)
+        {
+            Booking booking = await FindOwnBookingAsync(access);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            if (!CancellationPolicy.CanCancel(booking, Today()))
+                throw new ArgumentException(CannotCancelMessage);
+
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+            await BookingRepository.CancelAsync(booking, fee);
+            await SendCancellationAsync(booking, settings, fee);
+
+            return ToMyBookingResponse(booking, GetStatus(booking), settings, Today());
+        }
+
+        // Same access rules as "Mijn boeking": the secret code, or booking number + email together.
+        private async Task<Booking> FindOwnBookingAsync(BookingAccessRequest access)
+        {
+            if (!string.IsNullOrWhiteSpace(access.Token))
+                return await BookingRepository.GetByAccessTokenAsync(access.Token)
+                    ?? throw new ArgumentException(InvalidLinkMessage);
+
+            if (string.IsNullOrWhiteSpace(access.BookingNumber) || string.IsNullOrWhiteSpace(access.Email))
+                throw new ArgumentException(NotFoundMessage);
+
+            return await BookingRepository.GetByBookingNumberAndEmailAsync(access.BookingNumber, access.Email)
+                ?? throw new ArgumentException(NotFoundMessage);
+        }
+
+        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee)
+        {
+            CultureInfo dutch = new CultureInfo("nl-NL");
+
+            if (fee == 0m)
+                return $"Je annuleert meer dan {settings.FreeCancellationDaysBeforeArrival} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
+
+            if (fee == booking.Deposit)
+                return $"Je annuleert {settings.FreeCancellationDaysBeforeArrival} tot {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. De aanbetaling van {settings.DepositPercentage.ToString("0.##", dutch)}% ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+
+            return $"Je annuleert minder dan {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
         }
 
         private string GetStatus(Booking booking)
@@ -161,7 +224,7 @@ namespace Vakantiepark.Application.Services
             return "Bevestigd";
         }
 
-        private static MyBookingResponse ToMyBookingResponse(Booking booking, string status)
+        private static MyBookingResponse ToMyBookingResponse(Booking booking, string status, ParkSettings settings, DateOnly today)
             => new MyBookingResponse()
             {
                 BookingNumber = booking.BookingNumber,
@@ -180,6 +243,9 @@ namespace Vakantiepark.Application.Services
                 Deposit = booking.Deposit,
                 AccommodationTypeName = booking.AccommodationUnit.Type.Name,
                 Status = status,
+                CanCancel = CancellationPolicy.CanCancel(booking, today),
+                CanChange = CancellationPolicy.CanChange(booking, settings, today),
+                CancellationFee = booking.CancellationFee,
                 Guests = booking.Guests
                     .OrderByDescending(guest => guest.IsMainBooker)
                     .Select(guest => new GuestResponse()
@@ -299,6 +365,32 @@ namespace Vakantiepark.Application.Services
             catch (Exception exception)
             {
                 Logger.LogError(exception, "Could not send the confirmation email for booking {BookingNumber}.", booking.BookingNumber);
+            }
+        }
+
+        private async Task SendCancellationAsync(Booking booking, ParkSettings settings, decimal fee)
+        {
+            try
+            {
+                CultureInfo dutch = new CultureInfo("nl-NL");
+
+                RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingCancellation, new Dictionary<string, string>
+                {
+                    ["Name"] = booking.Name,
+                    ["BookingNumber"] = booking.BookingNumber,
+                    ["AccommodationType"] = booking.AccommodationUnit.Type.Name,
+                    ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["CancellationFee"] = fee.ToString("C", dutch),
+                    ["FeeExplanation"] = ExplainFee(booking, settings, fee),
+                    ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
+                });
+
+                await EmailSender.SendAsync(booking.Email, $"Annulering van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Could not send the cancellation email for booking {BookingNumber}.", booking.BookingNumber);
             }
         }
 

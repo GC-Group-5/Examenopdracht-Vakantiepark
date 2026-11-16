@@ -69,5 +69,13 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
                 .SingleOrDefaultAsync(x => x.BookingNumber == bookingNumber.Trim().ToUpper()
                     && x.Email.ToLower() == email.Trim().ToLower());
+
+        public async Task CancelAsync(Booking booking, decimal cancellationFee)
+        {
+            booking.CancellationFee = cancellationFee;
+            booking.DeletedAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+        }
     }
 }

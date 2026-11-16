@@ -39,7 +39,7 @@ namespace Vakantiepark.UnitTests
                 new Mock<IPriceService>().Object,
                 new Mock<IBookingNumberGenerator>().Object,
                 new Mock<IRepository<Season>>().Object,
-                new Mock<IRepository<ParkSettings>>().Object,
+                CreateParkSettingsRepository(),
                 new FixedTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero)),
                 new Mock<IEmailSender>().Object,
                 new FrontendSettings { BaseUrl = "https://localhost:4200" },
@@ -137,6 +137,13 @@ namespace Vakantiepark.UnitTests
 
             Assert.DoesNotContain("Id", properties);
             Assert.DoesNotContain("AccessToken", properties);
+        }
+
+        private static IRepository<ParkSettings> CreateParkSettingsRepository()
+        {
+            Mock<IRepository<ParkSettings>> repository = new Mock<IRepository<ParkSettings>>();
+            repository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<ParkSettings> { TestData.CreateParkSettings() });
+            return repository.Object;
         }
 
         private static Booking CreateBooking()
