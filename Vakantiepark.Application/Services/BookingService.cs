@@ -1,3 +1,4 @@
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Settings;
@@ -10,6 +11,7 @@ using Vakantiepark.Application.Extensions;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Filters;
 
 namespace Vakantiepark.Application.Services
 {
@@ -17,6 +19,10 @@ namespace Vakantiepark.Application.Services
     {
         // A collision is very unlikely with 31^8 possible numbers; this only prevents an endless loop.
         private const int MaxBookingNumberAttempts = 5;
+
+        public const string InvalidLinkMessage = "Deze link is ongeldig.";
+        public const string ExpiredLinkMessage = "Deze link is verlopen, omdat je verblijf voorbij is.";
+        public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -56,16 +62,16 @@ namespace Vakantiepark.Application.Services
             Logger = logger;
         }
 
-        public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)
+        public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, string? preferredZone)
         {
-            CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, Today());
+            CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, filter.NumberOfGuests, filter.NumberOfPets, Today());
 
             AccommodationType type = await GetTypeAsync(accommodationTypeSlug);
             ParkSettings settings = await GetParkSettingsAsync();
             await ValidateHighSeasonMinimumNightsAsync(arrivalDate, departureDate, settings);
-            await GetCandidateUnitsAsync(type, arrivalDate, departureDate, numberOfGuests, preferredZone);
+            await GetCandidateUnitsAsync(type, arrivalDate, departureDate, filter, preferredZone);
 
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, numberOfGuests);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests);
 
             return new BookingQuoteResponse()
             {
@@ -75,7 +81,7 @@ namespace Vakantiepark.Application.Services
                 DepartureDate = departureDate,
                 ArrivalTime = settings.ArrivalTime,
                 DepartureTime = settings.DepartureTime,
-                NumberOfGuests = numberOfGuests,
+                NumberOfGuests = filter.NumberOfGuests,
                 Price = price,
                 FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
                 NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
@@ -91,7 +97,13 @@ namespace Vakantiepark.Application.Services
             ParkSettings settings = await GetParkSettingsAsync();
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
-            List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.PreferredZone);
+            AccommodationUnitFilter filter = new AccommodationUnitFilter()
+            {
+                NumberOfGuests = request.NumberOfGuests,
+                NumberOfPets = request.NumberOfPets,
+                WheelchairAccessible = request.WheelchairAccessible,
+            };
+            List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, filter, request.PreferredZone);
 
             // The server always calculates the price itself; a price from the browser is never used.
             PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
@@ -113,12 +125,52 @@ namespace Vakantiepark.Application.Services
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
         }
 
-        // Free units of the type that fit the party, in the preferred zone when one is given.
-        private async Task<List<Accommodation>> GetCandidateUnitsAsync(AccommodationType type, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)
+        // The link from the confirmation email works up to and including the departure date.
+        public async Task<MyBookingResponse> GetMineByTokenAsync(string token)
         {
-            List<Accommodation> units = await AccommodationUnitRepository.GetBookableUnitsAsync(type.Slug, arrivalDate, departureDate, numberOfGuests);
+            Booking? booking = await BookingRepository.GetByAccessTokenAsync(token);
+
+            if (booking is null)
+                throw new ArgumentException(InvalidLinkMessage);
+
+            if (booking.DepartureDate < Today())
+                throw new ArgumentException(ExpiredLinkMessage);
+
+            return booking.ToMyBookingResponse(GetStatus(booking));
+        }
+
+        // For a guest logged in via /Auth/Guest; the id comes from his token, never from the request.
+        public async Task<MyBookingResponse> GetMineAsync(Guid bookingId)
+        {
+            Booking? booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId);
+
+            if (booking is null)
+                throw new ArgumentException(NotFoundMessage);
+
+            return booking.ToMyBookingResponse(GetStatus(booking));
+        }
+
+        private string GetStatus(Booking booking)
+        {
+            if (booking.DeletedAt is not null)
+                return BookingStatuses.Geannuleerd;
+
+            if (booking.DepartureDate < Today())
+                return BookingStatuses.Afgerond;
+
+            return BookingStatuses.Bevestigd;
+        }
+
+
+        // Free units of the type that fit the party (the same filter as the search), in the
+        // preferred zone when one is given.
+        private async Task<List<Accommodation>> GetCandidateUnitsAsync(AccommodationType type, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, string? preferredZone)
+        {
+            List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, arrivalDate, departureDate))
+                .Where(filter.Matches)
+                .ToList();
             if (units.Count == 0)
-                throw new ArgumentException($"{type.Name} heeft geen plek voor {numberOfGuests} personen. Kies een groter verblijf.");
+                throw new ArgumentException(NoFittingUnitMessage(type.Name, filter));
 
             List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(
                 units.Select(unit => unit.Id).ToList(), arrivalDate, departureDate);
@@ -136,6 +188,16 @@ namespace Vakantiepark.Application.Services
                 throw new ArgumentException($"In de zone {preferredZone.Trim()} is in deze periode geen {type.Name} meer vrij. Kies een andere zone of boek zonder voorkeur.");
 
             return inZone;
+        }
+
+        private static string NoFittingUnitMessage(string typeName, AccommodationUnitFilter filter)
+        {
+            string place = filter.WheelchairAccessible ? "rolstoeltoegankelijke plek" : "plek";
+            string party = $"{filter.NumberOfGuests} personen";
+            if (filter.NumberOfPets > 0)
+                party += $" met {filter.NumberOfPets} {(filter.NumberOfPets == 1 ? "huisdier" : "huisdieren")}";
+
+            return $"{typeName} heeft geen {place} voor {party}. Kies een ander verblijf.";
         }
 
         // When the stay falls (partly) in a high season, it must last at least the minimum number of nights.
