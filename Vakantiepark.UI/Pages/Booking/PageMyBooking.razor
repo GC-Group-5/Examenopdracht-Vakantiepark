@@ -2,6 +2,7 @@
 @page "/mijn-boeking/{Token}"
 @using Vakantiepark.Shared.DTOs.Booking
 @inject IBookingService BookingService
+@inject IAuthService AuthService
 
 <PageTitle>Mijn boeking | Vakantiepark D'r op Uut</PageTitle>
 
@@ -57,7 +58,13 @@
             <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
                     <h2 class="h4 mb-0">Je boeking</h2>
-                    <span class="badge rounded-pill @StatusClass fs-6">@booking.Status</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill @StatusClass fs-6">@booking.Status</span>
+                        @if (isLoggedInAsGuest)
+                        {
+                            <button type="button" class="btn btn-du-light btn-sm" @onclick="LogoutAsync">Uitloggen</button>
+                        }
+                    </div>
                 </div>
 
                 <dl class="row mb-0">
@@ -65,7 +72,7 @@
                     <dd class="col-sm-8">@booking.BookingNumber</dd>
 
                     <dt class="col-sm-4">Verblijf</dt>
-                    <dd class="col-sm-8">@booking.AccommodationTypeName</dd>
+                    <dd class="col-sm-8">@booking.AccommodationTypeName · zone @booking.Zone</dd>
 
                     <dt class="col-sm-4">Data</dt>
                     <dd class="col-sm-8">@booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
@@ -82,6 +89,9 @@
                             }
                         </ul>
                     </dd>
+
+                    <dt class="col-sm-4">Huisdieren</dt>
+                    <dd class="col-sm-8">@(booking.NumberOfPets == 0 ? "Geen" : $"{booking.NumberOfPets} {(booking.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
 
                     <dt class="col-sm-4">Contactgegevens</dt>
                     <dd class="col-sm-8">@booking.Name<br />@booking.Email<br />@booking.PhoneNumber</dd>
@@ -107,7 +117,7 @@
                     <div class="alert alert-success mt-4 mb-0" role="status">@successMessage</div>
                 }
 
-                @if (booking.Status == ConfirmedStatus)
+                @if (booking.Status == BookingStatuses.Bevestigd)
                 {
                     <h3 class="h5 mt-5 mb-3">Je boeking aanpassen</h3>
 
@@ -233,13 +243,17 @@
     [Parameter]
     public string? Token { get; set; }
 
-    private readonly FindMyBookingRequest request = new FindMyBookingRequest();
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private readonly GuestLoginRequest request = new GuestLoginRequest();
     private MyBookingResponse? booking;
     private string? errorMessage;
     private bool isLoading;
     private bool isSearching;
+    private bool isLoggedInAsGuest;
 
-    private const string ConfirmedStatus = "Bevestigd";
+    // US-12: changing and cancelling; only one of the two is open at a time.
     private enum Mode { None, Cancel, Change }
     private Mode mode = Mode.None;
     private CancellationQuoteResponse? cancellationQuote;
@@ -253,11 +267,14 @@
 
     private string StatusClass => booking?.Status switch
     {
-        "Geannuleerd" => "text-bg-danger",
-        "Afgerond" => "text-bg-secondary",
+        BookingStatuses.Geannuleerd => "text-bg-danger",
+        BookingStatuses.Afgerond => "text-bg-secondary",
         _ => "text-bg-success",
     };
 
+    private const string LoadFailedMessage = "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
+
+    // Via the link from the email, or for a guest who is already logged in.
     protected override async Task OnParametersSetAsync()
     {
         booking = null;
@@ -265,16 +282,24 @@
         CloseAction();
         successMessage = null;
 
-        if (string.IsNullOrWhiteSpace(Token))
+        if (!string.IsNullOrWhiteSpace(Token))
+        {
+            isLoading = true;
+            Show(await BookingService.GetMineByTokenAsync(Token));
+            isLoading = false;
             return;
+        }
 
-        isLoading = true;
-        ApiResponse<MyBookingResponse> response = await BookingService.GetMineByTokenAsync(Token);
-        booking = response.Succeeded ? response.Value : null;
-        errorMessage = response.Succeeded ? null : response.Message ?? "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
-        isLoading = false;
+        AuthenticationState state = await AuthenticationState;
+        if (state.User.IsInRole(Roles.Gast))
+        {
+            isLoading = true;
+            await LoadMineAsync();
+            isLoading = false;
+        }
     }
 
+    // Booking number + email is the normal guest login (/Auth/Guest); the token it returns fetches the booking.
     private async Task FindAsync()
     {
         isSearching = true;
@@ -282,19 +307,40 @@
         CloseAction();
         successMessage = null;
 
-        ApiResponse<MyBookingResponse> response = await BookingService.GetMineByNumberAndEmailAsync(request);
-        booking = response.Succeeded ? response.Value : null;
-        errorMessage = response.Succeeded ? null : response.Message ?? "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
+        ApiResponse<TokenResponse> login = await AuthService.GuestLoginAsync(request);
+        if (login.Succeeded)
+            await LoadMineAsync();
+        else
+            errorMessage = login.Message ?? LoadFailedMessage;
 
         isSearching = false;
     }
 
-    private void FillAccess(BookingAccessRequest access)
+    private async Task LoadMineAsync()
     {
-        access.Token = string.IsNullOrWhiteSpace(Token) ? null : Token;
-        access.BookingNumber = request.BookingNumber;
-        access.Email = request.Email;
+        ApiResponse<MyBookingResponse> response = await BookingService.GetMineAsync();
+        Show(response);
+        isLoggedInAsGuest = response.Succeeded;
     }
+
+    private void Show(ApiResponse<MyBookingResponse> response)
+    {
+        booking = response.Succeeded ? response.Value : null;
+        errorMessage = response.Succeeded ? null : response.Message ?? LoadFailedMessage;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        booking = null;
+        isLoggedInAsGuest = false;
+        request.BookingNumber = string.Empty;
+        request.Email = string.Empty;
+    }
+
+    // Via the email link the code goes along; a logged-in guest sends none, his login token is enough.
+    private void FillAccess(BookingAccessRequest access)
+        => access.Token = string.IsNullOrWhiteSpace(Token) ? null : Token;
 
     private void CloseAction()
     {

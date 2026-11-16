@@ -29,7 +29,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetByAccessTokenAsync(Token))
                 .ReturnsAsync(() => _booking);
             _bookingRepository
-                .Setup(x => x.GetByBookingNumberAndEmailAsync("K7M2XQ9P", "jan@example.nl"))
+                .Setup(x => x.GetByIdWithDetailsAsync(_booking.Id))
                 .ReturnsAsync(() => _booking);
 
             _sut = new BookingService(
@@ -61,6 +61,17 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task GetMineByToken_ShowsPetsAndZone()
+        {
+            _booking.NumberOfPets = 2;
+
+            MyBookingResponse response = await _sut.GetMineByTokenAsync(Token);
+
+            Assert.Equal(2, response.NumberOfPets);
+            Assert.Equal(_booking.AccommodationUnit.Zone.Name, response.Zone);
+        }
+
+        [Fact]
         public async Task GetMineByToken_UnknownOrChangedToken_ThrowsInvalidLink()
         {
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -89,33 +100,31 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(BookingService.ExpiredLinkMessage, exception.Message);
         }
 
+        // Booking number + email is the guest login (/Auth/Guest, tested in the auth tests); the booking id
+        // then comes from the guest token.
         [Fact]
-        public async Task GetMineByNumberAndEmail_CorrectCombination_ReturnsBooking()
+        public async Task GetMine_BookingIdFromGuestToken_ReturnsBooking()
         {
-            MyBookingResponse response = await _sut.GetMineByNumberAndEmailAsync("K7M2XQ9P", "jan@example.nl");
+            MyBookingResponse response = await _sut.GetMineAsync(_booking.Id);
 
             Assert.Equal("K7M2XQ9P", response.BookingNumber);
         }
 
         [Fact]
-        public async Task GetMineByNumberAndEmail_WrongNumberOrWrongEmail_GivesTheSameMessage()
+        public async Task GetMine_UnknownBookingId_ThrowsNotFound()
         {
-            ArgumentException wrongEmail = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.GetMineByNumberAndEmailAsync("K7M2XQ9P", "iemand@anders.nl"));
-            ArgumentException wrongNumber = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.GetMineByNumberAndEmailAsync("AAAAAAAA", "jan@example.nl"));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetMineAsync(Guid.NewGuid()));
 
-            Assert.Equal(BookingService.NotFoundMessage, wrongEmail.Message);
-            Assert.Equal(wrongEmail.Message, wrongNumber.Message);
+            Assert.Equal(BookingService.NotFoundMessage, exception.Message);
         }
 
         [Fact]
-        public async Task GetMineByNumberAndEmail_AfterDeparture_StillWorksWithStatusAfgerond()
+        public async Task GetMine_AfterDeparture_HasStatusAfgerond()
         {
             _booking.ArrivalDate = Today.AddDays(-7);
             _booking.DepartureDate = Today.AddDays(-1);
 
-            MyBookingResponse response = await _sut.GetMineByNumberAndEmailAsync("K7M2XQ9P", "jan@example.nl");
+            MyBookingResponse response = await _sut.GetMineAsync(_booking.Id);
 
             Assert.Equal("Afgerond", response.Status);
         }

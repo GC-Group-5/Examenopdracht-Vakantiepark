@@ -74,7 +74,7 @@ namespace Vakantiepark.UnitTests
         {
             SetArrival(daysBeforeArrival);
 
-            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteAsync(Access());
+            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteAsync(Access(), null);
 
             Assert.Equal(expectedFee, quote.CancellationFee);
             Assert.False(string.IsNullOrWhiteSpace(quote.Explanation));
@@ -86,7 +86,7 @@ namespace Vakantiepark.UnitTests
         {
             SetArrival(20);
 
-            await _sut.CancelAsync(Access());
+            await _sut.CancelAsync(Access(), null);
 
             _bookingRepository.Verify(x => x.CancelAsync(_booking, 120m), Times.Once);
             _emailSender.Verify(x => x.SendAsync(
@@ -101,7 +101,7 @@ namespace Vakantiepark.UnitTests
         {
             SetArrival(0);
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access()));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access(), null));
 
             Assert.Equal(BookingService.CannotCancelMessage, exception.Message);
             _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
@@ -112,10 +112,29 @@ namespace Vakantiepark.UnitTests
         {
             BookingAccessRequest access = new BookingAccessRequest() { Token = "verkeerde-code" };
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(access));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(access, null));
 
             Assert.Equal(BookingService.InvalidLinkMessage, exception.Message);
             _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Cancel_GuestLoggedInWithBookingNumberAndEmail_UsesTheBookingFromHisLogin()
+        {
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(_booking.Id)).ReturnsAsync(() => _booking);
+            SetArrival(20);
+
+            await _sut.CancelAsync(new BookingAccessRequest(), _booking.Id);
+
+            _bookingRepository.Verify(x => x.CancelAsync(_booking, 120m), Times.Once);
+        }
+
+        [Fact]
+        public async Task Cancel_WithoutCodeAndWithoutGuestLogin_FindsNothing()
+        {
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(new BookingAccessRequest(), null));
+
+            Assert.Equal(BookingService.NotFoundMessage, exception.Message);
         }
 
         // ---------- Changing ----------
@@ -123,7 +142,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task GetChangeQuote_ShowsTheOldAndTheNewPrice_WithoutSaving()
         {
-            ChangeQuoteResponse quote = await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2));
+            ChangeQuoteResponse quote = await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null);
 
             Assert.Equal(600m, quote.OldTotalPrice);
             Assert.Equal(817m, quote.NewPrice.TotalPrice);
@@ -134,7 +153,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task Change_LeavesTheOwnBookingOutOfTheAvailabilityCheck()
         {
-            await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2));
+            await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null);
 
             _bookingRepository.Verify(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(
                 It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), _booking.Id), Times.Once);
@@ -145,7 +164,7 @@ namespace Vakantiepark.UnitTests
         {
             UnitsTaken(_currentUnit.Id);
 
-            MyBookingResponse response = await _sut.ChangeAsync(ChangeRequest(shiftDays: 2));
+            MyBookingResponse response = await _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null);
 
             Assert.Equal(_otherUnit.Id, _booking.AccommodationUnitId);
             Assert.Equal("Eik Luxe 6", response.AccommodationTypeName);
@@ -157,7 +176,7 @@ namespace Vakantiepark.UnitTests
             UnitsTaken(_currentUnit.Id, _otherUnit.Id);
             DateOnly oldArrival = _booking.ArrivalDate;
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2)));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null));
 
             Assert.Equal(BookingService.NoUnitForChangeMessage, exception.Message);
             Assert.Equal(oldArrival, _booking.ArrivalDate);
@@ -169,7 +188,7 @@ namespace Vakantiepark.UnitTests
         {
             _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>())).ReturnsAsync(false);
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2)));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null));
 
             Assert.Equal(BookingService.NoUnitForChangeMessage, exception.Message);
             _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -180,7 +199,7 @@ namespace Vakantiepark.UnitTests
         {
             ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
 
-            await _sut.ChangeAsync(request);
+            await _sut.ChangeAsync(request, null);
 
             Assert.Equal(request.ArrivalDate, _booking.ArrivalDate);
             Assert.Equal(817m, _booking.TotalPrice);
@@ -197,7 +216,7 @@ namespace Vakantiepark.UnitTests
         {
             SetArrival(29);
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2)));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null));
 
             Assert.Equal(BookingService.CannotChangeMessage, exception.Message);
         }
@@ -212,7 +231,7 @@ namespace Vakantiepark.UnitTests
             ChangeBookingRequest request = ChangeRequest(shiftDays: 0);
             request.DepartureDate = request.ArrivalDate.AddDays(3);
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request));
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request, null));
 
             Assert.Contains("minimaal 7 nachten", exception.Message);
         }
@@ -223,7 +242,7 @@ namespace Vakantiepark.UnitTests
             ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
             request.NumberOfGuests = 3;
 
-            await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request));
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request, null));
         }
 
         // ---------- Helpers ----------

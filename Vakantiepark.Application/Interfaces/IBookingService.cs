@@ -5,17 +5,18 @@ namespace Vakantiepark.Application.Interfaces
 {
     public interface IBookingService
     {
+        // Checks the stay and returns what the summary shows, without saving anything.
         Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, string? preferredZone);
 
         Task<BookingResponse> CreateAsync(CreateBookingRequest request);
         Task<MyBookingResponse> GetMineByTokenAsync(string token);
-        Task<MyBookingResponse> GetMineByNumberAndEmailAsync(string bookingNumber, string email);
+        Task<MyBookingResponse> GetMineAsync(Guid bookingId);
 
-        Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access);
-        Task<MyBookingResponse> CancelAsync(BookingAccessRequest access);
-
-        // US-12: the old and new price of a change, and the change itself.
-        Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request);
-        Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request);
+        // US-12: cancel or change the guest's own booking. guestBookingId comes from the guest login
+        // token; without it the request must carry the code from the email link.
+        Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access, Guid? guestBookingId);
+        Task<MyBookingResponse> CancelAsync(BookingAccessRequest access, Guid? guestBookingId);
+        Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId);
+        Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request, Guid? guestBookingId);
     }
 }

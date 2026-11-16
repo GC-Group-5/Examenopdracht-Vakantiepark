@@ -58,18 +58,15 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .ToListAsync();
 
         public async Task<Booking?> GetByAccessTokenAsync(string accessToken)
-            => await Set
-                .Include(x => x.Guests)
-                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+            => await WithDetails()
                 .SingleOrDefaultAsync(x => x.AccessToken == accessToken);
 
-        public async Task<Booking?> GetByBookingNumberAndEmailAsync(string bookingNumber, string email)
-            => await Set
-                .Include(x => x.Guests)
-                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
-                .SingleOrDefaultAsync(x => x.BookingNumber == bookingNumber.Trim().ToUpper()
-                    && x.Email.ToLower() == email.Trim().ToLower());
+        public async Task<Booking?> GetByIdWithDetailsAsync(Guid id)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.Id == id);
 
+        // A cancelled booking keeps its row (status "Geannuleerd"); deleted_at frees the unit,
+        // because the overlap constraint only counts bookings where deleted_at is null.
         public async Task CancelAsync(Booking booking, decimal cancellationFee)
         {
             booking.CancellationFee = cancellationFee;
@@ -88,6 +85,8 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Distinct()
                 .ToListAsync();
 
+        // Saves a changed booking and replaces the co-travellers (the main booker stays). When the
+        // overlap constraint refuses it, nothing is saved and the booking stays as it was.
         public async Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers)
         {
             List<BookingGuest> oldCoTravellers = booking.Guests.Where(guest => !guest.IsMainBooker).ToList();
@@ -113,5 +112,11 @@ namespace Vakantiepark.Infrastructure.Repositories
                 return false;
             }
         }
+
+        private IQueryable<Booking> WithDetails()
+            => Set
+                .Include(x => x.Guests)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone);
     }
 }
