@@ -230,8 +230,9 @@ You can't approve your own pull request. If you push new commits after an approv
 ### CI
 
 `.github/workflows/ci-build-test.yml` runs on every pull request to `main` and on every push to `main`:
-restore → build (Release) → unit tests. A pull request can only be merged when CI is green.
-CI does not need Docker: unit tests never touch a real database.
+restore → build (Release) → unit tests and integration tests. A pull request can only be merged when
+CI is green. The integration tests start PostgreSQL in Docker (Testcontainers), so locally **Docker
+Desktop must be running** for `dotnet test`; the first run downloads the `postgres:17` image.
 
 Before you push, run locally:
 
