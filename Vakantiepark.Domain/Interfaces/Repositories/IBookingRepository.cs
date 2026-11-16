@@ -12,5 +12,7 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         Task<Booking?> GetByAccessTokenAsync(string accessToken);
         Task<Booking?> GetByBookingNumberAndEmailAsync(string bookingNumber, string email);
         Task CancelAsync(Booking booking, decimal cancellationFee);
+        Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId);
+        Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers);
     }
 }

@@ -37,5 +37,17 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<MyBookingResponse>> GetMineByNumberAndEmailAsync(FindMyBookingRequest request)
             => await HttpService.PostAsync<MyBookingResponse, FindMyBookingRequest>("/Booking/mine", request);
+
+        public async Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(BookingAccessRequest access)
+            => await HttpService.PostAsync<CancellationQuoteResponse, BookingAccessRequest>("/Booking/mine/cancel/quote", access);
+
+        public async Task<ApiResponse<MyBookingResponse>> CancelAsync(BookingAccessRequest access)
+            => await HttpService.PostAsync<MyBookingResponse, BookingAccessRequest>("/Booking/mine/cancel", access);
+
+        public async Task<ApiResponse<ChangeQuoteResponse>> GetChangeQuoteAsync(ChangeBookingRequest request)
+            => await HttpService.PostAsync<ChangeQuoteResponse, ChangeBookingRequest>("/Booking/mine/change/quote", request);
+
+        public async Task<ApiResponse<MyBookingResponse>> ChangeAsync(ChangeBookingRequest request)
+            => await HttpService.PostAsync<MyBookingResponse, ChangeBookingRequest>("/Booking/mine/change", request);
     }
 }

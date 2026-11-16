@@ -13,5 +13,9 @@ namespace Vakantiepark.Application.Interfaces
 
         Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access);
         Task<MyBookingResponse> CancelAsync(BookingAccessRequest access);
+
+        // US-12: the old and new price of a change, and the change itself.
+        Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request);
+        Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request);
     }
 }

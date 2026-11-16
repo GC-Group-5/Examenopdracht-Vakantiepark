@@ -86,5 +86,61 @@ namespace Vakantiepark.API.Controllers
                 return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
             }
         }
+
+        [HttpPost("mine/cancel")]
+        public async Task<IActionResult> CancelAsync(BookingAccessRequest request)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.CancelAsync(request);
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/cancel/quote")]
+        public async Task<IActionResult> GetCancellationQuoteAsync(BookingAccessRequest request)
+        {
+            try
+            {
+                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteAsync(request);
+                return Ok(ApiResponse<CancellationQuoteResponse>.Ok(quote));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<CancellationQuoteResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/change")]
+        public async Task<IActionResult> ChangeAsync(ChangeBookingRequest request)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.ChangeAsync(request);
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/change/quote")]
+        public async Task<IActionResult> GetChangeQuoteAsync(ChangeBookingRequest request)
+        {
+            try
+            {
+                ChangeQuoteResponse quote = await BookingService.GetChangeQuoteAsync(request);
+                return Ok(ApiResponse<ChangeQuoteResponse>.Ok(quote));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<ChangeQuoteResponse>.Fail(exception.Message));
+            }
+        }
     }
 }

@@ -9,5 +9,9 @@ namespace Vakantiepark.UI.Application.Interfaces
         Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request);
         Task<ApiResponse<MyBookingResponse>> GetMineByTokenAsync(string token);
         Task<ApiResponse<MyBookingResponse>> GetMineByNumberAndEmailAsync(FindMyBookingRequest request);
+        Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(BookingAccessRequest access);
+        Task<ApiResponse<MyBookingResponse>> CancelAsync(BookingAccessRequest access);
+        Task<ApiResponse<ChangeQuoteResponse>> GetChangeQuoteAsync(ChangeBookingRequest request);
+        Task<ApiResponse<MyBookingResponse>> ChangeAsync(ChangeBookingRequest request);
     }
 }

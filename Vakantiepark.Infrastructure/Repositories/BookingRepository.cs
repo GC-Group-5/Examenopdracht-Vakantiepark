@@ -77,5 +77,41 @@ namespace Vakantiepark.Infrastructure.Repositories
             booking.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
         }
+
+        public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId)
+            => await Set
+                .Where(x => x.DeletedAt == null)
+                .Where(x => x.Id != excludedBookingId)
+                .Where(x => unitIds.Contains(x.AccommodationUnitId))
+                .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate)
+                .Select(x => x.AccommodationUnitId)
+                .Distinct()
+                .ToListAsync();
+
+        public async Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers)
+        {
+            List<BookingGuest> oldCoTravellers = booking.Guests.Where(guest => !guest.IsMainBooker).ToList();
+            foreach (BookingGuest guest in oldCoTravellers)
+            {
+                booking.Guests.Remove(guest);
+                Context.Set<BookingGuest>().Remove(guest);
+            }
+
+            foreach (BookingGuest guest in coTravellers)
+                booking.Guests.Add(guest);
+
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await Context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
+            {
+                Context.ChangeTracker.Clear();
+                return false;
+            }
+        }
     }
 }
