@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Vakantiepark.API\Vakantiepark.API.csproj" />
     <ProjectReference Include="..\Vakantiepark.Application\Vakantiepark.Application.csproj" />
     <ProjectReference Include="..\Vakantiepark.Infrastructure\Vakantiepark.Infrastructure.csproj" />
   </ItemGroup>
