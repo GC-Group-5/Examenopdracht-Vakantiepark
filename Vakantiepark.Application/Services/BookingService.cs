@@ -262,7 +262,8 @@ namespace Vakantiepark.Application.Services
             {
                 NumberOfGuests = request.NumberOfGuests,
                 NumberOfPets = booking.NumberOfPets,
-            };
+				WheelchairAccessible = booking.WheelchairAccessible,
+			};
             List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, request.ArrivalDate, request.DepartureDate))
                 .Where(filter.Matches)
                 .ToList();
