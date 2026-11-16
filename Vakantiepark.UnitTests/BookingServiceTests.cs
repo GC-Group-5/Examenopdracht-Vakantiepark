@@ -304,6 +304,60 @@ namespace Vakantiepark.UnitTests
             NumberValue = maxPets,
             Feature = new Feature() { Key = "maxPets", Name = "Maximaal aantal huisdieren" },
         };
+
+        private static AccommodationFeature WheelchairAccess() => new AccommodationFeature()
+        {
+            Feature = new Feature() { Key = "wheelchairAccessible", Name = "Rolstoeltoegankelijk" },
+        };
+
+        [Fact]
+        public async Task CreateAsync_PetsAndWheelchair_AreStoredOnTheBooking()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+            _secondUnit.Features.Add(WheelchairAccess());
+
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest(request =>
+            {
+                request.NumberOfPets = 2;
+                request.WheelchairAccessible = true;
+            }));
+
+            Assert.Equal(2, _savedBooking!.NumberOfPets);
+            Assert.True(_savedBooking.WheelchairAccessible);
+            Assert.Equal(2, response.NumberOfPets);
+            Assert.True(response.WheelchairAccessible);
+        }
+
+        [Fact]
+        public async Task CreateAsync_PetsAndWheelchair_AreInTheConfirmationEmail()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+            _secondUnit.Features.Add(WheelchairAccess());
+
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest(request =>
+            {
+                request.NumberOfPets = 1;
+                request.WheelchairAccessible = true;
+            }));
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("1 huisdier") && html.Contains("Rolstoeltoegankelijk</td><td style=\"padding:8px 0;\">ja")),
+                It.Is<string>(text => text.Contains("Huisdieren:     1 huisdier") && text.Contains("Rolstoeltoegankelijk: ja"))), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_NoPetsNoWheelchair_EmailSaysGeenAndNee()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(text => text.Contains("Huisdieren:     geen") && text.Contains("Rolstoeltoegankelijk: nee"))), Times.Once);
+        }
         // US-09: confirmation email.
 
         [Fact]
