@@ -1,5 +1,5 @@
 using Vakantiepark.Domain.Interfaces.Repositories;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Booking;
@@ -20,6 +20,8 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IBookingNumberGenerator> _bookingNumberGenerator = new Mock<IBookingNumberGenerator>();
         private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
+        private readonly Mock<ILogger<BookingService>> _logger = new Mock<ILogger<BookingService>>();
+        private Booking? _savedBooking;
         private readonly Mock<IRepository<Season>> _seasonRepository = new Mock<IRepository<Season>>();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new Mock<IRepository<ParkSettings>>();
         private readonly Accommodation _firstUnit = TestData.CreateAccommodation("EL6-001", "Waterkant");
@@ -39,6 +41,7 @@ namespace Vakantiepark.UnitTests
                 .ReturnsAsync(new List<Guid>());
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
+                .Callback<Booking>(booking => _savedBooking = booking)
                 .ReturnsAsync(true);
             _priceService
                 .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
@@ -60,7 +63,7 @@ namespace Vakantiepark.UnitTests
                 new FixedTimeProvider(DateTimeOffset.UtcNow),
                 _emailSender.Object,
                 new FrontendSettings { BaseUrl = "https://localhost:4200" },
-                NullLogger<BookingService>.Instance);
+                _logger.Object);
         }
 
         [Fact]
@@ -298,7 +301,8 @@ namespace Vakantiepark.UnitTests
         {
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());
 
-            const string link = "https://localhost:4200/mijn-boeking?nummer=K7M2XQ9P";
+            string link = $"https://localhost:4200/mijn-boeking/{_savedBooking!.AccessToken}";
+            Assert.Matches("^[0-9a-f]{64}$", _savedBooking.AccessToken);
             _emailSender.Verify(x => x.SendAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -329,6 +333,28 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal("K7M2XQ9P", response.BookingNumber);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Once);
+            _logger.Verify(x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<InvalidOperationException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_OneGuest_EmailSaysOnePerson()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+            request.NumberOfGuests = 1;
+            request.CoTravellers = [];
+
+            await _sut.CreateAsync(request);
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("1 persoon:")),
+                It.Is<string>(text => text.Contains("1 persoon:"))), Times.Once);
         }
     }
 }

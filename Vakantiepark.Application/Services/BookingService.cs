@@ -177,8 +177,8 @@ namespace Vakantiepark.Application.Services
                     .OrderByDescending(guest => guest.IsMainBooker)
                     .Select(guest => guest.Name));
 
-                // Personal link to "Mijn boeking" (US-11): the booking number is filled in, the guest logs in with their email.
-                string myBookingUrl = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking?nummer={Uri.EscapeDataString(booking.BookingNumber)}";
+                // Personal link to "Mijn boeking" (US-11): the secret token gives access without logging in.
+                string myBookingUrl = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}";
 
                 RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingConfirmation, new Dictionary<string, string>
                 {
@@ -190,7 +190,7 @@ namespace Vakantiepark.Application.Services
                     ["ArrivalTime"] = booking.ArrivalTime.ToString("HH:mm", dutch),
                     ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
                     ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
-                    ["NumberOfGuests"] = booking.NumberOfGuests.ToString(dutch),
+                    ["NumberOfGuests"] = booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen",
                     ["Party"] = party,
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),

@@ -144,6 +144,9 @@ SMTP server. This is per developer and lives only in *your* AppHost user-secrets
 3. Restart the app. Mail now shows up in Mailpit **and** in the recipient's inbox, so only use
    your own addresses when testing. Remove the four lines to switch the relay off again.
 
+> **Never** use the relay with test data that contains other people's real email addresses:
+> every booking then sends them a real email.
+
 ### Ports and settings
 
 | Where | Setting | Value |
