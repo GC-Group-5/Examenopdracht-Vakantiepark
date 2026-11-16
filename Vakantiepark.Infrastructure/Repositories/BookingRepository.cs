@@ -18,8 +18,10 @@ namespace Vakantiepark.Infrastructure.Repositories
         public async Task<bool> ExistsByBookingNumberIncludingDeletedAsync(string bookingNumber)
             => await Set.AnyAsync(x => x.BookingNumber == bookingNumber);
 
-        // The exclusion constraint rejects a booking that overlaps another one for the same unit,
-        // even when two requests passed the availability check at the same moment.
+        // The exclusion constraint (migration AddBookingOverlapConstraint) rejects a booking that
+        // overlaps another one for the same unit, even when two requests passed the availability
+        // check at the same moment. The rejected booking and its guests are detached, so the
+        // caller can try the next free unit with a fresh booking.
         public async Task<bool> TryAddAsync(Booking booking)
         {
             try
@@ -29,6 +31,8 @@ namespace Vakantiepark.Infrastructure.Repositories
             }
             catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
             {
+                foreach (BookingGuest guest in booking.Guests)
+                    Context.Entry(guest).State = EntityState.Detached;
                 Context.Entry(booking).State = EntityState.Detached;
                 return false;
             }
@@ -42,6 +46,15 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate)
                 .Select(x => x.AccommodationUnitId)
                 .Distinct()
+                .ToListAsync();
+
+        public async Task<List<Booking>> GetByUnitIdInPeriodAsync(Guid unitId, DateOnly startDate, DateOnly endDate)
+            => await Set
+                .AsNoTracking()
+                .Where(x => x.DeletedAt == null)
+                .Where(x => x.AccommodationUnitId == unitId)
+                .Where(x => x.ArrivalDate < endDate && x.DepartureDate > startDate)
+                .OrderBy(x => x.ArrivalDate)
                 .ToListAsync();
     }
 }

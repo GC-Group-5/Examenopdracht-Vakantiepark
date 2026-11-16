@@ -10,11 +10,13 @@ namespace Vakantiepark.Application.Services
     {
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
         private readonly IFeatureRepository FeatureRepository;
+        private readonly IRepository<Zone> ZoneRepository;
 
-        public AccommodationService(IAccommodationUnitRepository accommodationUnitRepository, IFeatureRepository featureRepository)
+        public AccommodationService(IAccommodationUnitRepository accommodationUnitRepository, IFeatureRepository featureRepository, IRepository<Zone> zoneRepository)
         {
             AccommodationUnitRepository = accommodationUnitRepository;
             FeatureRepository = featureRepository;
+            ZoneRepository = zoneRepository;
         }
 
         public async Task<List<AccommodationResponse>> GetAllAsync()
@@ -35,6 +37,22 @@ namespace Vakantiepark.Application.Services
         {
             List<Feature> features = await FeatureRepository.GetAllWithOptionsAsync();
             return features.Select(feature => feature.ToResponse()).ToList();
+        }
+
+        public async Task<List<ZoneOptionResponse>> GetZoneOptionsAsync()
+        {
+            List<Zone> zones = (await ZoneRepository.GetAllAsync()).ToList();
+
+            return zones
+                .OrderBy(zone => zone.Category)
+                .ThenBy(zone => zone.Name)
+                .Select(zone => new ZoneOptionResponse
+                {
+                    Id = zone.Id,
+                    Name = zone.Name,
+                    Category = zone.Category.ToString(),
+                })
+                .ToList();
         }
     }
 }

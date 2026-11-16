@@ -23,6 +23,13 @@ namespace Vakantiepark.API.Controllers
             return Ok(ApiResponse<List<AccommodationResponse>>.Ok(accommodations));
         }
 
+        [HttpGet("zones")]
+        public async Task<IActionResult> GetZoneOptionsAsync()
+        {
+            List<ZoneOptionResponse> zones = await AccommodationService.GetZoneOptionsAsync();
+            return Ok(ApiResponse<List<ZoneOptionResponse>>.Ok(zones));
+        }
+
         [HttpGet("{code}")]
         public async Task<IActionResult> GetByCodeAsync(string code)
         {

@@ -7,6 +7,7 @@ namespace Vakantiepark.UnitTests
 {
     public static class TestData
     {
+        // A valid request for four persons: the main booker plus three co-travellers.
         public static CreateBookingRequest CreateNewBookingRequest(Action<CreateBookingRequest>? configure = null)
         {
             DateOnly arrivalDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
@@ -16,12 +17,17 @@ namespace Vakantiepark.UnitTests
                 AccommodationTypeSlug = "eik-luxe-6",
                 ArrivalDate = arrivalDate,
                 DepartureDate = arrivalDate.AddDays(7),
-                ArrivalTime = new TimeOnly(15, 0),
-                DepartureTime = new TimeOnly(10, 0),
                 NumberOfGuests = 4,
                 Name = "Jan Jansen",
                 Email = "jan@example.nl",
-                PhoneNumber = "0612345678"
+                PhoneNumber = "0612345678",
+                BirthDate = new DateOnly(1985, 5, 1),
+                CoTravellers =
+                [
+                    new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                    new TravellerRequest() { Name = "Tim Jansen", BirthDate = new DateOnly(2015, 3, 4) },
+                    new TravellerRequest() { Name = "Sara Jansen", BirthDate = new DateOnly(2018, 11, 20) },
+                ],
             };
 
             configure?.Invoke(request);
@@ -69,7 +75,8 @@ namespace Vakantiepark.UnitTests
                 AccommodationPrice = 700m,
                 CleaningFee = 75m,
                 TouristTax = 42m,
-                TotalPrice = 817m
+                TotalPrice = 817m,
+                Deposit = 163.40m
             };
 
             configure?.Invoke(price);
@@ -102,6 +109,38 @@ namespace Vakantiepark.UnitTests
 
             configure?.Invoke(type);
             return type;
+        }
+
+        public static Accommodation CreateAccommodation(string code, string zone = "Waterkant", Action<Accommodation>? configure = null)
+        {
+            Accommodation unit = new()
+            {
+                Id = Guid.NewGuid(),
+                Code = code,
+                Name = code,
+                MaxPersons = 6,
+                Zone = new Zone() { Id = Guid.NewGuid(), Name = zone, Category = AccommodationCategory.HolidayHome },
+            };
+
+            configure?.Invoke(unit);
+            return unit;
+        }
+
+        public static ParkSettings CreateParkSettings(Action<ParkSettings>? configure = null)
+        {
+            ParkSettings settings = new()
+            {
+                Id = Guid.NewGuid(),
+                ArrivalTime = new TimeOnly(15, 0),
+                DepartureTime = new TimeOnly(10, 0),
+                HighSeasonMinimumNights = 7,
+                DepositPercentage = 20m,
+                FreeCancellationDaysBeforeArrival = 30,
+                NoRefundDaysBeforeArrival = 7,
+            };
+
+            configure?.Invoke(settings);
+            return settings;
         }
     }
 }

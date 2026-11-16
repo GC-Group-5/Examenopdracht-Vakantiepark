@@ -16,6 +16,26 @@ namespace Vakantiepark.API.Controllers
             BookingService = bookingService;
         }
 
+        // The summary before confirming: checks the stay and returns price, times and terms.
+        [HttpGet("quote")]
+        public async Task<IActionResult> GetQuoteAsync(
+            [FromQuery] string accommodationTypeSlug,
+            [FromQuery] DateOnly arrivalDate,
+            [FromQuery] DateOnly departureDate,
+            [FromQuery] int numberOfGuests,
+            [FromQuery] string? preferredZone)
+        {
+            try
+            {
+                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, preferredZone);
+                return Ok(ApiResponse<BookingQuoteResponse>.Ok(quote));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<BookingQuoteResponse>.Fail(exception.Message));
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateBookingRequest request)
         {

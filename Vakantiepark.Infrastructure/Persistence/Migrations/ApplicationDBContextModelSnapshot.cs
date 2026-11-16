@@ -227,7 +227,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<decimal>("AccommodationPrice")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("accommodation_price");
 
                     b.Property<Guid>("AccommodationUnitId")
@@ -244,11 +245,13 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("BookingNumber")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("booking_number");
 
                     b.Property<decimal>("CleaningFee")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("cleaning_fee");
 
                     b.Property<DateTime>("CreatedAt")
@@ -267,31 +270,45 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("departure_time");
 
+                    b.Property<decimal>("Deposit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("deposit");
+
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<int>("NumberOfGuests")
                         .HasColumnType("integer")
                         .HasColumnName("number_of_guests");
 
+                    b.Property<int>("NumberOfPets")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_pets");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("phone_number");
 
                     b.Property<decimal>("TotalPrice")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("total_price");
 
                     b.Property<decimal>("TouristTax")
-                        .HasColumnType("numeric")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("tourist_tax");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -301,11 +318,48 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_bookings");
 
+                    b.HasIndex("AccommodationUnitId")
+                        .HasDatabaseName("ix_bookings_accommodation_unit_id");
+
                     b.HasIndex("BookingNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_bookings_booking_number");
 
                     b.ToTable("bookings", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingGuest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("BirthDate")
+                        .HasColumnType("date")
+                        .HasColumnName("birth_date");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<bool>("IsMainBooker")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_main_booker");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_guests");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_guests_booking_id");
+
+                    b.ToTable("booking_guests", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>
@@ -407,6 +461,57 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_feature_options_feature_id_value");
 
                     b.ToTable("feature_options", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.MaintenancePeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccommodationUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodation_unit_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_periods");
+
+                    b.HasIndex("AccommodationUnitId", "StartDate", "EndDate")
+                        .HasDatabaseName("ix_maintenance_periods_accommodation_unit_id_start_date_end_da");
+
+                    b.ToTable("maintenance_periods", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
@@ -723,6 +828,30 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Season");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Accommodation", "AccommodationUnit")
+                        .WithMany()
+                        .HasForeignKey("AccommodationUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bookings_accommodations_accommodation_unit_id");
+
+                    b.Navigation("AccommodationUnit");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingGuest", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Booking", "Booking")
+                        .WithMany("Guests")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_guests_bookings_booking_id");
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.FeatureOption", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.Feature", "Feature")
@@ -735,9 +864,23 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Feature");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.MaintenancePeriod", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Accommodation", "AccommodationUnit")
+                        .WithMany("MaintenancePeriods")
+                        .HasForeignKey("AccommodationUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenance_periods_accommodations_accommodation_unit_id");
+
+                    b.Navigation("AccommodationUnit");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.Navigation("Features");
+
+                    b.Navigation("MaintenancePeriods");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.AccommodationType", b =>
@@ -745,6 +888,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Accommodations");
 
                     b.Navigation("Prices");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
+                {
+                    b.Navigation("Guests");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>

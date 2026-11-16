@@ -21,6 +21,7 @@ namespace Vakantiepark.Application.Services
         private readonly IRepository<Season> SeasonRepository;
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
         private readonly IRepository<Zone> ZoneRepository;
+        private readonly IRepository<MaintenancePeriod> MaintenanceRepository;
         private readonly IPriceService PriceService;
 
         public AccommodationSearchService(
@@ -31,6 +32,7 @@ namespace Vakantiepark.Application.Services
             IRepository<Season> seasonRepository,
             IRepository<ParkSettings> parkSettingsRepository,
             IRepository<Zone> zoneRepository,
+            IRepository<MaintenancePeriod> maintenanceRepository,
             IPriceService priceService)
         {
             UnitRepository = unitRepository;
@@ -40,6 +42,7 @@ namespace Vakantiepark.Application.Services
             SeasonRepository = seasonRepository;
             ParkSettingsRepository = parkSettingsRepository;
             ZoneRepository = zoneRepository;
+            MaintenanceRepository = maintenanceRepository;
             PriceService = priceService;
         }
 
@@ -67,11 +70,22 @@ namespace Vakantiepark.Application.Services
                 Zone? zone = await ZoneRepository.GetByIdAsync(zoneId.Value);
                 if (zone is null)
                     throw new ArgumentException("De gekozen zone is niet gevonden. Kies een andere zone.");
+
+                // Criterion: only zones of the chosen type's category are offered.
+                if (types.Count == 1 && zone.Category != types[0].Category)
+                    throw new ArgumentException("Kies een zone die bij het geselecteerde verblijfstype hoort.");
             }
 
             List<Accommodation> units = await UnitRepository.GetAllWithDetailsAsync();
             List<Guid> allUnitIds = units.Select(unit => unit.Id).ToList();
             List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(allUnitIds, arrivalDate, departureDate);
+
+            // Units out of service (US-17) for any night of the stay never count as free.
+            List<Guid> maintenanceUnitIds = (await MaintenanceRepository.GetAllAsync())
+                .Where(period => period.StartDate < departureDate && period.EndDate >= arrivalDate)
+                .Select(period => period.AccommodationUnitId)
+                .Distinct()
+                .ToList();
 
             List<AccommodationTypeAvailability> results = [];
 
@@ -79,10 +93,9 @@ namespace Vakantiepark.Application.Services
             {
                 List<Accommodation> freeUnits = units
                     .Where(unit => unit.TypeId == type.Id)
-                    .Where(unit => unit.MaxPersons >= numberOfGuests)
-                    .Where(unit => numberOfPets == 0 || (unit.GetNumber("maxPets") ?? 0) >= numberOfPets)
                     .Where(unit => zoneId is null || unit.ZoneId == zoneId)
                     .Where(unit => !bookedUnitIds.Contains(unit.Id))
+                    .Where(unit => !maintenanceUnitIds.Contains(unit.Id))
                     .ToList();
 
                 if (freeUnits.Count == 0)

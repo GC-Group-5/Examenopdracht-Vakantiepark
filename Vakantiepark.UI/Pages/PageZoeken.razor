@@ -1,0 +1,255 @@
+@page "/zoeken"
+@using Vakantiepark.Shared.DTOs.Accommodation
+@inject ISearchService SearchService
+@inject NavigationManager Navigation
+
+<PageTitle>Zoeken | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Zoeken en boek</div>
+        <h1 class="page-title mt-2">Welk verblijf is vrij in jouw periode?</h1>
+        <p class="page-intro mt-3 mb-0">
+            Vul je periode, gezelschap en eventueel een voorkeurszone in. Je ziet meteen welke verblijven vrij zijn en wat het hele verblijf kost.
+        </p>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold" for="search-type">Verblijf</label>
+                    <select id="search-type" class="form-select" @bind="SelectedTypeSlug">
+                        <option value="">Alle verblijven</option>
+                        @foreach (TypeOption type in TypeOptions)
+                        {
+                            <option value="@type.Slug">@type.Name (@type.CategoryLabel)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label fw-semibold" for="search-arrival">Aankomst</label>
+                    <InputDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" min="@Today" />
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label fw-semibold" for="search-departure">Vertrek</label>
+                    <InputDate id="search-departure" class="form-control" @bind-Value="DepartureDate" min="@Today" />
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label fw-semibold" for="search-guests">Personen</label>
+                    <InputNumber id="search-guests" class="form-control" @bind-Value="NumberOfGuests" min="1" step="1" />
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label fw-semibold" for="search-pets">Huisdieren</label>
+                    <select id="search-pets" class="form-select" @bind="NumberOfPets">
+                        <option value="0">Geen</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold" for="search-zone">Voorkeurszone</label>
+                    <select id="search-zone" class="form-select" @bind="SelectedZoneId">
+                        <option value="">Geen voorkeur</option>
+                        @foreach (ZoneOptionResponse zone in AvailableZones)
+                        {
+                            <option value="@zone.Id">@zone.Name@(zone.Category == "CampingPitch" ? " (kampeerplaats)" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-lg-4 d-flex align-items-end">
+                    <button type="button" class="btn btn-du w-100 py-3" @onclick="SearchAsync" disabled="@isSearching">
+                        @(isSearching ? "Zoeken…" : "Beschikbaarheid zoeken")
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
+        }
+        else if (searchMessage is not null)
+        {
+            <div class="alert alert-info mt-4" role="alert">@searchMessage</div>
+        }
+
+        @if (isSearching)
+        {
+            <div class="p-4 border rounded-4 bg-white shadow-sm mt-4" role="status">Ik zoek beschikbare verblijven…</div>
+        }
+        else if (results is not null && results.Count > 0)
+        {
+            <div class="row g-4 mt-4">
+                @foreach (AccommodationTypeAvailability availability in results)
+                {
+                    <div class="col-md-6">
+                        <article class="type-card zoek-result-card">
+                            <img src="@($"img/accommodaties/{availability.Slug}/1.webp")"
+                                 alt="@availability.Name" loading="lazy"
+                                 onerror="this.src='img/accommodaties/berk-4/1.webp'" />
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between gap-3 align-items-start">
+                                    <div>
+                                        <div class="eyebrow">@CategoryLabel(availability.Category)</div>
+                                        <h2 class="h3 mt-2 mb-0">@availability.Name</h2>
+                                    </div>
+                                    <span class="count-pill text-nowrap">tot @availability.MaxPersons pers.</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <span class="feature-chip">@availability.AvailableUnitCount @(availability.AvailableUnitCount == 1 ? "vrije eenheid" : "vrije eenheden")</span>
+                                    @foreach (ZoneAvailability zone in availability.Zones)
+                                    {
+                                        <span class="feature-chip">@zone.Name · @zone.AvailableUnitCount vrij</span>
+                                    }
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-4 gap-3 flex-wrap">
+                                    <div>
+                                        <div class="small text-muted-du">Totaal voor @NightsLabel</div>
+                                        <div class="zoek-price">@availability.TotalPrice.ToString("C")</div>
+                                    </div>
+                                    <a class="btn btn-du" href="@BookingUrl(availability.Slug)">Bekijken en boeken</a>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private List<TypeOption> TypeOptions = [];
+    private List<ZoneOptionResponse> allZones = [];
+    private List<AccommodationTypeAvailability>? results;
+
+    private string SelectedTypeSlug = "";
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? TypeFromQuery { get; set; }
+
+    private string SelectedZoneId = "";
+    private int NumberOfGuests = 2;
+    private int NumberOfPets = 0;
+    private DateOnly ArrivalDate = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
+    private DateOnly DepartureDate = DateOnly.FromDateTime(DateTime.Today).AddDays(11);
+
+    private bool isSearching;
+    private string? errorMessage;
+    private string? searchMessage;
+
+    private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private List<ZoneOptionResponse> AvailableZones =>
+        string.IsNullOrWhiteSpace(SelectedTypeSlug)
+            ? allZones
+            : allZones.Where(zone => zone.Category == TypeCategoryOf(SelectedTypeSlug)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<AccommodationResponse>> accommodations = await SearchService.GetAccommodationsAsync();
+        ApiResponse<List<ZoneOptionResponse>> zones = await SearchService.GetZoneOptionsAsync();
+
+        if (!accommodations.Succeeded || accommodations.Value is null)
+        {
+            errorMessage = accommodations.Message ?? "De verblijven konden niet worden geladen. Probeer het later opnieuw.";
+            return;
+        }
+
+        TypeOptions = accommodations.Value
+            .GroupBy(accommodation => accommodation.TypeSlug)
+            .Select(group => new TypeOption(
+                group.Key,
+                group.First().TypeName,
+                group.First().Category,
+                CategoryLabel(group.First().Category)))
+            .OrderBy(type => type.Name)
+            .ToList();
+
+        allZones = zones.Succeeded && zones.Value is not null ? zones.Value : [];
+
+        ApplyQueryType();
+    }
+
+    // Criterion: ?type=… in the URL preselects the accommodation type.
+    private void ApplyQueryType()
+    {
+        if (!string.IsNullOrWhiteSpace(TypeFromQuery) && TypeOptions.Any(type => type.Slug == TypeFromQuery))
+            SelectedTypeSlug = TypeFromQuery;
+    }
+
+    protected override void OnParametersSet() => ApplyQueryType();
+
+    private async Task SearchAsync()
+    {
+        errorMessage = null;
+        searchMessage = null;
+        results = null;
+
+        if (ArrivalDate < Today)
+        {
+            errorMessage = "Je aankomstdatum ligt in het verleden. Kies een latere aankomstdatum.";
+            return;
+        }
+        if (DepartureDate <= ArrivalDate)
+        {
+            errorMessage = "Je vertrekdatum moet na je aankomstdatum liggen. Pas je data aan.";
+            return;
+        }
+
+        Guid? zoneId = Guid.TryParse(SelectedZoneId, out Guid parsedZone) ? parsedZone : null;
+
+        isSearching = true;
+        ApiResponse<AccommodationSearchResponse> response = await SearchService.SearchAsync(
+            string.IsNullOrWhiteSpace(SelectedTypeSlug) ? null : SelectedTypeSlug,
+            ArrivalDate, DepartureDate, NumberOfGuests, NumberOfPets, zoneId);
+        isSearching = false;
+
+        if (!response.Succeeded || response.Value is null)
+        {
+            errorMessage = response.Message ?? "Zoeken is nu niet gelukt. Probeer het later opnieuw.";
+            return;
+        }
+
+        results = response.Value.Results;
+        searchMessage = response.Value.Message;
+    }
+
+    private string BookingUrl(string slug)
+    {
+        string url = $"/zoek-en-boek?type={Uri.EscapeDataString(slug)}"
+            + $"&aankomst={ArrivalDate:yyyy-MM-dd}"
+            + $"&vertrek={DepartureDate:yyyy-MM-dd}";
+
+        ZoneOptionResponse? zone = allZones.FirstOrDefault(candidate => candidate.Id.ToString() == SelectedZoneId);
+        if (zone is not null)
+            url += $"&zone={Uri.EscapeDataString(zone.Name)}";
+
+        return url;
+    }
+
+    private string NightsLabel
+    {
+        get
+        {
+            int nights = DepartureDate.DayNumber - ArrivalDate.DayNumber;
+            return $"{nights} {(nights == 1 ? "nacht" : "nachten")}";
+        }
+    }
+
+    private string TypeCategoryOf(string slug) =>
+        TypeOptions.FirstOrDefault(type => type.Slug == slug)?.Category ?? "";
+
+    private static string CategoryLabel(string category) => category switch
+    {
+        "HolidayHome" => "Vakantiewoning",
+        "CampingPitch" => "Kampeerplaats",
+        _ => category,
+    };
+
+    private sealed record TypeOption(string Slug, string Name, string Category, string CategoryLabel);
+}
