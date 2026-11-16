@@ -24,6 +24,7 @@ namespace Vakantiepark.Domain.Entities
 
         public int NumberOfGuests { get; set; }
         public int NumberOfPets { get; set; }
+        public bool WheelchairAccessible { get; set; }
 
         // The price is fixed when booking; a later rate change does not alter it (US-07).
         public decimal AccommodationPrice { get; set; }

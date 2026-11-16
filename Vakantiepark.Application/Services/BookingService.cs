@@ -423,6 +423,8 @@ namespace Vakantiepark.Application.Services
                     ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
                     ["NumberOfGuests"] = booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen",
                     ["Party"] = party,
+                    ["Pets"] = booking.NumberOfPets switch { 0 => "geen", 1 => "1 huisdier", _ => $"{booking.NumberOfPets} huisdieren" },
+                    ["WheelchairAccessible"] = booking.WheelchairAccessible ? "ja" : "nee",
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),

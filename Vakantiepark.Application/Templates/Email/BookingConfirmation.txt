@@ -9,6 +9,8 @@ Verblijf:       {{AccommodationType}}
 Aankomst:       {{ArrivalDate}} vanaf {{ArrivalTime}}
 Vertrek:        {{DepartureDate}} vóór {{DepartureTime}}
 Reisgezelschap: {{NumberOfGuests}}: {{Party}}
+Huisdieren:     {{Pets}}
+Rolstoeltoegankelijk: {{WheelchairAccessible}}
 
 PRIJSSPECIFICATIE
 Verblijf:           {{AccommodationPrice}}

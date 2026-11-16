@@ -332,6 +332,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<bool>("WheelchairAccessible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("wheelchair_accessible");
+
                     b.HasKey("Id")
                         .HasName("pk_bookings");
 
