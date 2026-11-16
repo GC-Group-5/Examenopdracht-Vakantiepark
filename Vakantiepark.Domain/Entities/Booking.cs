@@ -7,6 +7,9 @@ namespace Vakantiepark.Domain.Entities
         public Guid Id { get; set; }
         public string BookingNumber { get; set; } = string.Empty;
 
+        // Secret, unguessable key in the personal link to "Mijn boeking" in the confirmation email.
+        public string AccessToken { get; set; } = string.Empty;
+
         // Contact details of the main booker; everyone who stays is in Guests.
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;

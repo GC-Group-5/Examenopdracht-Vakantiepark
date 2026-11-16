@@ -1,6 +1,7 @@
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
+using System.Security.Cryptography;
 
 namespace Vakantiepark.Application.Extensions
 {
@@ -11,6 +12,7 @@ namespace Vakantiepark.Application.Extensions
             => new Booking()
             {
                 BookingNumber = bookingNumber,
+                AccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant(),
                 Name = request.Name.Trim(),
                 Email = request.Email.Trim(),
                 PhoneNumber = request.PhoneNumber.Trim(),
