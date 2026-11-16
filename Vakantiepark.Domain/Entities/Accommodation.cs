@@ -24,6 +24,7 @@ namespace Vakantiepark.Domain.Entities
         public AccommodationType Type { get; set; } = null!;
         public Zone Zone { get; set; } = null!;
         public List<AccommodationFeature> Features { get; set; } = [];
+        public List<MaintenancePeriod> MaintenancePeriods { get; set; } = [];
 
         // Helpers for business rules; they need Features (with Feature) to be loaded.
         public bool HasFeature(string key) => Features.Any(feature => feature.Feature.Key == key);

@@ -10,10 +10,10 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         Task<List<Guid>> GetInServiceIdsByTypeSlugAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate);
 
         /// <summary>
-        /// Returns the in-service units of a type that fit the travel party, with their zone,
-        /// ordered by code. Whether a unit is already booked is checked separately.
+        /// Returns the in-service units of a type with their zone and feature values, ordered
+        /// by code. Whether a unit fits the party or is already booked is checked separately.
         /// </summary>
-        Task<List<Accommodation>> GetBookableUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests);
+        Task<List<Accommodation>> GetInServiceUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate);
 
         /// <summary>
         /// Returns every unit with its type, zone and feature values, ordered by code.

@@ -23,6 +23,16 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public void Validate_NegativeNumberOfPets_ThrowsDutchMessage()
+        {
+            CreateBookingRequest request = Request(r => r.NumberOfPets = -1);
+
+            ArgumentException exception = Assert.Throws<ArgumentException>(() => request.Validate(Today));
+
+            Assert.Equal("Het aantal huisdieren kan niet negatief zijn.", exception.Message);
+        }
+
+        [Fact]
         public void Validate_MainBookerSeventeenOnArrival_ThrowsDutchMessage()
         {
             CreateBookingRequest request = Request(r => r.BirthDate = new DateOnly(2009, 4, 11));

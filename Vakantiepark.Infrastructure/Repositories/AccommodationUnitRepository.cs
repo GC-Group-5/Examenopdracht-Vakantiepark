@@ -10,17 +10,17 @@ namespace Vakantiepark.Infrastructure.Repositories
         public AccommodationUnitRepository(ApplicationDBContext context)
             : base(context) { }
 
-        // There is no maintenance planning yet, so every unit that is not deleted counts as in service.
         public async Task<List<Guid>> GetInServiceIdsByTypeSlugAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
-            => await InService(accommodationTypeSlug)
+            => await InService(accommodationTypeSlug, arrivalDate, departureDate)
                 .Select(x => x.Id)
                 .ToListAsync();
 
-        public async Task<List<Accommodation>> GetBookableUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
-            => await InService(accommodationTypeSlug)
+        public async Task<List<Accommodation>> GetInServiceUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
+            => await InService(accommodationTypeSlug, arrivalDate, departureDate)
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.Zone)
-                .Where(x => x.MaxPersons >= numberOfGuests)
+                .Include(x => x.Features).ThenInclude(x => x.Feature)
                 .OrderBy(x => x.Code)
                 .ToListAsync();
 
@@ -34,8 +34,17 @@ namespace Vakantiepark.Infrastructure.Repositories
             => await WithDetails()
                 .SingleOrDefaultAsync(x => x.Code == code && x.DeletedAt == null);
 
-        private IQueryable<Accommodation> InService(string accommodationTypeSlug)
-            => Set.Where(x => x.Type.Slug == accommodationTypeSlug && x.Type.DeletedAt == null && x.DeletedAt == null);
+        // A unit counts as in service when it is not deleted and no maintenance period
+        // (US-17) covers any night of the stay; same overlap rule as a booking clash.
+        private IQueryable<Accommodation> InService(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
+            => Set.Where(x =>
+                x.Type.Slug == accommodationTypeSlug &&
+                x.Type.DeletedAt == null &&
+                x.DeletedAt == null &&
+                !x.MaintenancePeriods.Any(period =>
+                    period.DeletedAt == null &&
+                    period.StartDate < departureDate &&
+                    period.EndDate >= arrivalDate));
 
         // Split query: one query per include instead of one wide join of 200 units x their features.
         private IQueryable<Accommodation> WithDetails()

@@ -27,6 +27,7 @@ In de ontwikkelomgeving maakt de API bij de eerste start automatisch deze accoun
 |-----|-------------|------------|
 | Medewerker | `medewerker@dropuut.example` | `Medewerker123!` |
 | Beheerder | `beheerder@dropuut.example` | `Beheerder123!` |
+| Schoonmaker | `schoonmaker@dropuut.example` | `Schoonmaker123!` |
 
 Inloggen als medewerker: https://localhost:4200/beheer/inloggen.
 Een **gast** heeft geen account, maar logt in met het boekingsnummer (bijv. `DOU-7KQ3M9XP`) en het
