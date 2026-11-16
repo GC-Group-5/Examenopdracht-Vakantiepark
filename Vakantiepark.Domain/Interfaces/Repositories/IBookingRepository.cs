@@ -8,5 +8,7 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         Task<bool> ExistsByBookingNumberIncludingDeletedAsync(string bookingNumber);
         Task<bool> TryAddAsync(Booking booking);
         Task<List<Guid>> GetUnitIdsWithOverlappingBookingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate);
-    }
+        Task<Booking?> GetByAccessTokenAsync(string accessToken);
+        Task<Booking?> GetByBookingNumberAndEmailAsync(string bookingNumber, string email);
+	}
 }

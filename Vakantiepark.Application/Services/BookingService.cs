@@ -18,6 +18,10 @@ namespace Vakantiepark.Application.Services
         // A collision is very unlikely with 31^8 possible numbers; this only prevents an endless loop.
         private const int MaxBookingNumberAttempts = 5;
 
+        public const string InvalidLinkMessage = "Deze link is ongeldig.";
+        public const string ExpiredLinkMessage = "Deze link is verlopen. Je kunt je boeking nog bekijken door in te loggen met je boekingsnummer en e-mailadres.";
+        public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
+
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
         private readonly IAccommodationTypeRepository AccommodationTypeRepository;
@@ -112,6 +116,72 @@ namespace Vakantiepark.Application.Services
 
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
         }
+
+        // The link from the confirmation email works until (and on) the departure date.
+        public async Task<MyBookingResponse> GetMineByTokenAsync(string token)
+        {
+            Booking? booking = await BookingRepository.GetByAccessTokenAsync(token);
+
+            if (booking is null)
+                throw new ArgumentException(InvalidLinkMessage);
+
+            if (booking.DepartureDate < Today())
+                throw new ArgumentException(ExpiredLinkMessage);
+
+            return ToMyBookingResponse(booking, GetStatus(booking));
+        }
+
+        // One message for every wrong combination, so it never reveals which of the two is wrong.
+        public async Task<MyBookingResponse> GetMineByNumberAndEmailAsync(string bookingNumber, string email)
+        {
+            Booking? booking = await BookingRepository.GetByBookingNumberAndEmailAsync(bookingNumber, email);
+
+            if (booking is null)
+                throw new ArgumentException(NotFoundMessage);
+
+            return ToMyBookingResponse(booking, GetStatus(booking));
+        }
+
+        private string GetStatus(Booking booking)
+        {
+            if (booking.DeletedAt is not null)
+                return "Geannuleerd";
+
+            if (booking.DepartureDate < Today())
+                return "Afgerond";
+
+            return "Bevestigd";
+        }
+
+        private static MyBookingResponse ToMyBookingResponse(Booking booking, string status)
+            => new MyBookingResponse()
+            {
+                BookingNumber = booking.BookingNumber,
+                Name = booking.Name,
+                Email = booking.Email,
+                PhoneNumber = booking.PhoneNumber,
+                ArrivalDate = booking.ArrivalDate,
+                DepartureDate = booking.DepartureDate,
+                ArrivalTime = booking.ArrivalTime,
+                DepartureTime = booking.DepartureTime,
+                NumberOfGuests = booking.NumberOfGuests,
+                AccommodationPrice = booking.AccommodationPrice,
+                CleaningFee = booking.CleaningFee,
+                TouristTax = booking.TouristTax,
+                TotalPrice = booking.TotalPrice,
+                Deposit = booking.Deposit,
+                AccommodationTypeName = booking.AccommodationUnit.Type.Name,
+                Status = status,
+                Guests = booking.Guests
+                    .OrderByDescending(guest => guest.IsMainBooker)
+                    .Select(guest => new GuestResponse()
+                    {
+                        Name = guest.Name,
+                        BirthDate = guest.BirthDate,
+                        IsMainBooker = guest.IsMainBooker,
+                    })
+                    .ToList(),
+            };
 
         // Free units of the type that fit the party, in the preferred zone when one is given.
         private async Task<List<Accommodation>> GetCandidateUnitsAsync(AccommodationType type, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, string? preferredZone)

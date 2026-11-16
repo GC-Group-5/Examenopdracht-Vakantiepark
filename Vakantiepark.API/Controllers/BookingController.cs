@@ -49,5 +49,33 @@ namespace Vakantiepark.API.Controllers
                 return BadRequest(ApiResponse<BookingResponse>.Fail(exception.Message));
             }
         }
+
+        [HttpGet("mine/{token}")]
+        public async Task<IActionResult> GetMineByTokenAsync(string token)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.GetMineByTokenAsync(token);
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine")]
+        public async Task<IActionResult> GetMineByNumberAndEmailAsync(FindMyBookingRequest request)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.GetMineByNumberAndEmailAsync(request.BookingNumber, request.Email);
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
     }
 }
