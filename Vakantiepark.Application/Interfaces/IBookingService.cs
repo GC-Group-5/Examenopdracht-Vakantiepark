@@ -10,6 +10,6 @@ namespace Vakantiepark.Application.Interfaces
 
         Task<BookingResponse> CreateAsync(CreateBookingRequest request);
         Task<MyBookingResponse> GetMineByTokenAsync(string token);
-        Task<MyBookingResponse> GetMineByNumberAndEmailAsync(string bookingNumber, string email);
+        Task<MyBookingResponse> GetMineAsync(Guid bookingId);
     }
 }

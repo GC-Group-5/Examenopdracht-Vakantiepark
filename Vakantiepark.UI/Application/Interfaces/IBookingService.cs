@@ -8,6 +8,6 @@ namespace Vakantiepark.UI.Application.Interfaces
         Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, bool wheelchairAccessible, string? preferredZone);
         Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request);
         Task<ApiResponse<MyBookingResponse>> GetMineByTokenAsync(string token);
-        Task<ApiResponse<MyBookingResponse>> GetMineByNumberAndEmailAsync(FindMyBookingRequest request);
+        Task<ApiResponse<MyBookingResponse>> GetMineAsync();
     }
 }

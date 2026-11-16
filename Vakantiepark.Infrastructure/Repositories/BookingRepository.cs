@@ -61,14 +61,9 @@ namespace Vakantiepark.Infrastructure.Repositories
             => await WithDetails()
                 .SingleOrDefaultAsync(x => x.AccessToken == accessToken);
 
-        public async Task<Booking?> GetByBookingNumberAndEmailAsync(string bookingNumber, string email)
-        {
-            string number = bookingNumber.Trim().ToUpperInvariant();
-            string normalizedEmail = email.Trim().ToLowerInvariant();
-
-            return await WithDetails()
-                .SingleOrDefaultAsync(x => x.BookingNumber == number && x.Email.ToLower() == normalizedEmail);
-        }
+        public async Task<Booking?> GetByIdWithDetailsAsync(Guid id)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.Id == id);
 
         private IQueryable<Booking> WithDetails()
             => Set

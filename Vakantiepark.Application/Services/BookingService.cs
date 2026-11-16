@@ -21,7 +21,7 @@ namespace Vakantiepark.Application.Services
         private const int MaxBookingNumberAttempts = 5;
 
         public const string InvalidLinkMessage = "Deze link is ongeldig.";
-        public const string ExpiredLinkMessage = "Deze link is verlopen. Je kunt je boeking nog bekijken door in te loggen met je boekingsnummer en e-mailadres.";
+        public const string ExpiredLinkMessage = "Deze link is verlopen, omdat je verblijf voorbij is.";
         public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
 
         private readonly IBookingRepository BookingRepository;
@@ -139,10 +139,10 @@ namespace Vakantiepark.Application.Services
             return booking.ToMyBookingResponse(GetStatus(booking));
         }
 
-        // One message for every wrong combination, so it never reveals which of the two is wrong.
-        public async Task<MyBookingResponse> GetMineByNumberAndEmailAsync(string bookingNumber, string email)
+        // For a guest logged in via /Auth/Guest; the id comes from his token, never from the request.
+        public async Task<MyBookingResponse> GetMineAsync(Guid bookingId)
         {
-            Booking? booking = await BookingRepository.GetByBookingNumberAndEmailAsync(bookingNumber, email);
+            Booking? booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId);
 
             if (booking is null)
                 throw new ArgumentException(NotFoundMessage);
