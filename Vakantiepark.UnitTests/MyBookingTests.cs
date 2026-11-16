@@ -61,6 +61,17 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task GetMineByToken_ShowsPetsAndZone()
+        {
+            _booking.NumberOfPets = 2;
+
+            MyBookingResponse response = await _sut.GetMineByTokenAsync(Token);
+
+            Assert.Equal(2, response.NumberOfPets);
+            Assert.Equal(_booking.AccommodationUnit.Zone.Name, response.Zone);
+        }
+
+        [Fact]
         public async Task GetMineByToken_UnknownOrChangedToken_ThrowsInvalidLink()
         {
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(

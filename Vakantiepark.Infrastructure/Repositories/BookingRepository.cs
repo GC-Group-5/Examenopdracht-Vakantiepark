@@ -58,16 +58,22 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .ToListAsync();
 
         public async Task<Booking?> GetByAccessTokenAsync(string accessToken)
-            => await Set
-                .Include(x => x.Guests)
-                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+            => await WithDetails()
                 .SingleOrDefaultAsync(x => x.AccessToken == accessToken);
 
         public async Task<Booking?> GetByBookingNumberAndEmailAsync(string bookingNumber, string email)
-            => await Set
+        {
+            string number = bookingNumber.Trim().ToUpperInvariant();
+            string normalizedEmail = email.Trim().ToLowerInvariant();
+
+            return await WithDetails()
+                .SingleOrDefaultAsync(x => x.BookingNumber == number && x.Email.ToLower() == normalizedEmail);
+        }
+
+        private IQueryable<Booking> WithDetails()
+            => Set
                 .Include(x => x.Guests)
                 .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
-                .SingleOrDefaultAsync(x => x.BookingNumber == bookingNumber.Trim().ToUpper()
-                    && x.Email.ToLower() == email.Trim().ToLower());
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone);
     }
 }

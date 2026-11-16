@@ -3,6 +3,7 @@ using Vakantiepark.Domain.Filters;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Vakantiepark.API.Controllers
 {
@@ -73,7 +74,9 @@ namespace Vakantiepark.API.Controllers
             }
         }
 
+        // Same limit as the other logins, so booking numbers can't be tried endlessly.
         [HttpPost("mine")]
+        [EnableRateLimiting(RateLimitPolicies.Login)]
         public async Task<IActionResult> GetMineByNumberAndEmailAsync(FindMyBookingRequest request)
         {
             try

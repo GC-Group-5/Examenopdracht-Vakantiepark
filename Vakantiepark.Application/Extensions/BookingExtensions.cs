@@ -41,7 +41,11 @@ namespace Vakantiepark.Application.Extensions
             };
 
         public static BookingResponse ToResponse(this Booking booking)
-            => new BookingResponse()
+            => booking.ToResponse<BookingResponse>();
+
+        // Shared by every booking response, so a new field never has to be added twice.
+        public static T ToResponse<T>(this Booking booking) where T : BookingResponse, new()
+            => new T()
             {
                 BookingNumber = booking.BookingNumber,
                 Name = booking.Name,
@@ -59,5 +63,25 @@ namespace Vakantiepark.Application.Extensions
                 TotalPrice = booking.TotalPrice,
                 Deposit = booking.Deposit,
             };
+
+        // Needs Guests and AccommodationUnit with Type and Zone loaded.
+        public static MyBookingResponse ToMyBookingResponse(this Booking booking, string status)
+        {
+            MyBookingResponse response = booking.ToResponse<MyBookingResponse>();
+            response.AccommodationTypeName = booking.AccommodationUnit.Type.Name;
+            response.Zone = booking.AccommodationUnit.Zone.Name;
+            response.Status = status;
+            response.Guests = booking.Guests
+                .OrderByDescending(guest => guest.IsMainBooker)
+                .Select(guest => new GuestResponse()
+                {
+                    Name = guest.Name,
+                    BirthDate = guest.BirthDate,
+                    IsMainBooker = guest.IsMainBooker,
+                })
+                .ToList();
+
+            return response;
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Settings;
@@ -124,8 +125,7 @@ namespace Vakantiepark.Application.Services
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
         }
 
-        // The link from the confirmation email works until (and on) the departure date
-        
+        // The link from the confirmation email works up to and including the departure date.
         public async Task<MyBookingResponse> GetMineByTokenAsync(string token)
         {
             Booking? booking = await BookingRepository.GetByAccessTokenAsync(token);
@@ -136,7 +136,7 @@ namespace Vakantiepark.Application.Services
             if (booking.DepartureDate < Today())
                 throw new ArgumentException(ExpiredLinkMessage);
 
-            return ToMyBookingResponse(booking, GetStatus(booking));
+            return booking.ToMyBookingResponse(GetStatus(booking));
         }
 
         // One message for every wrong combination, so it never reveals which of the two is wrong.
@@ -147,49 +147,20 @@ namespace Vakantiepark.Application.Services
             if (booking is null)
                 throw new ArgumentException(NotFoundMessage);
 
-            return ToMyBookingResponse(booking, GetStatus(booking));
+            return booking.ToMyBookingResponse(GetStatus(booking));
         }
 
         private string GetStatus(Booking booking)
         {
             if (booking.DeletedAt is not null)
-                return "Geannuleerd";
+                return BookingStatuses.Geannuleerd;
 
             if (booking.DepartureDate < Today())
-                return "Afgerond";
+                return BookingStatuses.Afgerond;
 
-            return "Bevestigd";
+            return BookingStatuses.Bevestigd;
         }
 
-        private static MyBookingResponse ToMyBookingResponse(Booking booking, string status)
-            => new MyBookingResponse()
-            {
-                BookingNumber = booking.BookingNumber,
-                Name = booking.Name,
-                Email = booking.Email,
-                PhoneNumber = booking.PhoneNumber,
-                ArrivalDate = booking.ArrivalDate,
-                DepartureDate = booking.DepartureDate,
-                ArrivalTime = booking.ArrivalTime,
-                DepartureTime = booking.DepartureTime,
-                NumberOfGuests = booking.NumberOfGuests,
-                AccommodationPrice = booking.AccommodationPrice,
-                CleaningFee = booking.CleaningFee,
-                TouristTax = booking.TouristTax,
-                TotalPrice = booking.TotalPrice,
-                Deposit = booking.Deposit,
-                AccommodationTypeName = booking.AccommodationUnit.Type.Name,
-                Status = status,
-                Guests = booking.Guests
-                    .OrderByDescending(guest => guest.IsMainBooker)
-                    .Select(guest => new GuestResponse()
-                    {
-                        Name = guest.Name,
-                        BirthDate = guest.BirthDate,
-                        IsMainBooker = guest.IsMainBooker,
-                    })
-                    .ToList(),
-            };
 
         // Free units of the type that fit the party (the same filter as the search), in the
         // preferred zone when one is given.

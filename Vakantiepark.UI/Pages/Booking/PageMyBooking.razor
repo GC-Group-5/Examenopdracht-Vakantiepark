@@ -65,7 +65,7 @@
                     <dd class="col-sm-8">@booking.BookingNumber</dd>
 
                     <dt class="col-sm-4">Verblijf</dt>
-                    <dd class="col-sm-8">@booking.AccommodationTypeName</dd>
+                    <dd class="col-sm-8">@booking.AccommodationTypeName · zone @booking.Zone</dd>
 
                     <dt class="col-sm-4">Data</dt>
                     <dd class="col-sm-8">@booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
@@ -82,6 +82,9 @@
                             }
                         </ul>
                     </dd>
+
+                    <dt class="col-sm-4">Huisdieren</dt>
+                    <dd class="col-sm-8">@(booking.NumberOfPets == 0 ? "Geen" : $"{booking.NumberOfPets} {(booking.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
 
                     <dt class="col-sm-4">Contactgegevens</dt>
                     <dd class="col-sm-8">@booking.Name<br />@booking.Email<br />@booking.PhoneNumber</dd>
@@ -120,8 +123,8 @@
 
     private string StatusClass => booking?.Status switch
     {
-        "Geannuleerd" => "text-bg-danger",
-        "Afgerond" => "text-bg-secondary",
+        BookingStatuses.Geannuleerd => "text-bg-danger",
+        BookingStatuses.Afgerond => "text-bg-secondary",
         _ => "text-bg-success",
     };
 
