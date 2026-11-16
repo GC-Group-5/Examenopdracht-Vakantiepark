@@ -12,8 +12,9 @@ namespace Vakantiepark.UnitTests
     {
         private readonly Mock<IAccommodationUnitRepository> _accommodationRepository = new Mock<IAccommodationUnitRepository>();
         private readonly Mock<IFeatureRepository> _featureRepository = new Mock<IFeatureRepository>();
+        private readonly Mock<IRepository<Zone>> _zoneRepository = new Mock<IRepository<Zone>>();
 
-        private AccommodationService CreateService() => new AccommodationService(_accommodationRepository.Object, _featureRepository.Object);
+        private AccommodationService CreateService() => new AccommodationService(_accommodationRepository.Object, _featureRepository.Object, _zoneRepository.Object);
 
         private static Accommodation CreatePitch()
         {

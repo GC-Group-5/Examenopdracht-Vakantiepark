@@ -1,5 +1,6 @@
 @page "/zoek-en-boek"
 @using Vakantiepark.Shared.DTOs.Booking
+@using Vakantiepark.UI.Application.Extensions
 @inject IBookingService BookingService
 @inject NavigationManager NavigationManager
 
@@ -44,8 +45,22 @@
                 <DataAnnotationsValidator />
 
                 <h2 class="h5 mb-3">Hoofdboeker</h2>
-                <p class="text-muted-du small">De hoofdboeker is op de aankomstdatum minimaal 18 jaar en laat bij het inchecken een identiteitsbewijs zien.</p>
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="booking-guests">Aantal personen</label>
+                        <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" step="1" />
+                        <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
+                        <InputSelect id="booking-pets" class="form-select" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync">
+                            <option value="0">Geen</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </InputSelect>
+                        <div class="form-text">Geen huisdieren? Laat op Geen staan.</div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold" for="booking-name">Naam</label>
                         <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
@@ -89,12 +104,19 @@
                     }
                 }
 
+                @if (quoteErrorMessage is not null)
+                {
+                    <div class="alert alert-warning mt-4 mb-0" role="alert">@quoteErrorMessage</div>
+                }
+
                 @if (errorMessage is not null)
                 {
                     <div class="alert alert-danger mt-4 mb-0" role="alert">@errorMessage</div>
                 }
 
-                <button type="submit" class="btn btn-du mt-4">Naar de samenvatting</button>
+                <button type="submit" class="btn btn-du mt-4" disabled="@(isRefreshingQuote || quoteErrorMessage is not null)">
+                    @(isRefreshingQuote ? "Verblijf wordt gecontroleerd…" : "Naar de samenvatting")
+                </button>
             </EditForm>
         }
         else
@@ -108,6 +130,15 @@
                     <dt class="col-sm-4">Zone</dt>
                     <dd class="col-sm-8">@(quote.Zone ?? "Geen voorkeur")</dd>
 
+                    <dt class="col-sm-4">Huisdieren</dt>
+                    <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+
+                    @if (request.WheelchairAccessible)
+                    {
+                        <dt class="col-sm-4">Toegankelijkheid</dt>
+                        <dd class="col-sm-8">Rolstoeltoegankelijk</dd>
+                    }
+
                     <dt class="col-sm-4">Data</dt>
                     <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
 
@@ -117,10 +148,10 @@
                     <dt class="col-sm-4">Reisgezelschap</dt>
                     <dd class="col-sm-8">
                         <ul class="list-unstyled mb-0">
-                            <li>@request.Name (@request.BirthDate?.ToString(BirthDateFormat)) · hoofdboeker</li>
+                            <li>@request.Name (@request.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(request.BirthDate) · hoofdboeker</li>
                             @foreach (TravellerRequest traveller in request.CoTravellers)
                             {
-                                <li>@traveller.Name (@traveller.BirthDate?.ToString(BirthDateFormat))</li>
+                                <li>@traveller.Name (@traveller.BirthDate?.ToString(BirthDateFormat)) · @AgeGroupLabel(traveller.BirthDate)</li>
                             }
                         </ul>
                     </dd>
@@ -167,13 +198,20 @@
     private const string DateFormat = "ddd d MMMM yyyy";
     private const string BirthDateFormat = "d-M-yyyy";
     private const string TimeFormat = "HH:mm";
+    private const string QuoteFailedMessage = "Dit verblijf kan nu niet worden geboekt.";
+    private const int DefaultGuests = 2;
+    private const int MaxGuests = 20;
+    private const int MaxPets = 3;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
     private BookingQuoteResponse? quote;
     private bool isLoading = true;
+    private bool isRefreshingQuote;
     private bool showSummary;
     private bool isSaving;
     private string? errorMessage;
+    private string? quoteErrorMessage;
+    private int quoteRequestNumber;
 
     [SupplyParameterFromQuery(Name = "type")]
     public string? AccommodationTypeSlug { get; set; }
@@ -184,16 +222,22 @@
     [SupplyParameterFromQuery(Name = "vertrek")]
     public DateOnly? DepartureDate { get; set; }
 
-    [SupplyParameterFromQuery(Name = "personen")]
-    public int? NumberOfGuests { get; set; }
-
     [SupplyParameterFromQuery(Name = "zone")]
     public string? PreferredZone { get; set; }
 
+    // The party from the search (US-36); the guest can still change persons and pets here.
+    [SupplyParameterFromQuery(Name = "personen")]
+    public int? Guests { get; set; }
+
+    [SupplyParameterFromQuery(Name = "huisdieren")]
+    public int? Pets { get; set; }
+
+    [SupplyParameterFromQuery(Name = "rolstoel")]
+    public bool? Wheelchair { get; set; }
+
     private bool HasStay => !string.IsNullOrWhiteSpace(AccommodationTypeSlug)
         && ArrivalDate is not null
-        && DepartureDate > ArrivalDate
-        && NumberOfGuests > 0;
+        && DepartureDate > ArrivalDate;
 
     private int NumberOfNights => request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
 
@@ -205,7 +249,10 @@
         request.AccommodationTypeSlug = AccommodationTypeSlug!;
         request.ArrivalDate = ArrivalDate!.Value;
         request.DepartureDate = DepartureDate!.Value;
-        request.NumberOfGuests = NumberOfGuests!.Value;
+        // A hand-edited URL with an impossible value falls back to the default.
+        request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
+        request.NumberOfPets = Pets is >= 0 and <= MaxPets ? Pets.Value : 0;
+        request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
         request.CoTravellers = Enumerable.Range(0, request.NumberOfGuests - 1)
             .Select(_ => new TravellerRequest())
@@ -214,16 +261,76 @@
         // The server checks the stay first, so the guest hears about a full period
         // or a too-short high-season stay before filling in any details.
         isLoading = true;
-        ApiResponse<BookingQuoteResponse> response = await BookingService.GetQuoteAsync(
-            request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.PreferredZone);
+        ApiResponse<BookingQuoteResponse> response = await RequestQuoteAsync();
         isLoading = false;
 
         quote = response.Succeeded ? response.Value : null;
-        errorMessage = response.Succeeded ? null : response.Message ?? "Dit verblijf kan nu niet worden geboekt.";
+        errorMessage = response.Succeeded ? null : response.Message ?? QuoteFailedMessage;
+        quoteErrorMessage = null;
+    }
+
+    private async Task<ApiResponse<BookingQuoteResponse>> RequestQuoteAsync() =>
+        await BookingService.GetQuoteAsync(
+            request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate,
+            request.NumberOfGuests, request.NumberOfPets, request.WheelchairAccessible, request.PreferredZone);
+
+    // Refreshes the quote while the form stays on screen, so a party change does not
+    // tear down the form; a rejected party size is shown inline and can be corrected.
+    private async Task RefreshQuoteAsync()
+    {
+        int requestNumber = ++quoteRequestNumber;
+        isRefreshingQuote = true;
+
+        ApiResponse<BookingQuoteResponse> response = await RequestQuoteAsync();
+
+        // Quick clicks on the number arrows can return out of order; only the latest counts.
+        if (requestNumber != quoteRequestNumber)
+            return;
+
+        isRefreshingQuote = false;
+
+        if (response.Succeeded && response.Value is not null)
+        {
+            quote = response.Value;
+            quoteErrorMessage = null;
+            return;
+        }
+
+        quoteErrorMessage = response.Message ?? QuoteFailedMessage;
+    }
+
+    private async Task OnGuestsChangedAsync(int newGuests)
+    {
+        request.NumberOfGuests = newGuests;
+        await OnPartyChangedAsync();
+    }
+
+    // Pets decide which units may be picked, so the quote is checked again.
+    private async Task OnPetsChangedAsync(int newPets)
+    {
+        request.NumberOfPets = newPets;
+        await OnPartyChangedAsync();
+    }
+
+    // Changing the party size follows the travellers and the quote; filled-in traveller details are kept.
+    private async Task OnPartyChangedAsync()
+    {
+        if (!HasStay || request.NumberOfGuests < 1)
+            return;
+
+        List<TravellerRequest> previous = request.CoTravellers;
+        request.CoTravellers = Enumerable.Range(0, request.NumberOfGuests - 1)
+            .Select(index => index < previous.Count ? previous[index] : new TravellerRequest())
+            .ToList();
+
+        await RefreshQuoteAsync();
     }
 
     private void ShowSummary()
     {
+        if (isRefreshingQuote || quoteErrorMessage is not null)
+            return;
+
         errorMessage = MissingTravellerDetails();
         if (errorMessage is null)
             showSummary = true;
@@ -242,6 +349,9 @@
         }
         return null;
     }
+
+    private string AgeGroupLabel(DateOnly? birthDate) =>
+        birthDate?.AgeGroupLabel(request.ArrivalDate) ?? "";
 
     private void EditDetails()
     {

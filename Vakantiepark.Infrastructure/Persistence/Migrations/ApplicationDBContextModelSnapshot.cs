@@ -303,6 +303,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("number_of_guests");
 
+                    b.Property<int>("NumberOfPets")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_pets");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -473,6 +477,57 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_feature_options_feature_id_value");
 
                     b.ToTable("feature_options", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.MaintenancePeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccommodationUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodation_unit_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_periods");
+
+                    b.HasIndex("AccommodationUnitId", "StartDate", "EndDate")
+                        .HasDatabaseName("ix_maintenance_periods_accommodation_unit_id_start_date_end_da");
+
+                    b.ToTable("maintenance_periods", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
@@ -825,9 +880,23 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("Feature");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.MaintenancePeriod", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Accommodation", "AccommodationUnit")
+                        .WithMany("MaintenancePeriods")
+                        .HasForeignKey("AccommodationUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenance_periods_accommodations_accommodation_unit_id");
+
+                    b.Navigation("AccommodationUnit");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>
                 {
                     b.Navigation("Features");
+
+                    b.Navigation("MaintenancePeriods");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.AccommodationType", b =>
