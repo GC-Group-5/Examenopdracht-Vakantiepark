@@ -99,13 +99,7 @@ namespace Vakantiepark.Application.Services
             MaintenancePeriod period = await PeriodRepository.GetByIdAsync(id)
                 ?? throw new ArgumentException("De onderhouden periode is niet gevonden.");
 
-            if (request.StartDate < period.StartDate || request.EndDate > period.EndDate)
-                throw new ArgumentException("Een periode kan alleen worden ingekort, niet verruimd.");
-
-            request.StartDate.ValidateMaintenancePeriod(request.EndDate);
-
-            if (request.StartDate > period.EndDate)
-                throw new ArgumentException("De nieuwe begindatum valt na het einde van de periode.");
+            request.StartDate.ValidateShortening(request.EndDate, period);
 
             period.StartDate = request.StartDate;
             period.EndDate = request.EndDate;

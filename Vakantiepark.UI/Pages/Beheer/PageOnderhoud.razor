@@ -1,0 +1,343 @@
+@page "/beheer/onderhoud"
+@attribute [Authorize(Roles = Roles.Staff)]
+@using Vakantiepark.Shared.DTOs.Maintenance
+@inject IMaintenanceService MaintenanceService
+
+<PageTitle>Niet verhuurbaar | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <h1 class="page-title mt-2">Tijdelijk niet verhuurbaar</h1>
+        <p class="page-intro mt-4">
+            Zet een accommodatie buiten gebruik voor onderhoud of een storing. In die periode is de eenheid niet te vinden en niet te boeken.
+        </p>
+        <a class="btn btn-du-light mt-3" href="beheer">Terug naar beheer</a>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+            <label class="form-label fw-semibold" for="maintenance-unit">Accommodatie</label>
+            <select id="maintenance-unit" class="form-select" @bind="SelectedUnitCode" @bind:after="LoadOverviewAsync" disabled="@(units.Count == 0)">
+                <option value="">Kies een accommodatie</option>
+                @foreach (IGrouping<string, AccommodationResponse> group in units.GroupBy(unit => unit.TypeName))
+                {
+                    <optgroup label="@group.Key">
+                        @foreach (AccommodationResponse unit in group)
+                        {
+                            <option value="@unit.Code">@unit.Code · @unit.Name (@unit.Zone)</option>
+                        }
+                    </optgroup>
+                }
+            </select>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mt-4" role="status">@successMessage</div>
+        }
+
+        @if (overview is not null)
+        {
+            <div class="row g-4 mt-1">
+                <div class="col-12 col-lg-5">
+                    <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
+                        <h2 class="section-title h4">Nieuwe periode</h2>
+                        <p class="small text-muted-du">@overview.UnitCode · @overview.UnitName</p>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold" for="maintenance-start">Van</label>
+                                <input id="maintenance-start" type="date" class="form-control" @bind="newStartDate" min="@Today.ToString("yyyy-MM-dd")" disabled="@hasPendingConfirmation" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold" for="maintenance-end">Tot en met</label>
+                                <input id="maintenance-end" type="date" class="form-control" @bind="newEndDate" min="@newStartDate.ToString("yyyy-MM-dd")" disabled="@hasPendingConfirmation" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="maintenance-reason">Reden</label>
+                                <select id="maintenance-reason" class="form-select" @bind="newReason" disabled="@hasPendingConfirmation">
+                                    @foreach (KeyValuePair<string, string> reason in ReasonLabels)
+                                    {
+                                        <option value="@reason.Key">@reason.Value</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="maintenance-note">
+                                    Toelichting @(newReason == "Other" ? "(verplicht)" : "(optioneel)")
+                                </label>
+                                <textarea id="maintenance-note" class="form-control" rows="3" maxlength="300" @bind="newNote" disabled="@hasPendingConfirmation"></textarea>
+                            </div>
+                        </div>
+
+                        @if (hasPendingConfirmation)
+                        {
+                            <div class="alert alert-warning mt-4 mb-0" role="alert">
+                                <strong>@pendingMessage</strong>
+                                <ul class="mt-2 mb-3">
+                                    @foreach (BookingConflictResponse booking in pendingConflicts)
+                                    {
+                                        <li>@BookingLine(booking)</li>
+                                    }
+                                </ul>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" id="maintenance-confirm" class="btn btn-du" @onclick="() => CreateAsync(true)" disabled="@isBusy">Bevestigen en vastleggen</button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelConfirmation" disabled="@isBusy">Annuleren</button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <button type="button" id="maintenance-save" class="btn btn-du w-100 py-3 mt-4" @onclick="() => CreateAsync(false)" disabled="@isBusy">
+                                Buiten gebruik zetten
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-7">
+                    <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
+                        <h2 class="section-title h4">Periodes</h2>
+
+                        @if (overview.Periods.Count == 0)
+                        {
+                            <p class="text-muted-du mb-0">Deze accommodatie heeft geen periodes waarin ze niet verhuurbaar is.</p>
+                        }
+
+                        @foreach (MaintenancePeriodResponse period in overview.Periods)
+                        {
+                            <article class="border rounded-3 p-3 mb-3 bg-white">
+                                <div class="d-flex flex-wrap justify-content-between gap-2">
+                                    <div>
+                                        <strong>@PeriodDates(period.StartDate, period.EndDate)</strong>
+                                        <div class="small text-muted-du">@ReasonLabel(period.Reason)@(string.IsNullOrWhiteSpace(period.Note) ? "" : $" · {period.Note}")</div>
+                                    </div>
+                                    <span class="badge rounded-pill align-self-start @StatusBadgeClass(period)">@StatusLabel(period)</span>
+                                </div>
+
+                                @if (period.ConflictingBookings.Count > 0)
+                                {
+                                    <div class="border-start border-3 border-danger ps-3 mt-3 text-danger">
+                                        <div class="small fw-semibold">Actie nodig: @period.ConflictingBookings.Count boeking(en) in deze periode</div>
+                                        <ul class="small mb-0">
+                                            @foreach (BookingConflictResponse booking in period.ConflictingBookings)
+                                            {
+                                                <li>@BookingLine(booking)</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+
+                                @if (editingPeriodId == period.Id)
+                                {
+                                    <div class="row g-2 mt-2 align-items-end">
+                                        <div class="col-6 col-md-4">
+                                            <label class="form-label small fw-semibold" for="edit-start-@period.Id">Van</label>
+                                            <input id="edit-start-@period.Id" type="date" class="form-control" @bind="editStartDate" min="@period.StartDate.ToString("yyyy-MM-dd")" max="@period.EndDate.ToString("yyyy-MM-dd")" />
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="form-label small fw-semibold" for="edit-end-@period.Id">Tot en met</label>
+                                            <input id="edit-end-@period.Id" type="date" class="form-control" @bind="editEndDate" min="@period.StartDate.ToString("yyyy-MM-dd")" max="@period.EndDate.ToString("yyyy-MM-dd")" />
+                                        </div>
+                                        <div class="col-12 col-md-4 d-flex gap-2">
+                                            <button type="button" class="btn btn-du" @onclick="() => UpdateAsync(period.Id, editStartDate, editEndDate)" disabled="@isBusy">Opslaan</button>
+                                            <button type="button" class="btn btn-outline-secondary" @onclick="() => editingPeriodId = null" disabled="@isBusy">Annuleren</button>
+                                        </div>
+                                    </div>
+                                }
+                                else if (period.EndDate >= Today)
+                                {
+                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartEditing(period)" disabled="@isBusy">Inkorten</button>
+                                        @if (period.StartDate <= Today)
+                                        {
+                                            <button type="button" class="btn btn-du btn-sm" @onclick="() => UpdateAsync(period.Id, period.StartDate, Today)" disabled="@isBusy">Vandaag beëindigen</button>
+                                        }
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly Dictionary<string, string> ReasonLabels = new()
+    {
+        ["Maintenance"] = "Onderhoud",
+        ["TechnicalProblem"] = "Technisch probleem",
+        ["Other"] = "Overig",
+    };
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private List<AccommodationResponse> units = new List<AccommodationResponse>();
+    private MaintenanceUnitOverviewResponse? overview;
+    private string SelectedUnitCode = string.Empty;
+
+    private DateOnly newStartDate = Today;
+    private DateOnly newEndDate = Today;
+    private string newReason = "Maintenance";
+    private string? newNote;
+
+    private bool hasPendingConfirmation;
+    private string? pendingMessage;
+    private List<BookingConflictResponse> pendingConflicts = new List<BookingConflictResponse>();
+
+    private Guid? editingPeriodId;
+    private DateOnly editStartDate;
+    private DateOnly editEndDate;
+
+    private bool isBusy;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<AccommodationResponse>> response = await MaintenanceService.GetUnitsAsync();
+        if (response.Succeeded && response.Value is not null)
+            units = response.Value.OrderBy(unit => unit.TypeName).ThenBy(unit => unit.Code).ToList();
+        else
+            errorMessage = response.Message ?? "De accommodaties konden niet worden geladen.";
+    }
+
+    private async Task LoadOverviewAsync()
+    {
+        overview = null;
+        editingPeriodId = null;
+        CancelConfirmation();
+        errorMessage = null;
+        successMessage = null;
+
+        if (string.IsNullOrEmpty(SelectedUnitCode))
+            return;
+
+        await RefreshOverviewAsync();
+    }
+
+    private async Task RefreshOverviewAsync()
+    {
+        ApiResponse<MaintenanceUnitOverviewResponse> response = await MaintenanceService.GetOverviewAsync(SelectedUnitCode);
+        if (response.Succeeded && response.Value is not null)
+            overview = response.Value;
+        else
+            errorMessage = response.Message ?? "De periodes konden niet worden geladen.";
+    }
+
+    // First call without confirmation; the API answers with the overlapping bookings when the
+    // staff has to confirm them explicitly (criterion 3). The second call sends the confirmation.
+    private async Task CreateAsync(bool confirmExistingBookings)
+    {
+        isBusy = true;
+        errorMessage = null;
+        successMessage = null;
+
+        ApiResponse<CreateMaintenancePeriodResult> response = await MaintenanceService.CreateAsync(new CreateMaintenancePeriodRequest
+        {
+            AccommodationUnitCode = SelectedUnitCode,
+            StartDate = newStartDate,
+            EndDate = newEndDate,
+            Reason = newReason,
+            Note = newNote,
+            ConfirmExistingBookings = confirmExistingBookings,
+        });
+
+        if (!response.Succeeded || response.Value is null)
+        {
+            errorMessage = response.Message ?? "De periode kon niet worden vastgelegd.";
+        }
+        else if (response.Value.RequiresConfirmation)
+        {
+            hasPendingConfirmation = true;
+            pendingMessage = response.Value.Message;
+            pendingConflicts = response.Value.ConflictingBookings;
+        }
+        else
+        {
+            CancelConfirmation();
+            successMessage = $"{SelectedUnitCode} is niet verhuurbaar van {PeriodDates(newStartDate, newEndDate)}.";
+            newNote = null;
+            await RefreshOverviewAsync();
+        }
+
+        isBusy = false;
+    }
+
+    private void CancelConfirmation()
+    {
+        hasPendingConfirmation = false;
+        pendingMessage = null;
+        pendingConflicts = new List<BookingConflictResponse>();
+    }
+
+    private void StartEditing(MaintenancePeriodResponse period)
+    {
+        editingPeriodId = period.Id;
+        editStartDate = period.StartDate;
+        editEndDate = period.EndDate;
+    }
+
+    // Shortening or ending a period early (criterion 4); the API rejects widening.
+    private async Task UpdateAsync(Guid id, DateOnly startDate, DateOnly endDate)
+    {
+        isBusy = true;
+        errorMessage = null;
+        successMessage = null;
+
+        ApiResponse<MaintenancePeriodResponse> response = await MaintenanceService.UpdateAsync(id, new UpdateMaintenancePeriodRequest
+        {
+            StartDate = startDate,
+            EndDate = endDate,
+        });
+
+        if (response.Succeeded)
+        {
+            editingPeriodId = null;
+            successMessage = $"De periode is aangepast naar {PeriodDates(startDate, endDate)}.";
+            await RefreshOverviewAsync();
+        }
+        else
+        {
+            errorMessage = response.Message ?? "De periode kon niet worden aangepast.";
+        }
+
+        isBusy = false;
+    }
+
+    private static string ReasonLabel(string reason)
+        => ReasonLabels.TryGetValue(reason, out string? label) ? label : reason;
+
+    private static string StatusKey(MaintenancePeriodResponse period)
+        => period.EndDate < Today ? "ended" : period.StartDate > Today ? "planned" : "active";
+
+    private static string StatusLabel(MaintenancePeriodResponse period) => StatusKey(period) switch
+    {
+        "ended" => "Afgelopen",
+        "planned" => "Gepland",
+        _ => "Nu buiten gebruik",
+    };
+
+    private static string StatusBadgeClass(MaintenancePeriodResponse period) => StatusKey(period) switch
+    {
+        "ended" => "text-bg-secondary",
+        "planned" => "text-bg-warning",
+        _ => "text-bg-danger",
+    };
+
+    private static string PeriodDates(DateOnly startDate, DateOnly endDate)
+        => $"{startDate:d MMM yyyy} t/m {endDate:d MMM yyyy}";
+
+    private static string BookingLine(BookingConflictResponse booking)
+        => $"{booking.BookingNumber} · {booking.Name} · {booking.ArrivalDate:d MMM} – {booking.DepartureDate:d MMM yyyy} · {booking.NumberOfGuests} personen";
+}

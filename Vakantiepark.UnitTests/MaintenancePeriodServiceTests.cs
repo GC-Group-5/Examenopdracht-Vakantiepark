@@ -184,6 +184,42 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(_period.StartDate, response.EndDate);
         }
 
+        // A period that is already running (started 3 days ago) is ended today because the
+        // unit is ready early (criterion 4). Its start date is in the past, which is fine here.
+        [Fact]
+        public async Task UpdateAsync_OngoingPeriodEndedToday_UpdatesEndDate()
+        {
+            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+            _period.StartDate = today.AddDays(-3);
+            _period.EndDate = today.AddDays(5);
+
+            MaintenancePeriodResponse response = await _sut.UpdateAsync(_period.Id, new UpdateMaintenancePeriodRequest
+            {
+                StartDate = _period.StartDate,
+                EndDate = today,
+            });
+
+            Assert.Equal(today, response.EndDate);
+            _periodRepository.Verify(x => x.UpdateAsync(_period), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_NewEndDateInPast_ThrowsArgumentException()
+        {
+            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+            _period.StartDate = today.AddDays(-5);
+            _period.EndDate = today.AddDays(5);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.UpdateAsync(_period.Id, new UpdateMaintenancePeriodRequest
+                {
+                    StartDate = _period.StartDate,
+                    EndDate = today.AddDays(-1),
+                }));
+
+            Assert.Equal("Een periode kan niet in het verleden eindigen.", exception.Message);
+        }
+
         [Fact]
         public async Task UpdateAsync_WideningPeriod_ThrowsArgumentException()
         {
