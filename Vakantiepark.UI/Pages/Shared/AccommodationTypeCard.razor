@@ -1,0 +1,27 @@
+﻿@* Card for one accommodation type, as in the template (verblijven.html and index.html). *@
+<a class="text-decoration-none" href="@($"/accommodaties/{Type.Slug}")">
+    <article class="type-card">
+        <img src="@($"img/accommodaties/{Type.Slug}/1.webp")" alt="@Type.Name" loading="lazy" />
+        <div class="card-body">
+            <div class="d-flex justify-content-between gap-3 align-items-start">
+                <div>
+                    <div class="eyebrow">@FormatCategory.Format(Type.Category) · @Type.UnitCount stuks</div>
+                    <h2 class="h3 mt-2 mb-0">@Type.Name</h2>
+                </div>
+                <span class="count-pill text-nowrap">@Type.MaxPersons pers.</span>
+            </div>
+            <p class="text-muted-du mt-3">@Type.Description</p>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (string highlight in Type.Highlights.Take(3))
+                {
+                    <span class="feature-chip">@highlight</span>
+                }
+            </div>
+        </div>
+    </article>
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public AccommodationTypeResponse Type { get; set; } = null!;
+}

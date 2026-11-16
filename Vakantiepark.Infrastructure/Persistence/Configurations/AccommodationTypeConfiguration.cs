@@ -13,6 +13,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(type => type.Slug).HasMaxLength(64).IsRequired();
             builder.Property(type => type.Name).HasMaxLength(32).IsRequired();
             builder.Property(type => type.Category).HasConversion<string>().HasMaxLength(20);
+            builder.Property(type => type.Description).HasMaxLength(500).IsRequired();
             builder.Property(type => type.DefaultPricePerNight).HasPrecision(18, 2);
             builder.Property(type => type.CleaningFee).HasPrecision(18, 2);
         }

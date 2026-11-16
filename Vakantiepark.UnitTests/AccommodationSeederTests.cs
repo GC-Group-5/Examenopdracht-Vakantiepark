@@ -30,6 +30,18 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public void BuildImport_EveryType_GetsTheDescriptionFromTheTemplate()
+        {
+            List<AccommodationType> types = Import().Types;
+
+            Assert.Equal(12, types.Count);
+            Assert.All(types, type => Assert.False(string.IsNullOrWhiteSpace(type.Description)));
+            Assert.Equal(
+                "Compact en sfeervol voor een ontspannen verblijf met z’n tweeën of met het gezin.",
+                types.Single(type => type.Slug == "berk-4").Description);
+        }
+
+        [Fact]
         public void BuildImport_Codes_AreUnique()
         {
             List<Accommodation> units = Import().Accommodations;

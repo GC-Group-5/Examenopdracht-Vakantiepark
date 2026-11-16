@@ -39,20 +39,31 @@ namespace Vakantiepark.Application.Services
             return features.Select(feature => feature.ToResponse()).ToList();
         }
 
-        public async Task<List<ZoneOptionResponse>> GetZoneOptionsAsync()
+        public async Task<List<AccommodationTypeResponse>> GetTypesAsync()
         {
-            List<Zone> zones = (await ZoneRepository.GetAllAsync()).ToList();
-
-            return zones
-                .OrderBy(zone => zone.Category)
-                .ThenBy(zone => zone.Name)
-                .Select(zone => new ZoneOptionResponse
-                {
-                    Id = zone.Id,
-                    Name = zone.Name,
-                    Category = zone.Category.ToString(),
-                })
+            // Holiday homes first, then from small to large (by default price), like the template.
+            List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            return accommodations
+                .GroupBy(accommodation => accommodation.Type.Slug)
+                .OrderBy(units => units.First().Type.Category)
+                .ThenBy(units => units.First().Type.DefaultPricePerNight)
+                .ThenBy(units => units.First().Type.Name)
+                .Select(units => units.ToTypeResponse())
                 .ToList();
+        }
+
+        public async Task<AccommodationTypeResponse> GetTypeBySlugAsync(string slug)
+        {
+            List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            IGrouping<string, Accommodation>? units = accommodations
+                .Where(accommodation => accommodation.Type.Slug.Equals(slug.Trim(), StringComparison.OrdinalIgnoreCase))
+                .GroupBy(accommodation => accommodation.Type.Slug)
+                .SingleOrDefault();
+
+            if (units is null)
+                throw new KeyNotFoundException("Verblijfstype niet gevonden.");
+
+            return units.ToTypeResponse();
         }
     }
 }

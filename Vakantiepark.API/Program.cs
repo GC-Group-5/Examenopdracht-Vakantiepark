@@ -40,6 +40,10 @@ namespace Vakantiepark.API
                     .AllowAnyMethod());
             });
 
+            // Aspire waits for this before starting the UI, so the first page load never hits
+            // an API that is still migrating and seeding.
+            builder.Services.AddHealthChecks();
+
             var app = builder.Build();
 
             using (var scope = app.Services.CreateScope())
@@ -83,6 +87,7 @@ namespace Vakantiepark.API
             app.UseAuthorization();
             app.UseRateLimiter();
             app.MapControllers();
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
