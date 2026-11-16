@@ -5,6 +5,7 @@ using Vakantiepark.Infrastructure.Repositories;
 
 namespace Vakantiepark.IntegrationTests
 {
+    // US-37: the exclusion constraint on bookings, tested against a real PostgreSQL.
     public class ConcurrentBookingTests : IClassFixture<PostgresFixture>
     {
         private readonly PostgresFixture Database;
@@ -57,7 +58,7 @@ namespace Vakantiepark.IntegrationTests
             Assert.True(result);
         }
 
-        // Een eigen eenheid per test, zodat tests elkaar niet storen.
+        // A unit of its own per test, so the tests never share bookings.
         private async Task<Guid> CreateUnitAsync()
         {
             await using ApplicationDBContext context = Database.CreateContext();
@@ -90,7 +91,7 @@ namespace Vakantiepark.IntegrationTests
             AccommodationUnitId = unitId,
         };
 
-        // Twee requests tegelijk, ieder met een eigen context en repository.
+        // Two requests at the same moment, each with its own context and repository, like two guests.
         private async Task<bool[]> BookAtTheSameTimeAsync(Booking first, Booking second)
         {
             await using ApplicationDBContext firstContext = Database.CreateContext();
