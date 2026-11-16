@@ -1,4 +1,4 @@
-using Vakantiepark.Domain.Interfaces.Repositories;
+﻿using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Extensions;
 using Vakantiepark.Shared.DTOs.Accommodation;
@@ -64,6 +64,22 @@ namespace Vakantiepark.Application.Services
                 throw new KeyNotFoundException("Verblijfstype niet gevonden.");
 
             return units.ToTypeResponse();
+        }
+
+        public async Task<List<ZoneOptionResponse>> GetZoneOptionsAsync()
+        {
+            List<Zone> zones = (await ZoneRepository.GetAllAsync()).ToList();
+
+            return zones
+                .OrderBy(zone => zone.Category)
+                .ThenBy(zone => zone.Name)
+                .Select(zone => new ZoneOptionResponse
+                {
+                    Id = zone.Id,
+                    Name = zone.Name,
+                    Category = zone.Category.ToString(),
+                })
+                .ToList();
         }
     }
 }
