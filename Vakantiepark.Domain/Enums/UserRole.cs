@@ -4,6 +4,7 @@ namespace Vakantiepark.Domain.Enums
     public enum UserRole
     {
         Medewerker,
-        Beheerder
+        Beheerder,
+        Schoonmaker
     }
 }
