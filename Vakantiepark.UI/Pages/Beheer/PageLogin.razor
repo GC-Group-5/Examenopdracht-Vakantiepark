@@ -82,18 +82,9 @@
         return ReturnUrl.TrimStart('/');
     }
 
+    // A cleaner only has their own page; staff go back to where they were heading.
     private string GetRedirectUrl(TokenResponse token)
-    {
-        string returnUrl = GetSafeReturnUrl();
+        => token.Role == Roles.Schoonmaker ? CleanerPage : GetSafeReturnUrl();
 
-        if (string.Equals(token.Role, Roles.Schoonmaker, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(returnUrl, "beheer", StringComparison.OrdinalIgnoreCase))
-            return "beheer-schoonmaker";
-
-        if (!string.Equals(token.Role, Roles.Schoonmaker, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(returnUrl, "beheer-schoonmaker", StringComparison.OrdinalIgnoreCase))
-            return "beheer";
-
-        return returnUrl;
-    }
+    private const string CleanerPage = "beheer/schoonmaak";
 }

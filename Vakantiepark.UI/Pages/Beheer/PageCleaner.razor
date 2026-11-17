@@ -1,4 +1,4 @@
-﻿@page "/beheer-schoonmaker"
+﻿@page "/beheer/schoonmaak"
 @attribute [Authorize(Roles = Roles.Schoonmaker)]
 @inject NavigationManager NavigationManager
 @inject IAuthService AuthService
@@ -21,10 +21,7 @@
 <section class="section-pad">
     <div class="container">
         <div class="row g-4">
-            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Reserveringen</strong><div class="small text-muted-du">Komt in US-13 en US-14</div></div></div>
-            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Dagoverzicht</strong><div class="small text-muted-du">Komt in US-15</div></div></div>
-            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Bezetting</strong><div class="small text-muted-du">Komt in US-16 en US-17</div></div></div>
-            <div class="col-md-6 col-xl-3"><div class="info-block"><strong>Schoonmaak</strong><div class="small text-muted-du">Overzicht van schoonmaaktaken</div></div></div>
+            <div class="col-md-6 col-xl-4"><div class="info-block"><strong>Vertrekken per dag</strong><div class="small text-muted-du">Welke accommodaties leegkomen en schoongemaakt moeten worden (US-32).</div></div></div>
         </div>
     </div>
 </section>
