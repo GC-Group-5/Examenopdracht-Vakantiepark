@@ -39,12 +39,12 @@ namespace Vakantiepark.API.Controllers
         {
             try
             {
-                CreateMaintenancePeriodResult result = await MaintenanceService.CreateAsync(request);
-                return Ok(ApiResponse<CreateMaintenancePeriodResult>.Ok(result));
+                MaintenancePeriodSaveResult result = await MaintenanceService.CreateAsync(request);
+                return Ok(ApiResponse<MaintenancePeriodSaveResult>.Ok(result));
             }
             catch (ArgumentException exception)
             {
-                return BadRequest(ApiResponse<CreateMaintenancePeriodResult>.Fail(exception.Message));
+                return BadRequest(ApiResponse<MaintenancePeriodSaveResult>.Fail(exception.Message));
             }
         }
 
@@ -53,12 +53,27 @@ namespace Vakantiepark.API.Controllers
         {
             try
             {
-                MaintenancePeriodResponse period = await MaintenanceService.UpdateAsync(id, request);
-                return Ok(ApiResponse<MaintenancePeriodResponse>.Ok(period));
+                MaintenancePeriodSaveResult result = await MaintenanceService.UpdateAsync(id, request);
+                return Ok(ApiResponse<MaintenancePeriodSaveResult>.Ok(result));
             }
             catch (ArgumentException exception)
             {
-                return BadRequest(ApiResponse<MaintenancePeriodResponse>.Fail(exception.Message));
+                return BadRequest(ApiResponse<MaintenancePeriodSaveResult>.Fail(exception.Message));
+            }
+        }
+
+        // Ends (running) or cancels (planned) a period: it is removed and the unit is bookable from today.
+        [HttpPost("{id:guid}/End")]
+        public async Task<IActionResult> EndAsync(Guid id)
+        {
+            try
+            {
+                await MaintenanceService.EndAsync(id);
+                return Ok(ApiResponse<object>.Ok());
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<object>.Fail(exception.Message));
             }
         }
     }
