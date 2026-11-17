@@ -5,11 +5,6 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
     public interface IAccommodationUnitRepository : IRepository<Accommodation>
     {
         /// <summary>
-        /// Returns the units of a type that are not out of service at any moment in the period.
-        /// </summary>
-        Task<List<Guid>> GetInServiceIdsByTypeSlugAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate);
-
-        /// <summary>
         /// Returns the in-service units of a type with their zone and feature values, ordered
         /// by code. Whether a unit fits the party or is already booked is checked separately.
         /// </summary>
