@@ -16,8 +16,11 @@ namespace Vakantiepark.Shared.DTOs.Maintenance
 
     public class UpdateMaintenancePeriodRequest
     {
-        // New dates; the period can only be shortened or ended, never widened.
+        // New dates: the period can be shortened, ended early or extended. A running period keeps its start.
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
+
+        // Staff must explicitly confirm when the new dates overlap bookings that were not confirmed before.
+        public bool ConfirmExistingBookings { get; set; }
     }
 }
