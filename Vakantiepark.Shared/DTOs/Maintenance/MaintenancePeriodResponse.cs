@@ -31,9 +31,10 @@ namespace Vakantiepark.Shared.DTOs.Maintenance
         public int NumberOfGuests { get; set; }
     }
 
-    public class CreateMaintenancePeriodResult
+    // Result of registering or changing a period.
+    public class MaintenancePeriodSaveResult
     {
-        public bool Created { get; set; }
+        public bool Saved { get; set; }
 
         // True when bookings overlap and the request did not confirm them yet;
         // the period is not saved until the staff confirms explicitly.

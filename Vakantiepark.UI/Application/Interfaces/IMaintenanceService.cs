@@ -9,7 +9,8 @@ namespace Vakantiepark.UI.Application.Interfaces
     {
         Task<ApiResponse<List<AccommodationResponse>>> GetUnitsAsync();
         Task<ApiResponse<MaintenanceUnitOverviewResponse>> GetOverviewAsync(string accommodationUnitCode);
-        Task<ApiResponse<CreateMaintenancePeriodResult>> CreateAsync(CreateMaintenancePeriodRequest request);
-        Task<ApiResponse<MaintenancePeriodResponse>> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request);
+        Task<ApiResponse<MaintenancePeriodSaveResult>> CreateAsync(CreateMaintenancePeriodRequest request);
+        Task<ApiResponse<MaintenancePeriodSaveResult>> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request);
+        Task<ApiResponse<object>> EndAsync(Guid id);
     }
 }

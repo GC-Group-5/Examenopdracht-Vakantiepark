@@ -15,23 +15,25 @@ namespace Vakantiepark.Application.Services
         private readonly IRepository<MaintenancePeriod> PeriodRepository;
         private readonly IAccommodationUnitRepository UnitRepository;
         private readonly IBookingRepository BookingRepository;
+        private readonly TimeProvider TimeProvider;
 
         public MaintenancePeriodService(
             IRepository<MaintenancePeriod> periodRepository,
             IAccommodationUnitRepository unitRepository,
-            IBookingRepository bookingRepository)
+            IBookingRepository bookingRepository,
+            TimeProvider timeProvider)
         {
             PeriodRepository = periodRepository;
             UnitRepository = unitRepository;
             BookingRepository = bookingRepository;
+            TimeProvider = timeProvider;
         }
 
         public async Task<MaintenanceUnitOverviewResponse> GetOverviewAsync(string accommodationUnitCode)
         {
             Accommodation unit = await GetUnitAsync(accommodationUnitCode);
 
-            List<MaintenancePeriod> periods = (await PeriodRepository.GetAllAsync())
-                .Where(period => period.AccommodationUnitId == unit.Id)
+            List<MaintenancePeriod> periods = (await GetPeriodsOfUnitAsync(unit.Id))
                 .OrderByDescending(period => period.StartDate)
                 .ToList();
 
@@ -51,27 +53,21 @@ namespace Vakantiepark.Application.Services
             return overview;
         }
 
-        public async Task<CreateMaintenancePeriodResult> CreateAsync(CreateMaintenancePeriodRequest request)
+        public async Task<MaintenancePeriodSaveResult> CreateAsync(CreateMaintenancePeriodRequest request)
         {
             Accommodation unit = await GetUnitAsync(request.AccommodationUnitCode);
             MaintenanceReason reason = ParseReason(request.Reason);
-            request.StartDate.ValidateMaintenancePeriod(request.EndDate);
+            request.StartDate.ValidateMaintenancePeriod(request.EndDate, Today());
 
             if (reason == MaintenanceReason.Other && string.IsNullOrWhiteSpace(request.Note))
                 throw new ArgumentException("Kies bij de reden 'overig' een toelichting.");
 
+            (await GetPeriodsOfUnitAsync(unit.Id)).ValidateNoOverlap(request.StartDate, request.EndDate);
+
             List<BookingConflictResponse> conflicts = await GetConflictsAsync(unit.Id, request.StartDate, request.EndDate);
 
             if (conflicts.Count > 0 && !request.ConfirmExistingBookings)
-            {
-                return new CreateMaintenancePeriodResult
-                {
-                    Created = false,
-                    RequiresConfirmation = true,
-                    Message = $"{conflicts.Count} boeking(en) vallen in deze periode. Bevestig om de periode vast te leggen; de boekingen worden dan gemarkeerd als 'actie nodig' in het reserveringsoverzicht.",
-                    ConflictingBookings = conflicts,
-                };
-            }
+                return RequiresConfirmation(conflicts);
 
             MaintenancePeriod period = new()
             {
@@ -85,28 +81,83 @@ namespace Vakantiepark.Application.Services
 
             await PeriodRepository.AddAsync(period);
 
-            return new CreateMaintenancePeriodResult
-            {
-                Created = true,
-                RequiresConfirmation = false,
-                Period = ToResponse(period),
-                ConflictingBookings = conflicts,
-            };
+            return Saved(period, conflicts);
         }
 
-        public async Task<MaintenancePeriodResponse> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request)
+        // Shortening, ending early or extending (criterion 4). Bookings that already overlapped the
+        // old dates were confirmed when the period was registered; only bookings that fall in the
+        // added days need a new confirmation.
+        public async Task<MaintenancePeriodSaveResult> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request)
         {
             MaintenancePeriod period = await PeriodRepository.GetByIdAsync(id)
-                ?? throw new ArgumentException("De onderhouden periode is niet gevonden.");
+                ?? throw new ArgumentException("De onderhoudsperiode is niet gevonden.");
 
-            request.StartDate.ValidateShortening(request.EndDate, period);
+            request.StartDate.ValidatePeriodChange(request.EndDate, period, Today());
+            (await GetPeriodsOfUnitAsync(period.AccommodationUnitId))
+                .Where(other => other.Id != period.Id)
+                .ValidateNoOverlap(request.StartDate, request.EndDate);
+
+            List<BookingConflictResponse> confirmedBefore = await GetConflictsAsync(period.AccommodationUnitId, period.StartDate, period.EndDate);
+            List<BookingConflictResponse> conflicts = await GetConflictsAsync(period.AccommodationUnitId, request.StartDate, request.EndDate);
+            List<BookingConflictResponse> newConflicts = conflicts
+                .Where(conflict => confirmedBefore.All(confirmed => confirmed.BookingId != conflict.BookingId))
+                .ToList();
+
+            if (newConflicts.Count > 0 && !request.ConfirmExistingBookings)
+                return RequiresConfirmation(newConflicts);
 
             period.StartDate = request.StartDate;
             period.EndDate = request.EndDate;
             await PeriodRepository.UpdateAsync(period);
 
-            return ToResponse(period);
+            return Saved(period, conflicts);
         }
+
+        // A running period remains in the history as ended, while a future period is cancelled.
+        public async Task EndAsync(Guid id)
+        {
+            MaintenancePeriod period = await PeriodRepository.GetByIdAsync(id)
+                ?? throw new ArgumentException("De onderhoudsperiode is niet gevonden.");
+
+            DateOnly today = Today();
+            period.ValidateCanEnd(today);
+
+            if (period.StartDate > today)
+            {
+                await PeriodRepository.DeleteAsync(period);
+                return;
+            }
+
+            period.EndDate = today.AddDays(-1);
+            if (period.StartDate > period.EndDate)
+                period.StartDate = period.EndDate;
+
+            await PeriodRepository.UpdateAsync(period);
+        }
+
+        private async Task<List<MaintenancePeriod>> GetPeriodsOfUnitAsync(Guid unitId)
+            => (await PeriodRepository.GetAllAsync())
+                .Where(period => period.AccommodationUnitId == unitId)
+                .ToList();
+
+        private static MaintenancePeriodSaveResult RequiresConfirmation(List<BookingConflictResponse> conflicts) => new()
+        {
+            Saved = false,
+            RequiresConfirmation = true,
+            Message = $"{conflicts.Count} boeking(en) vallen in deze periode. Bevestig om de periode vast te leggen; de boekingen worden dan gemarkeerd als 'actie nodig' in het reserveringsoverzicht.",
+            ConflictingBookings = conflicts,
+        };
+
+        private static MaintenancePeriodSaveResult Saved(MaintenancePeriod period, List<BookingConflictResponse> conflicts) => new()
+        {
+            Saved = true,
+            RequiresConfirmation = false,
+            Period = ToResponse(period),
+            ConflictingBookings = conflicts,
+        };
+
+        private DateOnly Today()
+            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
 
         private async Task<Accommodation> GetUnitAsync(string accommodationUnitCode)
             => await UnitRepository.GetByCodeWithDetailsAsync(accommodationUnitCode)

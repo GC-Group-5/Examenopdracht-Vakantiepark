@@ -20,10 +20,13 @@ namespace Vakantiepark.UI.Application.Services
         public async Task<ApiResponse<MaintenanceUnitOverviewResponse>> GetOverviewAsync(string accommodationUnitCode)
             => await HttpService.GetAsync<MaintenanceUnitOverviewResponse>($"/MaintenancePeriods?accommodationUnitCode={Uri.EscapeDataString(accommodationUnitCode)}");
 
-        public async Task<ApiResponse<CreateMaintenancePeriodResult>> CreateAsync(CreateMaintenancePeriodRequest request)
-            => await HttpService.PostAsync<CreateMaintenancePeriodResult, CreateMaintenancePeriodRequest>("/MaintenancePeriods", request);
+        public async Task<ApiResponse<MaintenancePeriodSaveResult>> CreateAsync(CreateMaintenancePeriodRequest request)
+            => await HttpService.PostAsync<MaintenancePeriodSaveResult, CreateMaintenancePeriodRequest>("/MaintenancePeriods", request);
 
-        public async Task<ApiResponse<MaintenancePeriodResponse>> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request)
-            => await HttpService.PutAsync<MaintenancePeriodResponse, UpdateMaintenancePeriodRequest>($"/MaintenancePeriods/{id}", request);
+        public async Task<ApiResponse<MaintenancePeriodSaveResult>> UpdateAsync(Guid id, UpdateMaintenancePeriodRequest request)
+            => await HttpService.PutAsync<MaintenancePeriodSaveResult, UpdateMaintenancePeriodRequest>($"/MaintenancePeriods/{id}", request);
+
+        public async Task<ApiResponse<object>> EndAsync(Guid id)
+            => await HttpService.PostAsync<object, object>($"/MaintenancePeriods/{id}/End", new object());
     }
 }
