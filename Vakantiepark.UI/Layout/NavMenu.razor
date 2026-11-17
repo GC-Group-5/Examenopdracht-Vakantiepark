@@ -21,7 +21,10 @@
                 <li class="nav-item"><NavLink class="nav-link" href="contact">Contact</NavLink></li>
                 <li class="nav-item"><NavLink class="nav-link" href="mijn-boeking">Mijn boeking</NavLink></li>
                 <AuthorizeView Roles="@Roles.Staff">
-                    <li class="nav-item"><NavLink class="nav-link" href="beheer">Beheer</NavLink></li>
+                    <li class="nav-item"><NavLink class="nav-link" href="beheer" Match="NavLinkMatch.All">Beheer</NavLink></li>
+                </AuthorizeView>
+                <AuthorizeView Roles="@Roles.Schoonmaker">
+                    <li class="nav-item"><NavLink class="nav-link" href="beheer/schoonmaak">Schoonmaak</NavLink></li>
                 </AuthorizeView>
             </ul>
             <NavLink class="btn btn-du ms-lg-3 mt-3 mt-lg-0" href="zoeken">Zoek &amp; boek</NavLink>
