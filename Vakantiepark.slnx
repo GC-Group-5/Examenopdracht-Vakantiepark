@@ -15,6 +15,7 @@
     <Project Path="Vakantiepark.UI/Vakantiepark.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="Vakantiepark.IntegrationTests/Vakantiepark.IntegrationTests.csproj" />
     <Project Path="Vakantiepark.UnitTests/Vakantiepark.UnitTests.csproj" />
   </Folder>
 </Solution>

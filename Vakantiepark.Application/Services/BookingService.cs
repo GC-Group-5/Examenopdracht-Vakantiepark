@@ -1,3 +1,4 @@
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Settings;
@@ -18,6 +19,10 @@ namespace Vakantiepark.Application.Services
     {
         // A collision is very unlikely with 31^8 possible numbers; this only prevents an endless loop.
         private const int MaxBookingNumberAttempts = 5;
+
+        public const string InvalidLinkMessage = "Deze link is ongeldig.";
+        public const string ExpiredLinkMessage = "Deze link is verlopen, omdat je verblijf voorbij is.";
+        public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -120,6 +125,43 @@ namespace Vakantiepark.Application.Services
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
         }
 
+        // The link from the confirmation email works up to and including the departure date.
+        public async Task<MyBookingResponse> GetMineByTokenAsync(string token)
+        {
+            Booking? booking = await BookingRepository.GetByAccessTokenAsync(token);
+
+            if (booking is null)
+                throw new ArgumentException(InvalidLinkMessage);
+
+            if (booking.DepartureDate < Today())
+                throw new ArgumentException(ExpiredLinkMessage);
+
+            return booking.ToMyBookingResponse(GetStatus(booking));
+        }
+
+        // For a guest logged in via /Auth/Guest; the id comes from his token, never from the request.
+        public async Task<MyBookingResponse> GetMineAsync(Guid bookingId)
+        {
+            Booking? booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId);
+
+            if (booking is null)
+                throw new ArgumentException(NotFoundMessage);
+
+            return booking.ToMyBookingResponse(GetStatus(booking));
+        }
+
+        private string GetStatus(Booking booking)
+        {
+            if (booking.DeletedAt is not null)
+                return BookingStatuses.Geannuleerd;
+
+            if (booking.DepartureDate < Today())
+                return BookingStatuses.Afgerond;
+
+            return BookingStatuses.Bevestigd;
+        }
+
+
         // Free units of the type that fit the party (the same filter as the search), in the
         // preferred zone when one is given.
         private async Task<List<Accommodation>> GetCandidateUnitsAsync(AccommodationType type, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, string? preferredZone)
@@ -212,6 +254,8 @@ namespace Vakantiepark.Application.Services
                     ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
                     ["NumberOfGuests"] = booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen",
                     ["Party"] = party,
+                    ["Pets"] = booking.NumberOfPets switch { 0 => "geen", 1 => "1 huisdier", _ => $"{booking.NumberOfPets} huisdieren" },
+                    ["WheelchairAccessible"] = booking.WheelchairAccessible ? "ja" : "nee",
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),

@@ -55,6 +55,7 @@ Vakantiepark.slnx
 │   ├── Vakantiepark.Shared          Request/response DTOs shared by API and UI. No dependencies.
 │   └── Vakantiepark.UI              Blazor WebAssembly frontend.
 └── tests/
+    ├── Vakantiepark.IntegrationTests  xUnit tests against a real PostgreSQL in Docker (Testcontainers).
     └── Vakantiepark.UnitTests       xUnit + Moq tests for the Application layer.
 ```
 
@@ -68,7 +69,8 @@ Vakantiepark.slnx
 | Infrastructure | Domain                                |
 | API            | Application, Infrastructure (and transitively Shared) |
 | UI             | Shared only                           |
-| UnitTests      | Application                           |
+| UnitTests      | Application, Infrastructure (only to run the seeders against the real export) |
+| IntegrationTests | Infrastructure                      |
 | AppHost        | API, UI (orchestration only, no code from them is used) |
 
 - Domain defines **interfaces** (`IUserRepository`, `IEmailSender`, `IPassword`); Infrastructure
@@ -397,6 +399,9 @@ Every response body is an `ApiResponse<T>`:
   ```csharp
   SignUp signUp = TestData.CreateSignUp(_activity.Id, x => x.WaitlistPosition = 1);
   ```
+- Rules that only the database enforces (such as the exclusion constraint against double bookings)
+  are tested in `Vakantiepark.IntegrationTests`, against a real PostgreSQL started by Testcontainers.
+  Those tests need Docker; everything else stays a unit test with mocks.
 - Every business rule in `Validations/` gets at least one test for the failing case.
 - Every bug fix comes with a test that would have caught it.
 - Use `Verify(..., Times.Once/Never)` to prove side effects (saved, mailed, not saved).
@@ -485,7 +490,7 @@ public static IServiceCollection RegisterApplication(this IServiceCollection ser
   has approved it.**
 - Agents: never push to `main`, never merge a pull request and never approve one. Work on a branch,
   push it, and leave the pull request and its review to the team.
-- CI does not need Docker: unit tests never touch a real database.
+- CI also runs the integration tests; GitHub's Ubuntu runners have Docker.
 - Before you consider a change done, run locally:
   ```bash
   dotnet build --configuration Release
