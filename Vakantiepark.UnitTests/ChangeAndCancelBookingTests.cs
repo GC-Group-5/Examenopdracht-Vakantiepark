@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Vakantiepark.Domain.Constants;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
@@ -169,6 +170,41 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(_otherUnit.Id, _booking.AccommodationUnitId);
             Assert.Equal("Eik Luxe 6", response.AccommodationTypeName);
         }
+
+        [Fact]
+        public async Task Change_WheelchairAccessibleBooking_OnlyMovesToAnAccessibleUnit()
+        {
+            Accommodation accessibleUnit = TestData.CreateAccommodation("EL6-003", configure: unit => unit.Type = _type);
+            _currentUnit.Features.Add(WheelchairAccess());
+            accessibleUnit.Features.Add(WheelchairAccess());
+            _booking.WheelchairAccessible = true;
+            _unitRepository
+                .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .ReturnsAsync(new List<Accommodation> { _currentUnit, _otherUnit, accessibleUnit });
+            UnitsTaken(_currentUnit.Id);
+
+            await _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null);
+
+            Assert.Equal(accessibleUnit.Id, _booking.AccommodationUnitId);
+        }
+
+        [Fact]
+        public async Task Change_WheelchairAccessibleBookingAndNoAccessibleUnitFree_KeepsTheOldBooking()
+        {
+            _currentUnit.Features.Add(WheelchairAccess());
+            _booking.WheelchairAccessible = true;
+            UnitsTaken(_currentUnit.Id);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null));
+
+            Assert.Equal(BookingService.NoUnitForChangeMessage, exception.Message);
+            Assert.Equal(_currentUnit.Id, _booking.AccommodationUnitId);
+        }
+
+        private static AccommodationFeature WheelchairAccess() => new AccommodationFeature()
+        {
+            Feature = new Feature() { Key = FeatureKeys.WheelchairAccessible, Name = "Rolstoeltoegankelijk" },
+        };
 
         [Fact]
         public async Task Change_NoFreeUnit_GivesAMessageAndKeepsTheOldBooking()
