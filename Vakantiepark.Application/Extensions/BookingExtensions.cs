@@ -29,15 +29,16 @@ namespace Vakantiepark.Application.Extensions
                 TotalPrice = price.TotalPrice,
                 Deposit = price.Deposit,
                 AccommodationUnitId = accommodationUnitId,
-                Guests =
-                    [
-                        new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true },
-                        .. request.CoTravellers.Select(traveller => new BookingGuest()
-                        {
-                            Name = traveller.Name.Trim(),
-                            BirthDate = traveller.BirthDate!.Value,
-                        }),
-                    ],
+                Guests = new List<BookingGuest>()
+                    {
+                        new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
+                    }
+                    .Concat(request.CoTravellers.Select(traveller => new BookingGuest()
+                    {
+                        Name = traveller.Name.Trim(),
+                        BirthDate = traveller.BirthDate!.Value,
+                    }))
+                    .ToList(),
             };
 
         public static BookingResponse ToResponse(this Booking booking)
