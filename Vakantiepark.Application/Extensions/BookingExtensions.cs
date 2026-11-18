@@ -22,6 +22,7 @@ namespace Vakantiepark.Application.Extensions
                 DepartureTime = settings.DepartureTime,
                 NumberOfGuests = request.NumberOfGuests,
                 NumberOfPets = request.NumberOfPets,
+                WheelchairAccessible = request.WheelchairAccessible,
                 AccommodationPrice = price.AccommodationPrice,
                 CleaningFee = price.CleaningFee,
                 TouristTax = price.TouristTax,
@@ -41,7 +42,11 @@ namespace Vakantiepark.Application.Extensions
             };
 
         public static BookingResponse ToResponse(this Booking booking)
-            => new BookingResponse()
+            => booking.ToResponse<BookingResponse>();
+
+        // Shared by every booking response, so a new field never has to be added twice.
+        public static T ToResponse<T>(this Booking booking) where T : BookingResponse, new()
+            => new T()
             {
                 BookingNumber = booking.BookingNumber,
                 Name = booking.Name,
@@ -53,11 +58,32 @@ namespace Vakantiepark.Application.Extensions
                 DepartureTime = booking.DepartureTime,
                 NumberOfGuests = booking.NumberOfGuests,
                 NumberOfPets = booking.NumberOfPets,
+                WheelchairAccessible = booking.WheelchairAccessible,
                 AccommodationPrice = booking.AccommodationPrice,
                 CleaningFee = booking.CleaningFee,
                 TouristTax = booking.TouristTax,
                 TotalPrice = booking.TotalPrice,
                 Deposit = booking.Deposit,
             };
+
+        // Needs Guests and AccommodationUnit with Type and Zone loaded.
+        public static MyBookingResponse ToMyBookingResponse(this Booking booking, string status)
+        {
+            MyBookingResponse response = booking.ToResponse<MyBookingResponse>();
+            response.AccommodationTypeName = booking.AccommodationUnit.Type.Name;
+            response.Zone = booking.AccommodationUnit.Zone.Name;
+            response.Status = status;
+            response.Guests = booking.Guests
+                .OrderByDescending(guest => guest.IsMainBooker)
+                .Select(guest => new GuestResponse()
+                {
+                    Name = guest.Name,
+                    BirthDate = guest.BirthDate,
+                    IsMainBooker = guest.IsMainBooker,
+                })
+                .ToList();
+
+            return response;
+        }
     }
 }

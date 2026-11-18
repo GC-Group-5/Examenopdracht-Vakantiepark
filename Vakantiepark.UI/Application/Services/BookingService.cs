@@ -31,5 +31,12 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request)
             => await HttpService.PostAsync<BookingResponse, CreateBookingRequest>("/Booking", request);
+
+        public async Task<ApiResponse<MyBookingResponse>> GetMineByTokenAsync(string token)
+            => await HttpService.GetAsync<MyBookingResponse>($"/Booking/mine/{Uri.EscapeDataString(token)}");
+
+        // Needs the guest token from /Auth/Guest; the token handler adds it to the request.
+        public async Task<ApiResponse<MyBookingResponse>> GetMineAsync()
+            => await HttpService.GetAsync<MyBookingResponse>("/Booking/mine");
     }
 }

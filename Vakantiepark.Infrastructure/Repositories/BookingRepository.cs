@@ -56,5 +56,19 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Where(x => x.ArrivalDate < endDate && x.DepartureDate > startDate)
                 .OrderBy(x => x.ArrivalDate)
                 .ToListAsync();
+
+        public async Task<Booking?> GetByAccessTokenAsync(string accessToken)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.AccessToken == accessToken);
+
+        public async Task<Booking?> GetByIdWithDetailsAsync(Guid id)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.Id == id);
+
+        private IQueryable<Booking> WithDetails()
+            => Set
+                .Include(x => x.Guests)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone);
     }
 }
