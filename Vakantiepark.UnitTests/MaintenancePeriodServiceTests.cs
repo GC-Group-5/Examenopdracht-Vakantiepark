@@ -224,7 +224,7 @@ namespace Vakantiepark.UnitTests
                     EndDate = Today.AddDays(-1),
                 }));
 
-            Assert.Equal("Een periode kan niet in het verleden eindigen.", exception.Message);
+            Assert.Equal("Een periode kan niet in het verleden eindigen. De huidige datum is 15-02-2027.", exception.Message);
         }
 
         // Staff needs more time: the end date moves later and no booking falls in the added days.

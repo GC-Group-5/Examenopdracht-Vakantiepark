@@ -22,16 +22,16 @@ namespace Vakantiepark.Application.Validations.MaintenancePeriods
 
             bool alreadyStarted = existingPeriod.StartDate <= today;
             if (alreadyStarted && startDate != existingPeriod.StartDate)
-                throw new ArgumentException("De begindatum van een lopende periode kan niet meer worden aangepast.");
+                throw new ArgumentException($"De begindatum van een lopende periode kan niet meer worden aangepast. De huidige begindatum is {existingPeriod.StartDate:dd-MM-yyyy}.");
 
             if (!alreadyStarted && startDate < today)
-                throw new ArgumentException("De begindatum van een onderhoudsperiode mag niet in het verleden liggen.");
+                throw new ArgumentException($"De begindatum van een onderhoudsperiode mag niet in het verleden liggen. De huidige datum is {today:dd-MM-yyyy}.");
 
             if (endDate < today)
-                throw new ArgumentException("Een periode kan niet in het verleden eindigen.");
+                throw new ArgumentException($"Een periode kan niet in het verleden eindigen. De huidige datum is {today:dd-MM-yyyy}.");
 
             if (endDate < startDate)
-                throw new ArgumentException("De einddatum moet op of na de begindatum liggen.");
+                throw new ArgumentException($"De einddatum moet op of na de begindatum liggen. De huidige begindatum is {startDate:dd-MM-yyyy}.");
         }
 
         // One unit never has two overlapping periods: staff changes the existing one instead.
