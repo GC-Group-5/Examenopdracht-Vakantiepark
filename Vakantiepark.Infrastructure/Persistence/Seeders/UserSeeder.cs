@@ -13,7 +13,6 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             ("Mila Medewerker", "medewerker@dropuut.example", "Medewerker123!", UserRole.Medewerker),
             ("Bas Beheerder", "beheerder@dropuut.example", "Beheerder123!", UserRole.Beheerder),
             ("Salina Schoonmaker", "schoonmaker@dropuut.example", "Schoonmaker123!", UserRole.Schoonmaker),
-            ("Gerrit Gast", "gast@dropuut.example", "Gast123!", UserRole.Gast),
         ];
 
         // Adds each account whose email is missing, so a database from before a new role still gets it.

@@ -5,7 +5,6 @@ namespace Vakantiepark.Domain.Enums
     {
         Medewerker,
         Beheerder,
-        Schoonmaker,
-        Gast
+        Schoonmaker
     }
 }
