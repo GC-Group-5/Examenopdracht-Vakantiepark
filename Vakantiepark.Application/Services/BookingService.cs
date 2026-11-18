@@ -23,6 +23,9 @@ namespace Vakantiepark.Application.Services
         public const string InvalidLinkMessage = "Deze link is ongeldig.";
         public const string ExpiredLinkMessage = "Deze link is verlopen, omdat je verblijf voorbij is.";
         public const string NotFoundMessage = "We kunnen geen boeking vinden met deze gegevens.";
+        public const string CannotChangeMessage = "Deze boeking kun je niet meer zelf wijzigen. Neem contact op met de receptie, dan helpen we je verder.";
+        public const string NoUnitForChangeMessage = "Er is in de nieuwe periode geen vrij verblijf van dit type. Je boeking is niet gewijzigd.";
+        public const string CannotCancelMessage = "Deze boeking kan niet meer geannuleerd worden. Annuleren kan tot de dag van aankomst.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -136,7 +139,7 @@ namespace Vakantiepark.Application.Services
             if (booking.DepartureDate < Today())
                 throw new ArgumentException(ExpiredLinkMessage);
 
-            return booking.ToMyBookingResponse(GetStatus(booking));
+            return ToMine(booking, await GetParkSettingsAsync());
         }
 
         // For a guest logged in via /Auth/Guest; the id comes from his token, never from the request.
@@ -147,7 +150,174 @@ namespace Vakantiepark.Application.Services
             if (booking is null)
                 throw new ArgumentException(NotFoundMessage);
 
-            return booking.ToMyBookingResponse(GetStatus(booking));
+            return ToMine(booking, await GetParkSettingsAsync());
+        }
+
+        public async Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access, Guid? guestBookingId)
+        {
+            Booking booking = await FindOwnBookingAsync(access.Token, guestBookingId);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            if (!CancellationPolicy.CanCancel(booking, Today()))
+                throw new ArgumentException(CannotCancelMessage);
+
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+
+            return new CancellationQuoteResponse()
+            {
+                DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, Today()),
+                TotalPrice = booking.TotalPrice,
+                CancellationFee = fee,
+                Explanation = ExplainFee(booking, settings, fee),
+            };
+        }
+
+        // The fee is calculated again here; an amount from the browser is never used.
+        public async Task<MyBookingResponse> CancelAsync(BookingAccessRequest access, Guid? guestBookingId)
+        {
+            Booking booking = await FindOwnBookingAsync(access.Token, guestBookingId);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            if (!CancellationPolicy.CanCancel(booking, Today()))
+                throw new ArgumentException(CannotCancelMessage);
+
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+            await BookingRepository.CancelAsync(booking, fee);
+            await SendCancellationAsync(booking, settings, fee);
+
+            return ToMine(booking, settings);
+        }
+
+        // Checks the change and returns the old and the new price; nothing is saved yet.
+        public async Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId)
+        {
+            ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
+
+            return new ChangeQuoteResponse()
+            {
+                OldTotalPrice = plan.Booking.TotalPrice,
+                NewPrice = newPrice,
+                OtherUnit = plan.OtherUnit,
+            };
+        }
+
+        // Every check is done again, so the change is safe even when the quote is old.
+        public async Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request, Guid? guestBookingId)
+        {
+            ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
+            Booking booking = plan.Booking;
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
+            decimal oldTotalPrice = booking.TotalPrice;
+
+            booking.ArrivalDate = request.ArrivalDate;
+            booking.DepartureDate = request.DepartureDate;
+            booking.NumberOfGuests = request.NumberOfGuests;
+            // Only the key: the unit itself was loaded without tracking and must not be saved again.
+            booking.AccommodationUnitId = plan.Unit.Id;
+            booking.AccommodationPrice = newPrice.AccommodationPrice;
+            booking.CleaningFee = newPrice.CleaningFee;
+            booking.TouristTax = newPrice.TouristTax;
+            booking.TotalPrice = newPrice.TotalPrice;
+            booking.Deposit = newPrice.Deposit;
+
+            List<BookingGuest> coTravellers = request.CoTravellers
+                .Select(traveller => new BookingGuest() { Name = traveller.Name.Trim(), BirthDate = traveller.BirthDate!.Value })
+                .ToList();
+
+            // Someone else may have booked the unit since the check; then nothing is saved.
+            if (!await BookingRepository.TryUpdateAsync(booking, coTravellers))
+                throw new ArgumentException(NoUnitForChangeMessage);
+
+            await SendChangeAsync(booking, plan.Type, oldTotalPrice);
+
+            // Loaded again, so a new unit (and its zone) is on the booking that is returned.
+            Booking saved = await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
+            return ToMine(saved, plan.Settings);
+        }
+
+        private sealed record ChangePlan(Booking Booking, ParkSettings Settings, AccommodationType Type, Accommodation Unit, bool OtherUnit);
+
+        // All rules for a change (US-12): own booking, in time, valid stay and party, high season,
+        // and a free unit of the same type (the current one when it is still free).
+        private async Task<ChangePlan> PrepareChangeAsync(ChangeBookingRequest request, Guid? guestBookingId)
+        {
+            Booking booking = await FindOwnBookingAsync(request.Token, guestBookingId);
+            ParkSettings settings = await GetParkSettingsAsync();
+            AccommodationType type = booking.AccommodationUnit.Type;
+
+            if (!CancellationPolicy.CanChange(booking, settings, Today()))
+                throw new ArgumentException(CannotChangeMessage);
+
+            CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, Today());
+
+            BookingGuest? mainBooker = booking.Guests.FirstOrDefault(guest => guest.IsMainBooker);
+            if (mainBooker is not null && CreateBookingRequestValidation.AgeOn(mainBooker.BirthDate, request.ArrivalDate) < CreateBookingRequestValidation.MinimumMainBookerAge)
+                throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {CreateBookingRequestValidation.MinimumMainBookerAge} jaar zijn.");
+
+            CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, Today());
+            await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
+
+            AccommodationUnitFilter filter = new AccommodationUnitFilter()
+            {
+                NumberOfGuests = request.NumberOfGuests,
+                NumberOfPets = booking.NumberOfPets,
+                WheelchairAccessible = booking.WheelchairAccessible,
+            };
+            List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, request.ArrivalDate, request.DepartureDate))
+                .Where(filter.Matches)
+                .ToList();
+            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingExcludingAsync(
+                units.Select(unit => unit.Id).ToList(), request.ArrivalDate, request.DepartureDate, booking.Id);
+            List<Accommodation> freeUnits = units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
+
+            Accommodation? currentUnit = freeUnits.FirstOrDefault(unit => unit.Id == booking.AccommodationUnitId);
+            if (currentUnit is not null)
+                return new ChangePlan(booking, settings, type, currentUnit, OtherUnit: false);
+
+            Accommodation otherUnit = freeUnits.FirstOrDefault()
+                ?? throw new ArgumentException(NoUnitForChangeMessage);
+
+            return new ChangePlan(booking, settings, type, otherUnit, OtherUnit: true);
+        }
+
+
+        // The same two ways in as "Mijn boeking": the code from the email link, or the booking id
+        // from the guest login token (/Auth/Guest). Never an id from the request itself.
+        private async Task<Booking> FindOwnBookingAsync(string? token, Guid? guestBookingId)
+        {
+            if (!string.IsNullOrWhiteSpace(token))
+                return await BookingRepository.GetByAccessTokenAsync(token)
+                    ?? throw new ArgumentException(InvalidLinkMessage);
+
+            if (guestBookingId is Guid bookingId)
+                return await BookingRepository.GetByIdWithDetailsAsync(bookingId)
+                    ?? throw new ArgumentException(NotFoundMessage);
+
+            throw new ArgumentException(NotFoundMessage);
+        }
+
+        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee)
+        {
+            CultureInfo dutch = new CultureInfo("nl-NL");
+
+            if (fee == 0m)
+                return $"Je annuleert meer dan {settings.FreeCancellationDaysBeforeArrival} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
+
+            if (fee == booking.Deposit)
+                return $"Je annuleert {settings.FreeCancellationDaysBeforeArrival} tot {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. De aanbetaling van {settings.DepositPercentage.ToString("0.##", dutch)}% ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+
+            return $"Je annuleert minder dan {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
+        }
+
+        // "Mijn boeking" plus what the page may offer (US-12) and the costs of a cancelled booking.
+        private MyBookingResponse ToMine(Booking booking, ParkSettings settings)
+        {
+            MyBookingResponse response = booking.ToMyBookingResponse(GetStatus(booking));
+            response.CanCancel = CancellationPolicy.CanCancel(booking, Today());
+            response.CanChange = CancellationPolicy.CanChange(booking, settings, Today());
+            response.CancellationFee = booking.CancellationFee;
+            return response;
         }
 
         private string GetStatus(Booking booking)
@@ -274,6 +444,68 @@ namespace Vakantiepark.Application.Services
                 Logger.LogError(exception, "Could not send the confirmation email for booking {BookingNumber}.", booking.BookingNumber);
             }
         }
+
+        // Like the confirmation: a mail server that is down is logged, the cancellation stays.
+        private async Task SendCancellationAsync(Booking booking, ParkSettings settings, decimal fee)
+        {
+            try
+            {
+                CultureInfo dutch = new CultureInfo("nl-NL");
+
+                RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingCancellation, new Dictionary<string, string>
+                {
+                    ["Name"] = booking.Name,
+                    ["BookingNumber"] = booking.BookingNumber,
+                    ["AccommodationType"] = booking.AccommodationUnit.Type.Name,
+                    ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["CancellationFee"] = fee.ToString("C", dutch),
+                    ["FeeExplanation"] = ExplainFee(booking, settings, fee),
+                    ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
+                });
+
+                await EmailSender.SendAsync(booking.Email, $"Annulering van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Could not send the cancellation email for booking {BookingNumber}.", booking.BookingNumber);
+            }
+        }
+
+        private async Task SendChangeAsync(Booking booking, AccommodationType type, decimal oldTotalPrice)
+        {
+            try
+            {
+                CultureInfo dutch = new CultureInfo("nl-NL");
+                string party = string.Join(", ", booking.Guests
+                    .OrderByDescending(guest => guest.IsMainBooker)
+                    .Select(guest => guest.Name));
+
+                RenderedEmail email = EmailTemplate.Render(EmailTemplate.BookingChange, new Dictionary<string, string>
+                {
+                    ["Name"] = booking.Name,
+                    ["BookingNumber"] = booking.BookingNumber,
+                    ["AccommodationType"] = type.Name,
+                    ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["ArrivalTime"] = booking.ArrivalTime.ToString("HH:mm", dutch),
+                    ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["DepartureTime"] = booking.DepartureTime.ToString("HH:mm", dutch),
+                    ["NumberOfGuests"] = booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen",
+                    ["Party"] = party,
+                    ["OldTotalPrice"] = oldTotalPrice.ToString("C", dutch),
+                    ["NewTotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["Deposit"] = booking.Deposit.ToString("C", dutch),
+                    ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
+                });
+
+                await EmailSender.SendAsync(booking.Email, $"Wijziging van je boeking {booking.BookingNumber}", email.HtmlBody, email.TextBody);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Could not send the change email for booking {BookingNumber}.", booking.BookingNumber);
+            }
+        }
+
 
         private async Task<string> GenerateUniqueBookingNumberAsync()
         {

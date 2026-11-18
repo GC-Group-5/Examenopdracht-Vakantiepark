@@ -1,5 +1,4 @@
 using Vakantiepark.Domain.Entities;
-using Vakantiepark.Shared.DTOs.Maintenance;
 
 namespace Vakantiepark.Application.Validations.MaintenancePeriods
 {

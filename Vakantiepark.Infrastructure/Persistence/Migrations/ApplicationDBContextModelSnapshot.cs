@@ -261,6 +261,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("booking_number");
 
+                    b.Property<decimal?>("CancellationFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("cancellation_fee");
+
                     b.Property<decimal>("CleaningFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")

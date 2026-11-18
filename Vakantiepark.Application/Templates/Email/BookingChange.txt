@@ -1,0 +1,20 @@
+Vakantiepark D'r op Uut
+
+Je boeking is gewijzigd, {{Name}}
+
+JE VERBLIJF
+Boekingsnummer: {{BookingNumber}}
+Verblijf:       {{AccommodationType}}
+Aankomst:       {{ArrivalDate}} vanaf {{ArrivalTime}}
+Vertrek:        {{DepartureDate}} vóór {{DepartureTime}}
+Reisgezelschap: {{NumberOfGuests}}: {{Party}}
+
+PRIJS
+Oude prijs:   {{OldTotalPrice}}
+Nieuwe prijs: {{NewTotalPrice}}
+Aanbetaling:  {{Deposit}}
+
+Je bekijkt je boeking altijd in Mijn boeking:
+{{MyBookingUrl}}
+
+We zien je graag op het park!
