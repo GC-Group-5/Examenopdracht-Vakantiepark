@@ -41,6 +41,14 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     PasswordHash = passwordHasher.Hash("Schoonmaker123!"),
                     Role = UserRole.Schoonmaker,
                     CreatedAt = now
+                },
+                new User()
+                {
+                    FullName = "Gerrit Gast",
+                    Email = "gast@dropuut.example",
+                    PasswordHash = passwordHasher.Hash("Gast123!"),
+                    Role = UserRole.Gast,
+                    CreatedAt = now
                 });
 
 
