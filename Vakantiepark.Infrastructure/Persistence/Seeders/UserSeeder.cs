@@ -5,41 +5,33 @@ using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Infrastructure.Persistence.Seeders
 {
-    // Test accounts for development only (one per staff role). The passwords are listed in README.md.
+    // Test accounts for development only (one per role). The passwords are listed in README.md.
     public static class UserSeeder
     {
+        private static readonly (string FullName, string Email, string Password, UserRole Role)[] TestUsers =
+        [
+            ("Mila Medewerker", "medewerker@dropuut.example", "Medewerker123!", UserRole.Medewerker),
+            ("Bas Beheerder", "beheerder@dropuut.example", "Beheerder123!", UserRole.Beheerder),
+            ("Salina Schoonmaker", "schoonmaker@dropuut.example", "Schoonmaker123!", UserRole.Schoonmaker),
+        ];
+
+        // Adds each account whose email is missing, so a database from before a new role still gets it.
         public static void SeedTestUsers(this DbContext context)
         {
             DbSet<User> users = context.Set<User>();
-            if (users.Any())
-                return;
+            List<string> existingEmails = users.Select(user => user.Email).ToList();
 
             PasswordHasher passwordHasher = new PasswordHasher();
             DateTime now = DateTime.UtcNow;
 
-            users.AddRange(
-                new User()
+            List<User> missing = TestUsers
+                .Where(testUser => !existingEmails.Contains(testUser.Email))
+                .Select(testUser => new User()
                 {
-                    FullName = "Mila Medewerker",
-                    Email = "medewerker@dropuut.example",
-                    PasswordHash = passwordHasher.Hash("Medewerker123!"),
-                    Role = UserRole.Medewerker,
-                    CreatedAt = now
-                },
-                new User()
-                {
-                    FullName = "Bas Beheerder",
-                    Email = "beheerder@dropuut.example",
-                    PasswordHash = passwordHasher.Hash("Beheerder123!"),
-                    Role = UserRole.Beheerder,
-                    CreatedAt = now
-                },
-                new User()
-                { 
-                    FullName = "Salina Schoonmaker",
-                    Email = "schoonmaker@dropuut.example",
-                    PasswordHash = passwordHasher.Hash("Schoonmaker123!"),
-                    Role = UserRole.Schoonmaker,
+                    FullName = testUser.FullName,
+                    Email = testUser.Email,
+                    PasswordHash = passwordHasher.Hash(testUser.Password),
+                    Role = testUser.Role,
                     CreatedAt = now
                 },
                 new User()
@@ -51,7 +43,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     CreatedAt = now
                 });
 
+            if (missing.Count == 0)
+                return;
 
+            users.AddRange(missing);
             context.SaveChanges();
         }
     }

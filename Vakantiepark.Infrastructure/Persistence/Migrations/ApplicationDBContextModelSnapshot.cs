@@ -261,6 +261,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("booking_number");
 
+                    b.Property<decimal?>("CancellationFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("cancellation_fee");
+
                     b.Property<decimal>("CleaningFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -326,6 +331,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<bool>("WheelchairAccessible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("wheelchair_accessible");
 
                     b.HasKey("Id")
                         .HasName("pk_bookings");

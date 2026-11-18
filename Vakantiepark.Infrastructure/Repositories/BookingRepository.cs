@@ -56,5 +56,67 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Where(x => x.ArrivalDate < endDate && x.DepartureDate > startDate)
                 .OrderBy(x => x.ArrivalDate)
                 .ToListAsync();
+
+        public async Task<Booking?> GetByAccessTokenAsync(string accessToken)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.AccessToken == accessToken);
+
+        public async Task<Booking?> GetByIdWithDetailsAsync(Guid id)
+            => await WithDetails()
+                .SingleOrDefaultAsync(x => x.Id == id);
+
+        // A cancelled booking keeps its row (status "Geannuleerd"); deleted_at frees the unit,
+        // because the overlap constraint only counts bookings where deleted_at is null.
+        public async Task CancelAsync(Booking booking, decimal cancellationFee)
+        {
+            booking.CancellationFee = cancellationFee;
+            booking.DeletedAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+        }
+
+        public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId)
+            => await Set
+                .Where(x => x.DeletedAt == null)
+                .Where(x => x.Id != excludedBookingId)
+                .Where(x => unitIds.Contains(x.AccommodationUnitId))
+                .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate)
+                .Select(x => x.AccommodationUnitId)
+                .Distinct()
+                .ToListAsync();
+
+        // Saves a changed booking and replaces the co-travellers (the main booker stays). When the
+        // overlap constraint refuses it, nothing is saved and the booking stays as it was.
+        public async Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers)
+        {
+            List<BookingGuest> oldCoTravellers = booking.Guests.Where(guest => !guest.IsMainBooker).ToList();
+            foreach (BookingGuest guest in oldCoTravellers)
+            {
+                booking.Guests.Remove(guest);
+                Context.Set<BookingGuest>().Remove(guest);
+            }
+
+            foreach (BookingGuest guest in coTravellers)
+                booking.Guests.Add(guest);
+
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await Context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
+            {
+                Context.ChangeTracker.Clear();
+                return false;
+            }
+        }
+
+        private IQueryable<Booking> WithDetails()
+            => Set
+                .Include(x => x.Guests)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone);
     }
 }

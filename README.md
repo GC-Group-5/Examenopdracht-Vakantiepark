@@ -91,3 +91,4 @@ Het logo staat in `wwwroot/img/logo.webp`, het favicon en app-icoon in `wwwroot/
 | `Vakantiepark.Shared` | DTO's gedeeld door API en frontend |
 | `Vakantiepark.UI` | Blazor WebAssembly frontend |
 | `Vakantiepark.UnitTests` | xUnit + Moq tests |
+| `Vakantiepark.IntegrationTests` | Tests tegen een echte PostgreSQL in Docker (Testcontainers) |

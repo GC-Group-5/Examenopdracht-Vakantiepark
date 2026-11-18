@@ -31,5 +31,25 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request)
             => await HttpService.PostAsync<BookingResponse, CreateBookingRequest>("/Booking", request);
+
+        public async Task<ApiResponse<MyBookingResponse>> GetMineByTokenAsync(string token)
+            => await HttpService.GetAsync<MyBookingResponse>($"/Booking/mine/{Uri.EscapeDataString(token)}");
+
+        // Needs the guest token from /Auth/Guest; the token handler adds it to the request.
+        public async Task<ApiResponse<MyBookingResponse>> GetMineAsync()
+            => await HttpService.GetAsync<MyBookingResponse>("/Booking/mine");
+
+        // Without a link code the guest login token (added by the token handler) says which booking it is.
+        public async Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(BookingAccessRequest access)
+            => await HttpService.PostAsync<CancellationQuoteResponse, BookingAccessRequest>("/Booking/mine/cancel/quote", access);
+
+        public async Task<ApiResponse<MyBookingResponse>> CancelAsync(BookingAccessRequest access)
+            => await HttpService.PostAsync<MyBookingResponse, BookingAccessRequest>("/Booking/mine/cancel", access);
+
+        public async Task<ApiResponse<ChangeQuoteResponse>> GetChangeQuoteAsync(ChangeBookingRequest request)
+            => await HttpService.PostAsync<ChangeQuoteResponse, ChangeBookingRequest>("/Booking/mine/change/quote", request);
+
+        public async Task<ApiResponse<MyBookingResponse>> ChangeAsync(ChangeBookingRequest request)
+            => await HttpService.PostAsync<MyBookingResponse, ChangeBookingRequest>("/Booking/mine/change", request);
     }
 }
