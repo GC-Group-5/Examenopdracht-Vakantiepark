@@ -38,11 +38,16 @@ namespace Vakantiepark.Application.Validations.Booking
             if (AgeOn(request.BirthDate.Value, request.ArrivalDate) < MinimumMainBookerAge)
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn.");
 
-            int coTravellers = request.NumberOfGuests - 1;
-            if (request.CoTravellers.Count != coTravellers)
-                throw new ArgumentException($"Vul de naam en geboortedatum in van alle {request.NumberOfGuests} personen.");
+            ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, today);
+        }
 
-            foreach (TravellerRequest traveller in request.CoTravellers)
+        // Everyone except the main booker, with name and birth date; also used when a guest changes his booking (US-12).
+        public static void ValidateCoTravellers(int numberOfGuests, List<TravellerRequest> coTravellers, DateOnly today)
+        {
+            if (coTravellers.Count != numberOfGuests - 1)
+                throw new ArgumentException($"Vul de naam en geboortedatum in van alle {numberOfGuests} personen.");
+
+            foreach (TravellerRequest traveller in coTravellers)
             {
                 if (string.IsNullOrWhiteSpace(traveller.Name))
                     throw new ArgumentException("Vul de naam van iedere reisgenoot in.");

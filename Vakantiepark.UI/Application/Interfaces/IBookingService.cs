@@ -9,5 +9,11 @@ namespace Vakantiepark.UI.Application.Interfaces
         Task<ApiResponse<BookingResponse>> CreateAsync(CreateBookingRequest request);
         Task<ApiResponse<MyBookingResponse>> GetMineByTokenAsync(string token);
         Task<ApiResponse<MyBookingResponse>> GetMineAsync();
+
+        // US-12: cancel or change the guest's own booking, each with a quote before confirming.
+        Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(BookingAccessRequest access);
+        Task<ApiResponse<MyBookingResponse>> CancelAsync(BookingAccessRequest access);
+        Task<ApiResponse<ChangeQuoteResponse>> GetChangeQuoteAsync(ChangeBookingRequest request);
+        Task<ApiResponse<MyBookingResponse>> ChangeAsync(ChangeBookingRequest request);
     }
 }

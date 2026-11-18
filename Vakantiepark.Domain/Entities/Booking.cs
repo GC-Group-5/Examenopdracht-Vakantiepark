@@ -32,6 +32,7 @@ namespace Vakantiepark.Domain.Entities
         public decimal TouristTax { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }
+        public decimal? CancellationFee { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
