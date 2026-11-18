@@ -6,6 +6,8 @@ namespace Vakantiepark.Application.Helpers
     public static class EmailTemplate
     {
         public const string BookingConfirmation = "BookingConfirmation";
+        public const string BookingCancellation = "BookingCancellation";
+        public const string BookingChange = "BookingChange";
 
         private const string ResourcePrefix = "Vakantiepark.Application.Templates.Email.";
 

@@ -105,8 +105,131 @@
                         <tr><td>Toeristenbelasting</td><td class="text-end">@booking.TouristTax.ToString("C")</td></tr>
                         <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@booking.TotalPrice.ToString("C")</td></tr>
                         <tr><td>Aanbetaling</td><td class="text-end">@booking.Deposit.ToString("C")</td></tr>
+                        @if (booking.CancellationFee is not null)
+                        {
+                            <tr class="fw-semibold text-danger"><td>Annuleringskosten</td><td class="text-end">@booking.CancellationFee.Value.ToString("C")</td></tr>
+                        }
                     </tbody>
                 </table>
+
+                @if (successMessage is not null)
+                {
+                    <div class="alert alert-success mt-4 mb-0" role="status">@successMessage</div>
+                }
+
+                @if (booking.Status == BookingStatuses.Bevestigd)
+                {
+                    <h3 class="h5 mt-5 mb-3">Je boeking aanpassen</h3>
+
+                    @if (actionError is not null)
+                    {
+                        <div class="alert alert-danger" role="alert">@actionError</div>
+                    }
+
+                    @if (mode == Mode.None)
+                    {
+                        @if (!booking.CanChange)
+                        {
+                            <p class="text-muted-du">
+                                Wil je iets wijzigen? Dat kan nu alleen via de receptie:
+                                <a href="tel:@ParkInfo.PhoneLink">@ParkInfo.Phone</a> of <a href="mailto:@ParkInfo.Email">@ParkInfo.Email</a>
+                                (@ParkInfo.ReceptionHours.ToLowerInvariant()).
+                            </p>
+                        }
+                        <div class="d-flex flex-wrap gap-3">
+                            @if (booking.CanChange)
+                            {
+                                <button type="button" class="btn btn-du" @onclick="StartChange">Boeking wijzigen</button>
+                            }
+                            @if (booking.CanCancel)
+                            {
+                                <button type="button" class="btn btn-outline-danger" @onclick="ShowCancellationQuoteAsync" disabled="@isBusy">Boeking annuleren</button>
+                            }
+                        </div>
+                    }
+                    else if (mode == Mode.Cancel && cancellationQuote is not null)
+                    {
+                        <div class="border border-danger rounded-4 p-4">
+                            <h4 class="h6 mb-2">Weet je zeker dat je wilt annuleren?</h4>
+                            <p class="mb-1 text-muted-du">Annuleringskosten</p>
+                            <p class="fs-3 fw-bold text-danger mb-2">@cancellationQuote.CancellationFee.ToString("C")</p>
+                            <p>@cancellationQuote.Explanation</p>
+                            <div class="d-flex flex-wrap gap-3">
+                                <button type="button" class="btn btn-danger" @onclick="ConfirmCancellationAsync" disabled="@isBusy">
+                                    @(isBusy ? "Bezig met annuleren…" : "Ja, annuleren")
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseAction" disabled="@isBusy">Nee, terug</button>
+                            </div>
+                        </div>
+                    }
+                    else if (mode == Mode.Change)
+                    {
+                        <EditForm Model="changeRequest" OnValidSubmit="ShowChangeQuoteAsync" class="border rounded-4 p-4">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold" for="change-arrival">Aankomst</label>
+                                    <InputDate id="change-arrival" class="form-control" @bind-Value="changeRequest.ArrivalDate" @bind-Value:after="ClearChangeQuote" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold" for="change-departure">Vertrek</label>
+                                    <InputDate id="change-departure" class="form-control" @bind-Value="changeRequest.DepartureDate" @bind-Value:after="ClearChangeQuote" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold" for="change-guests">Aantal personen</label>
+                                    <InputNumber id="change-guests" class="form-control" Value="changeRequest.NumberOfGuests" TValue="int" ValueExpression="() => changeRequest.NumberOfGuests" ValueChanged="OnChangeGuests" min="1" step="1" />
+                                    <div class="form-text">Inclusief hoofdboeker</div>
+                                </div>
+                            </div>
+
+                            @if (changeRequest.CoTravellers.Count > 0)
+                            {
+                                <h4 class="h6 mt-4 mb-2">Reisgenoten</h4>
+                                @for (int index = 0; index < changeRequest.CoTravellers.Count; index++)
+                                {
+                                    int number = index + 2;
+                                    TravellerRequest traveller = changeRequest.CoTravellers[index];
+                                    <div class="row g-3 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small" for="@($"change-name-{number}")">Naam persoon @number</label>
+                                            <InputText id="@($"change-name-{number}")" class="form-control" @bind-Value="traveller.Name" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small" for="@($"change-birthdate-{number}")">Geboortedatum persoon @number</label>
+                                            <InputDate id="@($"change-birthdate-{number}")" class="form-control" @bind-Value="traveller.BirthDate" />
+                                        </div>
+                                    </div>
+                                }
+                            }
+
+                            @if (changeQuote is null)
+                            {
+                                <div class="d-flex flex-wrap gap-3 mt-4">
+                                    <button type="submit" class="btn btn-du" disabled="@isBusy">@(isBusy ? "Bezig met controleren…" : "Bekijk nieuwe prijs")</button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseAction" disabled="@isBusy">Terug</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <table class="table mt-4 mb-2">
+                                    <tbody>
+                                        <tr class="text-muted-du"><td>Oude prijs</td><td class="text-end text-decoration-line-through">@changeQuote.OldTotalPrice.ToString("C")</td></tr>
+                                        <tr class="fw-semibold"><td>Nieuwe prijs</td><td class="text-end">@changeQuote.NewPrice.TotalPrice.ToString("C")</td></tr>
+                                        <tr><td>Nieuwe aanbetaling</td><td class="text-end">@changeQuote.NewPrice.Deposit.ToString("C")</td></tr>
+                                    </tbody>
+                                </table>
+                                @if (changeQuote.OtherUnit)
+                                {
+                                    <p class="small text-muted-du">Je huidige verblijf is in deze periode bezet. Je krijgt een ander verblijf van hetzelfde type.</p>
+                                }
+                                <div class="d-flex flex-wrap gap-3 mt-3">
+                                    <button type="button" class="btn btn-du" @onclick="ConfirmChangeAsync" disabled="@isBusy">@(isBusy ? "Bezig met wijzigen…" : "Wijziging bevestigen")</button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseAction" disabled="@isBusy">Niet wijzigen</button>
+                                </div>
+                            }
+                        </EditForm>
+                    }
+                }
             </div>
         }
     </div>
@@ -130,6 +253,16 @@
     private bool isSearching;
     private bool isLoggedInAsGuest;
 
+    // US-12: changing and cancelling; only one of the two is open at a time.
+    private enum Mode { None, Cancel, Change }
+    private Mode mode = Mode.None;
+    private CancellationQuoteResponse? cancellationQuote;
+    private ChangeBookingRequest changeRequest = new ChangeBookingRequest();
+    private ChangeQuoteResponse? changeQuote;
+    private string? actionError;
+    private string? successMessage;
+    private bool isBusy;
+
     private int NumberOfNights => booking is null ? 0 : booking.DepartureDate.DayNumber - booking.ArrivalDate.DayNumber;
 
     private string StatusClass => booking?.Status switch
@@ -146,6 +279,8 @@
     {
         booking = null;
         errorMessage = null;
+        CloseAction();
+        successMessage = null;
 
         if (!string.IsNullOrWhiteSpace(Token))
         {
@@ -169,6 +304,8 @@
     {
         isSearching = true;
         errorMessage = null;
+        CloseAction();
+        successMessage = null;
 
         ApiResponse<TokenResponse> login = await AuthService.GuestLoginAsync(request);
         if (login.Succeeded)
@@ -199,5 +336,131 @@
         isLoggedInAsGuest = false;
         request.BookingNumber = string.Empty;
         request.Email = string.Empty;
+    }
+
+    // Via the email link the code goes along; a logged-in guest sends none, his login token is enough.
+    private void FillAccess(BookingAccessRequest access)
+        => access.Token = string.IsNullOrWhiteSpace(Token) ? null : Token;
+
+    private void CloseAction()
+    {
+        mode = Mode.None;
+        cancellationQuote = null;
+        changeQuote = null;
+        actionError = null;
+    }
+
+    private async Task ShowCancellationQuoteAsync()
+    {
+        CloseAction();
+        successMessage = null;
+        isBusy = true;
+
+        BookingAccessRequest access = new BookingAccessRequest();
+        FillAccess(access);
+        ApiResponse<CancellationQuoteResponse> response = await BookingService.GetCancellationQuoteAsync(access);
+        if (response.Succeeded && response.Value is not null)
+        {
+            cancellationQuote = response.Value;
+            mode = Mode.Cancel;
+        }
+        else
+        {
+            actionError = response.Message ?? "De annuleringskosten konden niet worden berekend. Probeer het opnieuw.";
+        }
+
+        isBusy = false;
+    }
+
+    private async Task ConfirmCancellationAsync()
+    {
+        isBusy = true;
+
+        BookingAccessRequest access = new BookingAccessRequest();
+        FillAccess(access);
+        ApiResponse<MyBookingResponse> response = await BookingService.CancelAsync(access);
+        if (response.Succeeded && response.Value is not null)
+        {
+            booking = response.Value;
+            CloseAction();
+            successMessage = "Je boeking is geannuleerd. Je ontvangt een bevestiging per e-mail.";
+        }
+        else
+        {
+            CloseAction();
+            actionError = response.Message ?? "Je boeking kon niet worden geannuleerd. Probeer het opnieuw.";
+        }
+
+        isBusy = false;
+    }
+
+    private void StartChange()
+    {
+        if (booking is null)
+            return;
+
+        CloseAction();
+        successMessage = null;
+        changeRequest = new ChangeBookingRequest()
+        {
+            ArrivalDate = booking.ArrivalDate,
+            DepartureDate = booking.DepartureDate,
+            NumberOfGuests = booking.NumberOfGuests,
+            CoTravellers = booking.Guests
+                .Where(guest => !guest.IsMainBooker)
+                .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
+                .ToList(),
+        };
+        mode = Mode.Change;
+    }
+
+    private void ClearChangeQuote()
+    {
+        changeQuote = null;
+        actionError = null;
+    }
+
+    private void OnChangeGuests(int numberOfGuests)
+    {
+        changeRequest.NumberOfGuests = Math.Max(1, numberOfGuests);
+        List<TravellerRequest> previous = changeRequest.CoTravellers;
+        changeRequest.CoTravellers = Enumerable.Range(0, changeRequest.NumberOfGuests - 1)
+            .Select(index => index < previous.Count ? previous[index] : new TravellerRequest())
+            .ToList();
+        ClearChangeQuote();
+    }
+
+    private async Task ShowChangeQuoteAsync()
+    {
+        isBusy = true;
+        actionError = null;
+
+        FillAccess(changeRequest);
+        ApiResponse<ChangeQuoteResponse> response = await BookingService.GetChangeQuoteAsync(changeRequest);
+        changeQuote = response.Succeeded ? response.Value : null;
+        actionError = response.Succeeded ? null : response.Message ?? "De nieuwe prijs kon niet worden berekend. Probeer het opnieuw.";
+
+        isBusy = false;
+    }
+
+    private async Task ConfirmChangeAsync()
+    {
+        isBusy = true;
+
+        FillAccess(changeRequest);
+        ApiResponse<MyBookingResponse> response = await BookingService.ChangeAsync(changeRequest);
+        if (response.Succeeded && response.Value is not null)
+        {
+            booking = response.Value;
+            CloseAction();
+            successMessage = "Je boeking is gewijzigd. Je ontvangt een bevestiging per e-mail.";
+        }
+        else
+        {
+            changeQuote = null;
+            actionError = response.Message ?? "Je boeking kon niet worden gewijzigd. Probeer het opnieuw.";
+        }
+
+        isBusy = false;
     }
 }

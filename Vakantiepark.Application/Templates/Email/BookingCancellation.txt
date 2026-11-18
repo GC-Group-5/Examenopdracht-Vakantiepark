@@ -1,0 +1,16 @@
+Vakantiepark D'r op Uut
+
+Je boeking is geannuleerd, {{Name}}
+
+GEANNULEERDE BOEKING
+Boekingsnummer: {{BookingNumber}}
+Verblijf:       {{AccommodationType}}
+Periode:        {{ArrivalDate}} t/m {{DepartureDate}}
+
+ANNULERINGSKOSTEN: {{CancellationFee}}
+{{FeeExplanation}}
+
+Je geannuleerde boeking blijft zichtbaar in Mijn boeking:
+{{MyBookingUrl}}
+
+Hopelijk tot een andere keer!

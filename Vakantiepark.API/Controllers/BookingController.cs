@@ -95,5 +95,68 @@ namespace Vakantiepark.API.Controllers
                 return NotFound(ApiResponse<MyBookingResponse>.Fail(exception.Message));
             }
         }
+
+        [HttpPost("mine/cancel")]
+        public async Task<IActionResult> CancelAsync(BookingAccessRequest request)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.CancelAsync(request, GuestBookingId());
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/cancel/quote")]
+        public async Task<IActionResult> GetCancellationQuoteAsync(BookingAccessRequest request)
+        {
+            try
+            {
+                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteAsync(request, GuestBookingId());
+                return Ok(ApiResponse<CancellationQuoteResponse>.Ok(quote));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<CancellationQuoteResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/change")]
+        public async Task<IActionResult> ChangeAsync(ChangeBookingRequest request)
+        {
+            try
+            {
+                MyBookingResponse booking = await BookingService.ChangeAsync(request, GuestBookingId());
+                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
+            }
+        }
+
+        [HttpPost("mine/change/quote")]
+        public async Task<IActionResult> GetChangeQuoteAsync(ChangeBookingRequest request)
+        {
+            try
+            {
+                ChangeQuoteResponse quote = await BookingService.GetChangeQuoteAsync(request, GuestBookingId());
+                return Ok(ApiResponse<ChangeQuoteResponse>.Ok(quote));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(ApiResponse<ChangeQuoteResponse>.Fail(exception.Message));
+            }
+        }
+
+        // US-12: a guest logged in via /Auth/Guest changes or cancels the booking in his token;
+        // otherwise the request must carry the code from the email link.
+        private Guid? GuestBookingId()
+            => User.IsInRole(Roles.Gast) && Guid.TryParse(User.FindFirstValue(ClaimNames.BookingId), out Guid bookingId)
+                ? bookingId
+                : null;
     }
 }
