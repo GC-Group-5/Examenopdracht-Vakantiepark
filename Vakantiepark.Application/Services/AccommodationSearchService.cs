@@ -19,6 +19,7 @@ namespace Vakantiepark.Application.Services
     {
         private readonly IAccommodationUnitRepository UnitRepository;
         private readonly IAccommodationTypeRepository TypeRepository;
+        private readonly IRepository<AccommodationType> TypeListRepository;
         private readonly IBookingRepository BookingRepository;
         private readonly IRepository<Season> SeasonRepository;
         private readonly IRepository<ParkSettings> ParkSettingsRepository;
@@ -29,6 +30,7 @@ namespace Vakantiepark.Application.Services
         public AccommodationSearchService(
             IAccommodationUnitRepository unitRepository,
             IAccommodationTypeRepository typeRepository,
+            IRepository<AccommodationType> typeListRepository,
             IBookingRepository bookingRepository,
             IRepository<Season> seasonRepository,
             IRepository<ParkSettings> parkSettingsRepository,
@@ -38,6 +40,7 @@ namespace Vakantiepark.Application.Services
         {
             UnitRepository = unitRepository;
             TypeRepository = typeRepository;
+            TypeListRepository = typeListRepository;
             BookingRepository = bookingRepository;
             SeasonRepository = seasonRepository;
             ParkSettingsRepository = parkSettingsRepository;
@@ -58,7 +61,7 @@ namespace Vakantiepark.Application.Services
             if (highSeasonMessage is not null)
                 return new AccommodationSearchResponse { Message = highSeasonMessage };
 
-            List<AccommodationType> types = (await TypeRepository.GetAllAsync()).ToList();
+            List<AccommodationType> types = (await TypeListRepository.GetAllAsync()).ToList();
 
             if (!string.IsNullOrWhiteSpace(accommodationTypeSlug))
             {

@@ -38,7 +38,7 @@
                                 <option value="">Alle verblijven</option>
                                 @foreach (TypeOption type in VisibleTypeOptions)
                                 {
-                                    <option value="@type.Slug">@type.Name (@FormatCategory.Format(type.Category))</option>
+                                    <option value="@type.Slug">@type.Name (@type.CategoryLabel)</option>
                                 }
                             </select>
                         </div>
@@ -115,7 +115,7 @@
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between gap-3 align-items-start">
                                             <div>
-                                                <div class="eyebrow">@FormatCategory.Format(availability.Category)</div>
+                                                <div class="eyebrow">@CategoryLabel(availability.Category)</div>
                                                 <h2 class="h3 mt-2 mb-0">@availability.Name</h2>
                                             </div>
                                             <span class="count-pill text-nowrap">tot @availability.MaxPersons pers.</span>
@@ -212,7 +212,8 @@
             .Select(group => new TypeOption(
                 group.Key,
                 group.First().TypeName,
-                group.First().Category))
+                group.First().Category,
+                CategoryLabel(group.First().Category)))
             .OrderBy(type => type.Name)
             .ToList();
 
@@ -308,7 +309,14 @@
     private string TypeCategoryOf(string slug) =>
         TypeOptions.FirstOrDefault(type => type.Slug == slug)?.Category ?? "";
 
-    private sealed record TypeOption(string Slug, string Name, string Category);
+    private static string CategoryLabel(string category) => category switch
+    {
+        "HolidayHome" => "Vakantiewoning",
+        "CampingPitch" => "Kampeerplaats",
+        _ => category,
+    };
+
+    private sealed record TypeOption(string Slug, string Name, string Category, string CategoryLabel);
 
     private sealed record SearchCriteria(
         string? TypeSlug, string? Category, DateOnly ArrivalDate, DateOnly DepartureDate,
