@@ -10,11 +10,6 @@ namespace Vakantiepark.Infrastructure.Repositories
         public AccommodationUnitRepository(ApplicationDBContext context)
             : base(context) { }
 
-        public async Task<List<Guid>> GetInServiceIdsByTypeSlugAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
-            => await InService(accommodationTypeSlug, arrivalDate, departureDate)
-                .Select(x => x.Id)
-                .ToListAsync();
-
         public async Task<List<Accommodation>> GetInServiceUnitsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
             => await InService(accommodationTypeSlug, arrivalDate, departureDate)
                 .AsNoTracking()
