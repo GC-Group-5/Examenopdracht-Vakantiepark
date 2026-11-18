@@ -9,5 +9,7 @@ namespace Vakantiepark.Shared.Constants
         public const string Gast = "Gast";
 
         public const string Staff = Medewerker + "," + Beheerder;
+
+        public const string Cleaner = Beheerder + "," + Schoonmaker;
     }
 }

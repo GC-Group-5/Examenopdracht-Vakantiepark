@@ -13,6 +13,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             ("Mila Medewerker", "medewerker@dropuut.example", "Medewerker123!", UserRole.Medewerker),
             ("Bas Beheerder", "beheerder@dropuut.example", "Beheerder123!", UserRole.Beheerder),
             ("Salina Schoonmaker", "schoonmaker@dropuut.example", "Schoonmaker123!", UserRole.Schoonmaker),
+            ("Gerrit Gast", "gast@dropuut.example", "Gast123!", UserRole.Gast),
         ];
 
         // Adds each account whose email is missing, so a database from before a new role still gets it.
@@ -33,15 +34,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
                     PasswordHash = passwordHasher.Hash(testUser.Password),
                     Role = testUser.Role,
                     CreatedAt = now
-                },
-                new User()
-                {
-                    FullName = "Gerrit Gast",
-                    Email = "gast@dropuut.example",
-                    PasswordHash = passwordHasher.Hash("Gast123!"),
-                    Role = UserRole.Gast,
-                    CreatedAt = now
-                });
+                })
+                .ToList();
 
             if (missing.Count == 0)
                 return;

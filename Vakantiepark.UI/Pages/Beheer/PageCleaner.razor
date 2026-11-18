@@ -1,5 +1,5 @@
 ﻿@page "/beheer/schoonmaak"
-@attribute [Authorize(Roles = Roles.Schoonmaker)]
+@attribute [Authorize(Roles = Roles.Cleaner)]
 @inject NavigationManager NavigationManager
 @inject IAuthService AuthService
 
@@ -11,7 +11,7 @@
         <AuthorizeView Context="auth">
             <h1 class="page-title mt-2">Hallo, @auth.User.Identity?.Name</h1>
             <p class="page-intro mt-4">
-                Je bent ingelogd als <strong>@Roles.Schoonmaker</strong>.
+                Je bent ingelogd als <strong>@(auth.User.IsInRole(Roles.Beheerder) ? Roles.Beheerder : Roles.Schoonmaker)</strong>.
             </p>
         </AuthorizeView>
         <button type="button" class="btn btn-du-light mt-3" @onclick="LogoutAsync">Uitloggen</button>
