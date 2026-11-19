@@ -17,7 +17,6 @@ namespace Vakantiepark.UnitTests
     {
         private readonly Mock<IAccommodationUnitRepository> _unitRepository = new();
         private readonly Mock<IAccommodationTypeRepository> _typeRepository = new();
-        private readonly Mock<IRepository<AccommodationType>> _typeListRepository = new();
         private readonly Mock<IBookingRepository> _bookingRepository = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
         private readonly Mock<IRepository<ParkSettings>> _parkSettingsRepository = new();
@@ -53,7 +52,7 @@ namespace Vakantiepark.UnitTests
             _wilgA.Zone = _forestZone;
 
             _unitRepository.Setup(x => x.GetAllWithDetailsAsync()).ReturnsAsync([_berkA, _berkB, _wilgA]);
-            _typeListRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([_berk, _wilg]);
+            _typeRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([_berk, _wilg]);
             _typeRepository.Setup(x => x.GetBySlugAsync("berk-4")).ReturnsAsync(_berk);
             _typeRepository.Setup(x => x.GetBySlugAsync("wilg-4")).ReturnsAsync(_wilg);
             _typeRepository.Setup(x => x.GetBySlugAsync("bestaatniet")).ReturnsAsync((AccommodationType?)null);
@@ -88,7 +87,6 @@ namespace Vakantiepark.UnitTests
             _sut = new AccommodationSearchService(
                 _unitRepository.Object,
                 _typeRepository.Object,
-                _typeListRepository.Object,
                 _bookingRepository.Object,
                 _seasonRepository.Object,
                 _parkSettingsRepository.Object,

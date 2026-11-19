@@ -1,0 +1,7 @@
+# Whitespace-only commits; GitHub blame skips these so authors stay visible.
+# Locally: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Spaces to tabs in BookingService.cs (US-12, "test")
+4e782c4e61104cf21b804169b0bf574b39c7301d
+# Tabs back to spaces
+a8932e6ac231973419b36103bff78e1d4d7466dd
