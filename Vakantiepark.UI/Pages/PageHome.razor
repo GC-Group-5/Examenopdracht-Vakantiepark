@@ -50,9 +50,16 @@
                 <div class="eyebrow">Verblijven</div>
                 <h2 class="section-title mb-0">Van knus tot royaal</h2>
             </div>
-            <a class="fw-bold text-decoration-none" href="accommodaties">Alle @(types?.Count ?? 12) verblijfstypes bekijken →</a>
+            @if (types is not null)
+            {
+                <a class="fw-bold text-decoration-none" href="accommodaties">Alle @types.Count verblijfstypes bekijken →</a>
+            }
         </div>
-        @if (types is null)
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+        else if (types is null)
         {
             <div class="text-center py-5">
                 <div class="spinner-border text-success" role="status">
@@ -120,6 +127,7 @@
     private static readonly string[] FeaturedSlugs = ["berk-4", "eik-luxe-6", "bosvilla-10", "tentplaats-comfort"];
 
     private List<AccommodationTypeResponse>? types;
+    private string? errorMessage;
 
     private List<AccommodationTypeResponse> FeaturedTypes
         => FeaturedSlugs
@@ -133,7 +141,9 @@
         ApiResponse<List<AccommodationTypeResponse>> response =
             await HttpService.GetAsync<List<AccommodationTypeResponse>>("AccommodationType");
 
-        // Without the API the homepage still works, just without cards.
-        types = response.Succeeded ? response.Value ?? [] : [];
+        if (response.Succeeded && response.Value is not null)
+            types = response.Value;
+        else
+            errorMessage = response.Message ?? "De verblijven konden niet worden geladen. Probeer het later opnieuw.";
     }
 }
