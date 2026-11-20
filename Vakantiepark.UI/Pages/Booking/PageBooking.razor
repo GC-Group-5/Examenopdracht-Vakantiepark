@@ -125,6 +125,10 @@
                                     <label class="form-label fw-semibold" for="booking-birthdate">Geboortedatum</label>
                                     <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" autocomplete="bday" />
                                     <ValidationMessage For="() => request.BirthDate" />
+                                    @if (mainBookerAgeError is not null)
+                                    {
+                                        <div class="validation-message">@mainBookerAgeError</div>
+                                    }
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-email">E-mailadres</label>
@@ -249,7 +253,6 @@
     private const int DefaultGuests = 2;
     private const int MaxGuests = 20;
     private const int MaxPets = 3;
-    private const int MinimumMainBookerAge = 18;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
     private BookingQuoteResponse? quote;
@@ -260,6 +263,7 @@
     private string? errorMessage;
     private string? quoteErrorMessage;
     private int quoteRequestNumber;
+    private const int MinimumMainBookerAge = BookingRules.MinimumMainBookerAge;
 
     [SupplyParameterFromQuery(Name = "type")]
     public string? AccommodationTypeSlug { get; set; }
@@ -288,6 +292,11 @@
         && DepartureDate > ArrivalDate;
 
     private int NumberOfNights => request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
+
+    private string? mainBookerAgeError;
+
+    private void CheckMainBookerAge()
+        => mainBookerAgeError = MainBookerValidationError();
 
     protected override async Task OnParametersSetAsync()
     {
