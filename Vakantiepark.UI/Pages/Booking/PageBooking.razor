@@ -105,10 +105,6 @@
                                     <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-check mb-2">
-                                        <InputCheckbox id="booking-pets-checkbox" class="form-check-input" Value="takesPets" ValueExpression="() => takesPets" ValueChanged="OnTakesPetsChangedAsync" disabled="@((quote?.MaxPets ?? 0) < 1)" />
-                                        <label class="form-check-label" for="booking-pets-checkbox">Ik neem huisdieren mee</label>
-                                    </div>
                                     @if (takesPets)
                                     {
                                         <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
@@ -116,7 +112,13 @@
                                         <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
                                     }
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <InputCheckbox id="booking-pets-checkbox" class="form-check-input" Value="takesPets" ValueExpression="() => takesPets" ValueChanged="OnTakesPetsChangedAsync" disabled="@((quote?.MaxPets ?? 0) < 1)" />
+                                        <label class="form-check-label" for="booking-pets-checkbox">Ik neem huisdieren mee</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
                                     <div class="form-check">
                                         <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
                                         <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
