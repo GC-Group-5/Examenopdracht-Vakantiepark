@@ -22,6 +22,7 @@ namespace Vakantiepark.UnitTests
         private const decimal NieuweBelasting = 3.00m;
         private const decimal StandaardPrijs = 90m;
         private const decimal AanbetalingsPercentage = 20m;
+        private const decimal HuisdierSchoonmaak = 25m;
 
         private readonly Mock<IAccommodationTypeRepository> _typeRepository = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
@@ -141,6 +142,16 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CalculateAsync_WithPets_AddsConfiguredPetCleaningFeeOnce()
+        {
+            PriceSpecificationResponse price = await _sut.CalculateAsync(
+                "berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 2);
+
+            Assert.Equal(HuisdierSchoonmaak, price.PetCleaningFee);
+            Assert.Equal(936m + HuisdierSchoonmaak, price.TotalPrice);
+        }
+
+        [Fact]
         public async Task CalculateAsync_NewTaxRateMidStay_PricesEachNightWithTheRateValidThatNight()
         {
             // De belasting stijgt per 1 juli 2026 van 2.50 naar 3.00; nachten van
@@ -217,6 +228,7 @@ namespace Vakantiepark.UnitTests
             DepartureTime = new TimeOnly(10, 0),
             HighSeasonMinimumNights = 7,
             DepositPercentage = AanbetalingsPercentage,
+            PetCleaningFee = HuisdierSchoonmaak,
         };
     }
 }

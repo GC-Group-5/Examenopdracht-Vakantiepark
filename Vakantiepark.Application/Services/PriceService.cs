@@ -42,9 +42,19 @@ namespace Vakantiepark.Application.Services
             DateOnly arrivalDate,
             DateOnly departureDate,
             int numberOfGuests)
+            => await CalculateAsync(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, 0);
+
+        public async Task<PriceSpecificationResponse> CalculateAsync(
+            string accommodationTypeSlug,
+            DateOnly arrivalDate,
+            DateOnly departureDate,
+            int numberOfGuests,
+            int numberOfPets)
         {
             if (numberOfGuests < 1)
                 throw new ArgumentException("Er moet minimaal één gast zijn.", nameof(numberOfGuests));
+            if (numberOfPets < 0)
+                throw new ArgumentException("Het aantal huisdieren kan niet negatief zijn.", nameof(numberOfPets));
 
             // The departure day is excluded: that night is not billed.
             int nights = departureDate.DayNumber - arrivalDate.DayNumber;
@@ -95,18 +105,19 @@ namespace Vakantiepark.Application.Services
             }
 
             decimal cleaningFee = type.CleaningFee;
-            decimal totalPrice = accommodationPrice + cleaningFee + touristTax;
-
             ParkSettings? settings = (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault();
             if (settings is null)
                 throw new InvalidOperationException("De parkinstellingen zijn niet ingesteld.");
 
+            decimal petCleaningFee = numberOfPets > 0 ? settings.PetCleaningFee : 0m;
+            decimal totalPrice = accommodationPrice + cleaningFee + petCleaningFee + touristTax;
             decimal deposit = Math.Round(totalPrice * settings.DepositPercentage / 100m, 2, MidpointRounding.AwayFromZero);
 
             return new PriceSpecificationResponse
             {
                 AccommodationPrice = accommodationPrice,
                 CleaningFee = cleaningFee,
+                PetCleaningFee = petCleaningFee,
                 TouristTax = touristTax,
                 TotalPrice = totalPrice,
                 Deposit = deposit,

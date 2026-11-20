@@ -29,6 +29,12 @@ namespace Vakantiepark.Application.Validations.Booking
                 throw new ArgumentException("Het aantal huisdieren kan niet negatief zijn.");
         }
 
+        public static void ValidatePetCount(int numberOfPets, int maximumNumberOfPets)
+        {
+            if (numberOfPets > maximumNumberOfPets)
+                throw new ArgumentException($"Dit verblijfstype staat maximaal {maximumNumberOfPets} {(maximumNumberOfPets == 1 ? "huisdier" : "huisdieren")} toe.");
+        }
+
         public static void Validate(this CreateBookingRequest request, DateOnly today)
         {
             ValidateStay(request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfPets, today);

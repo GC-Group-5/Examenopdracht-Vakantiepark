@@ -48,8 +48,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
         {
             DateTime now = DateTime.UtcNow;
 
-            if (!await context.ParkSettings.AnyAsync(cancellationToken))
+            ParkSettings? settings = await context.ParkSettings.FirstOrDefaultAsync(cancellationToken);
+            if (settings is null)
                 context.ParkSettings.Add(BuildParkSettings(now));
+            else if (settings.PetCleaningFee == 0m)
+                settings.PetCleaningFee = 25m;
 
             if (!await context.TouristTaxRates.AnyAsync(cancellationToken))
                 context.TouristTaxRates.Add(new TouristTaxRate { Id = Guid.NewGuid(), AmountPerPersonPerNight = 2.50m, ValidFrom = new DateOnly(2026, 1, 1), CreatedAt = now });
@@ -69,6 +72,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             ArrivalTime = new TimeOnly(15, 0),
             DepartureTime = new TimeOnly(10, 0),
             HighSeasonMinimumNights = 7,
+            PetCleaningFee = 25m,
             DepositPercentage = 20m,
             FreeCancellationDaysBeforeArrival = 30,
             NoRefundDaysBeforeArrival = 7,

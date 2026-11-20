@@ -79,6 +79,10 @@
                                 <tbody>
                                     <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@quote.Price.AccommodationPrice.ToString("C")</td></tr>
                                     <tr><td>Eindschoonmaak</td><td class="text-end">@quote.Price.CleaningFee.ToString("C")</td></tr>
+                                    @if (quote.Price.PetCleaningFee > 0m)
+                                    {
+                                        <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@quote.Price.PetCleaningFee.ToString("C")</td></tr>
+                                    }
                                     <tr><td>Toeristenbelasting (@quote.NumberOfGuests × @NumberOfNights)</td><td class="text-end">@quote.Price.TouristTax.ToString("C")</td></tr>
                                     <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@quote.Price.TotalPrice.ToString("C")</td></tr>
                                     <tr><td>Aanbetaling (@quote.DepositPercentage.ToString("0.##")%)</td><td class="text-end">@quote.Price.Deposit.ToString("C")</td></tr>
@@ -101,16 +105,20 @@
                                     <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
-                                    <InputSelect id="booking-pets" class="form-select" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync">
-                                        <option value="0">Geen</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                    </InputSelect>
-                                    <div class="form-text">Geen huisdieren? Laat op Geen staan.</div>
+                                    @if (takesPets)
+                                    {
+                                        <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
+                                        <InputNumber id="booking-pets" class="form-control" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync" min="1" max="@((quote?.MaxPets ?? 1))" step="1" />
+                                        <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
+                                    }
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <InputCheckbox id="booking-pets-checkbox" class="form-check-input" Value="takesPets" ValueExpression="() => takesPets" ValueChanged="OnTakesPetsChangedAsync" disabled="@((quote?.MaxPets ?? 0) < 1)" />
+                                        <label class="form-check-label" for="booking-pets-checkbox">Ik neem huisdieren mee</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
                                     <div class="form-check">
                                         <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
                                         <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
@@ -191,6 +199,11 @@
 
                                 <dt class="col-sm-4">Huisdieren</dt>
                                 <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+                                @if (quote.Price.PetCleaningFee > 0m)
+                                {
+                                    <dt class="col-sm-4">Schoonmaakkosten huisdieren</dt>
+                                    <dd class="col-sm-8">@quote.Price.PetCleaningFee.ToString("C")</dd>
+                                }
 
                                 @if (request.WheelchairAccessible)
                                 {
@@ -252,10 +265,10 @@
     private const string QuoteFailedMessage = "Dit verblijf kan nu niet worden geboekt.";
     private const int DefaultGuests = 2;
     private const int MaxGuests = 20;
-    private const int MaxPets = 3;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
     private BookingQuoteResponse? quote;
+    private bool takesPets;
     private bool isLoading = true;
     private bool isRefreshingQuote;
     private bool showSummary;
@@ -309,7 +322,8 @@
         CheckMainBookerAge();
         // A hand-edited URL with an impossible value falls back to the default.
         request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
-        request.NumberOfPets = Pets is >= 0 and <= MaxPets ? Pets.Value : 0;
+        request.NumberOfPets = Pets is >= 0 and <= 10 ? Pets.Value : 0;
+        takesPets = request.NumberOfPets > 0;
         request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
         request.CoTravellers = Enumerable.Range(0, request.NumberOfGuests - 1)
@@ -366,7 +380,21 @@
     // Pets decide which units may be picked, so the quote is checked again.
     private async Task OnPetsChangedAsync(int newPets)
     {
+        if (quote is not null && newPets > quote.MaxPets)
+        {
+            request.NumberOfPets = newPets;
+            quoteErrorMessage = $"Dit verblijfstype staat maximaal {quote.MaxPets} {(quote.MaxPets == 1 ? "huisdier" : "huisdieren")} toe.";
+            return;
+        }
+
         request.NumberOfPets = newPets;
+        await OnPartyChangedAsync();
+    }
+
+    private async Task OnTakesPetsChangedAsync(bool takesPets)
+    {
+        this.takesPets = takesPets;
+        request.NumberOfPets = takesPets && quote is not null && quote.MaxPets > 0 ? 1 : 0;
         await OnPartyChangedAsync();
     }
 

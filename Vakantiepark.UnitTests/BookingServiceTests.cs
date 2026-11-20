@@ -45,7 +45,7 @@ namespace Vakantiepark.UnitTests
                 .Callback<Booking>(booking => _savedBooking = booking)
                 .ReturnsAsync(true);
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
             _bookingNumberGenerator
                 .Setup(x => x.Generate())
@@ -276,14 +276,14 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_MorePetsThanAnyUnitAllows_ThrowsNoPlaceMessage()
+        public async Task CreateAsync_MorePetsThanAnyUnitAllows_ThrowsMaximumMessage()
         {
             _secondUnit.Features.Add(MaxPets(2));
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
                 () => _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 3)));
 
-            Assert.Equal("Eik Luxe 6 heeft geen plek voor 4 personen met 3 huisdieren. Kies een ander verblijf.", exception.Message);
+            Assert.Equal("Dit verblijfstype staat maximaal 2 huisdieren toe.", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
