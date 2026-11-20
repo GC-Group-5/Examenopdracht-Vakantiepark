@@ -123,7 +123,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-birthdate">Geboortedatum</label>
-                                    <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" autocomplete="bday" />
+                                    <InputDate id="booking-birthdate" class="form-control" @bind-Value="request.BirthDate" @bind-Value:after="CheckMainBookerAge" autocomplete="bday" />
                                     <ValidationMessage For="() => request.BirthDate" />
                                     @if (mainBookerAgeError is not null)
                                     {
@@ -263,7 +263,6 @@
     private string? errorMessage;
     private string? quoteErrorMessage;
     private int quoteRequestNumber;
-    private const int MinimumMainBookerAge = BookingRules.MinimumMainBookerAge;
 
     [SupplyParameterFromQuery(Name = "type")]
     public string? AccommodationTypeSlug { get; set; }
@@ -306,6 +305,8 @@
         request.AccommodationTypeSlug = AccommodationTypeSlug!;
         request.ArrivalDate = ArrivalDate!.Value;
         request.DepartureDate = DepartureDate!.Value;
+        // The age counts on the arrival date, so a new stay may change the outcome.
+        CheckMainBookerAge();
         // A hand-edited URL with an impossible value falls back to the default.
         request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
         request.NumberOfPets = Pets is >= 0 and <= MaxPets ? Pets.Value : 0;
@@ -405,8 +406,8 @@
         if (request.BirthDate is null)
             return null;
 
-        return request.BirthDate.Value.AgeOn(request.ArrivalDate) < MinimumMainBookerAge
-            ? $"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn."
+        return request.BirthDate.Value.AgeOn(request.ArrivalDate) < BookingRules.MinimumMainBookerAge
+            ? $"De hoofdboeker moet op de aankomstdatum minimaal {BookingRules.MinimumMainBookerAge} jaar zijn."
             : null;
     }
 
