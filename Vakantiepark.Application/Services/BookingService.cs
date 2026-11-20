@@ -26,6 +26,7 @@ namespace Vakantiepark.Application.Services
         public const string CannotChangeMessage = "Deze boeking kun je niet meer zelf wijzigen. Neem contact op met de receptie, dan helpen we je verder.";
         public const string NoUnitForChangeMessage = "Er is in de nieuwe periode geen vrij verblijf van dit type. Je boeking is niet gewijzigd.";
         public const string CannotCancelMessage = "Deze boeking kan niet meer geannuleerd worden. Annuleren kan tot de dag van aankomst.";
+        public const string AlreadyCancelledMessage = "Deze boeking is al geannuleerd.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -65,7 +66,7 @@ namespace Vakantiepark.Application.Services
             Logger = logger;
         }
 
-        public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, string? preferredZone)
+        public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, int numberOfChildrenUnder12, string? preferredZone)
         {
             CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, filter.NumberOfGuests, filter.NumberOfPets, Today());
 
@@ -74,7 +75,7 @@ namespace Vakantiepark.Application.Services
             await ValidateHighSeasonMinimumNightsAsync(arrivalDate, departureDate, settings);
             await GetCandidateUnitsAsync(type, arrivalDate, departureDate, filter, preferredZone);
 
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, numberOfChildrenUnder12);
 
             return new BookingQuoteResponse()
             {
@@ -85,6 +86,7 @@ namespace Vakantiepark.Application.Services
                 ArrivalTime = settings.ArrivalTime,
                 DepartureTime = settings.DepartureTime,
                 NumberOfGuests = filter.NumberOfGuests,
+                NumberOfChildrenUnder12 = numberOfChildrenUnder12,
                 Price = price,
                 FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
                 NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
@@ -109,7 +111,7 @@ namespace Vakantiepark.Application.Services
             List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, filter, request.PreferredZone);
 
             // The server always calculates the price itself; a price from the browser is never used.
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
             string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
             // Another guest may book the same unit between the availability check and saving.
@@ -192,7 +194,7 @@ namespace Vakantiepark.Application.Services
         public async Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, ChildrenUnder12(plan.Booking, request.NumberOfGuests));
 
             return new ChangeQuoteResponse()
             {
@@ -207,7 +209,7 @@ namespace Vakantiepark.Application.Services
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
             Booking booking = plan.Booking;
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, ChildrenUnder12(plan.Booking, request.NumberOfGuests));
             decimal oldTotalPrice = booking.TotalPrice;
 
             booking.ArrivalDate = request.ArrivalDate;
@@ -235,6 +237,10 @@ namespace Vakantiepark.Application.Services
             Booking saved = await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
             return ToMine(saved, plan.Settings);
         }
+
+        // A change keeps the children counted at booking (US-38), but never more than the new party allows.
+        private static int ChildrenUnder12(Booking booking, int numberOfGuests)
+            => Math.Min(booking.NumberOfChildrenUnder12, numberOfGuests - 1);
 
         private sealed record ChangePlan(Booking Booking, ParkSettings Settings, AccommodationType Type, Accommodation Unit, bool OtherUnit);
 
@@ -286,15 +292,21 @@ namespace Vakantiepark.Application.Services
         // from the guest login token (/Auth/Guest). Never an id from the request itself.
         private async Task<Booking> FindOwnBookingAsync(string? token, Guid? guestBookingId)
         {
+            Booking booking;
             if (!string.IsNullOrWhiteSpace(token))
-                return await BookingRepository.GetByAccessTokenAsync(token)
+                booking = await BookingRepository.GetByAccessTokenAsync(token)
                     ?? throw new ArgumentException(InvalidLinkMessage);
-
-            if (guestBookingId is Guid bookingId)
-                return await BookingRepository.GetByIdWithDetailsAsync(bookingId)
+            else if (guestBookingId is Guid bookingId)
+                booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId)
                     ?? throw new ArgumentException(NotFoundMessage);
+            else
+                throw new ArgumentException(NotFoundMessage);
 
-            throw new ArgumentException(NotFoundMessage);
+            // Another tab or the reception may have cancelled it since the page was opened.
+            if (booking.DeletedAt is not null)
+                throw new ArgumentException(AlreadyCancelledMessage);
+
+            return booking;
         }
 
         private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee)

@@ -45,7 +45,7 @@ namespace Vakantiepark.UnitTests
                 .Callback<Booking>(booking => _savedBooking = booking)
                 .ReturnsAsync(true);
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
             _bookingNumberGenerator
                 .Setup(x => x.Generate())
@@ -86,19 +86,27 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_ValidRequest_StoresEveryPersonWithBirthDate_MainBookerFirst()
+        public async Task CreateAsync_ValidRequest_StoresOnlyTheMainBookerAndCountsTheChildren()
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest();
 
             await _sut.CreateAsync(request);
 
             _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking =>
-                booking.Guests.Count == 4
+                booking.Guests.Count == 1
                 && booking.Guests[0].IsMainBooker
                 && booking.Guests[0].Name == "Jan Jansen"
                 && booking.Guests[0].BirthDate == new DateOnly(1985, 5, 1)
-                && booking.Guests.Count(guest => guest.IsMainBooker) == 1
-                && booking.Guests[3].Name == "Sara Jansen")), Times.Once);
+                && booking.NumberOfGuests == 4
+                && booking.NumberOfChildrenUnder12 == 2)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ValidRequest_PassesTheChildrenUnder12ToThePriceCalculation()
+        {
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 2), Times.Once);
         }
 
         [Fact]
@@ -252,7 +260,7 @@ namespace Vakantiepark.UnitTests
         {
             DateOnly arrival = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
 
-            BookingQuoteResponse quote = await _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), new AccommodationUnitFilter { NumberOfGuests = 4 }, "Waterkant");
+            BookingQuoteResponse quote = await _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), new AccommodationUnitFilter { NumberOfGuests = 4 }, 0, "Waterkant");
 
             Assert.Equal("Eik Luxe 6", quote.AccommodationTypeName);
             Assert.Equal("Waterkant", quote.Zone);
@@ -294,7 +302,7 @@ namespace Vakantiepark.UnitTests
             AccommodationUnitFilter filter = new AccommodationUnitFilter { NumberOfGuests = 2, WheelchairAccessible = true };
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), filter, null));
+                () => _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), filter, 0, null));
 
             Assert.Contains("geen rolstoeltoegankelijke plek", exception.Message);
         }
@@ -384,7 +392,7 @@ namespace Vakantiepark.UnitTests
                 It.IsAny<string>(),
                 It.Is<string>(html => html.Contains("K7M2XQ9P")
                     && html.Contains("Eik Luxe 6")
-                    && html.Contains("Els Jansen")
+                    && html.Contains("Jan Jansen")
                     && html.Contains("Aanbetaling (20%)")
                     && html.Contains("30 dagen")
                     && html.Contains("15:00")),
@@ -441,7 +449,7 @@ namespace Vakantiepark.UnitTests
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest();
             request.NumberOfGuests = 1;
-            request.CoTravellers = [];
+            request.NumberOfChildrenUnder12 = 0;
 
             await _sut.CreateAsync(request);
 

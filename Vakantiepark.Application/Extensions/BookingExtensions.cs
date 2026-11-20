@@ -7,7 +7,7 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        // Everyone who stays becomes a BookingGuest, the main booker first.
+        // Only the main booker becomes a BookingGuest; fellow travellers are only counted (US-38).
         public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
             => new Booking()
             {
@@ -21,6 +21,7 @@ namespace Vakantiepark.Application.Extensions
                 ArrivalTime = settings.ArrivalTime,
                 DepartureTime = settings.DepartureTime,
                 NumberOfGuests = request.NumberOfGuests,
+                NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12,
                 NumberOfPets = request.NumberOfPets,
                 WheelchairAccessible = request.WheelchairAccessible,
                 AccommodationPrice = price.AccommodationPrice,
@@ -29,16 +30,10 @@ namespace Vakantiepark.Application.Extensions
                 TotalPrice = price.TotalPrice,
                 Deposit = price.Deposit,
                 AccommodationUnitId = accommodationUnitId,
-                Guests = new List<BookingGuest>()
-                    {
-                        new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
-                    }
-                    .Concat(request.CoTravellers.Select(traveller => new BookingGuest()
-                    {
-                        Name = traveller.Name.Trim(),
-                        BirthDate = traveller.BirthDate!.Value,
-                    }))
-                    .ToList(),
+                Guests =
+                [
+                    new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
+                ],
             };
 
         public static BookingResponse ToResponse(this Booking booking)

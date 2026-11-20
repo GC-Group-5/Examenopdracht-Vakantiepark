@@ -44,7 +44,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _currentUnit, _otherUnit });
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Season>());
 
@@ -105,6 +105,17 @@ namespace Vakantiepark.UnitTests
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access(), null));
 
             Assert.Equal(BookingService.CannotCancelMessage, exception.Message);
+            _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Cancel_AlreadyCancelled_SaysSoAndNothingIsSaved()
+        {
+            _booking.DeletedAt = DateTime.UtcNow;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access(), null));
+
+            Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
             _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
         }
 
@@ -245,6 +256,16 @@ namespace Vakantiepark.UnitTests
                 It.Is<string>(subject => subject.Contains("Wijziging")),
                 It.Is<string>(html => html.Contains("600") && html.Contains("817")),
                 It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Change_AlreadyCancelled_SaysSo()
+        {
+            _booking.DeletedAt = DateTime.UtcNow;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null));
+
+            Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
         }
 
         [Fact]

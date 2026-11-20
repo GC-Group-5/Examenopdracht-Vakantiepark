@@ -1,0 +1,57 @@
+@inherits InputBase<DateOnly?>
+
+<div class="dutch-date" @onkeydown="OnKeyDown">
+    @* The icon sits inside the field, like a browser date input. *@
+    <div class="dutch-date-field">
+        <input @attributes="AdditionalAttributes" type="text" inputmode="numeric" placeholder="dd-mm-jjjj"
+               class="@CssClass" value="@CurrentValueAsString" @onchange="OnTextChanged" />
+        <button type="button" class="dutch-date-toggle" aria-label="Kalender openen" aria-expanded="@isOpen" @onclick="ToggleCalendar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+                <rect x="1.5" y="2.5" width="13" height="12" rx="1.5" />
+                <path d="M1.5 6h13M4.5 1v3M11.5 1v3" stroke-linecap="round" />
+            </svg>
+        </button>
+    </div>
+
+    @if (isOpen)
+    {
+        @* An invisible layer over the rest of the page: a click next to the calendar closes it. *@
+        <div class="dutch-date-backdrop" @onclick="Close"></div>
+
+        <div class="dutch-date-calendar shadow-sm" role="dialog" aria-label="Kies een datum">
+            <div class="d-flex align-items-center gap-1 mb-2">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Vorige maand" @onclick="() => ShowMonth(-1)">‹</button>
+                <select class="form-select form-select-sm" aria-label="Maand" @bind:get="shownMonth.Month" @bind:set="SetMonth">
+                    @for (int month = 1; month <= 12; month++)
+                    {
+                        <option value="@month">@Dutch.GetMonthName(month)</option>
+                    }
+                </select>
+                <select class="form-select form-select-sm" aria-label="Jaar" @bind:get="shownMonth.Year" @bind:set="SetYear">
+                    @foreach (int year in Years)
+                    {
+                        <option value="@year">@year</option>
+                    }
+                </select>
+                <button type="button" class="btn btn-sm btn-light" aria-label="Volgende maand" @onclick="() => ShowMonth(1)">›</button>
+            </div>
+
+            <div class="dutch-date-grid">
+                @foreach (string weekDay in WeekDays)
+                {
+                    <div class="dutch-date-weekday">@weekDay</div>
+                }
+                @for (int blank = 0; blank < LeadingBlanks; blank++)
+                {
+                    <div></div>
+                }
+                @for (int day = 1; day <= DateTime.DaysInMonth(shownMonth.Year, shownMonth.Month); day++)
+                {
+                    DateOnly date = new DateOnly(shownMonth.Year, shownMonth.Month, day);
+                    <button type="button" class="dutch-date-day @(date == CurrentValue ? "selected" : "") @(date == Today ? "today" : "")"
+                            aria-label="@date.ToString("d MMMM yyyy", Dutch)" @onclick="() => Choose(date)">@day</button>
+                }
+            </div>
+        </div>
+    }
+</div>
