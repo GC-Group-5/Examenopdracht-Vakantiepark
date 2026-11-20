@@ -265,12 +265,7 @@
 
     private int NumberOfNights => booking is null ? 0 : booking.DepartureDate.DayNumber - booking.ArrivalDate.DayNumber;
 
-    private string StatusClass => booking?.Status switch
-    {
-        BookingStatuses.Geannuleerd => "text-bg-danger",
-        BookingStatuses.Afgerond => "text-bg-secondary",
-        _ => "text-bg-success",
-    };
+    private string StatusClass => BookingStatusBadge.CssClass(booking?.Status);
 
     private const string LoadFailedMessage = "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
 

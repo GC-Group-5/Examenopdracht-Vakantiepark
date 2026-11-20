@@ -1,0 +1,135 @@
+@page "/beheer/reserveringen/{Id:guid}"
+@attribute [Authorize(Roles = Roles.Staff)]
+@using Vakantiepark.Shared.DTOs.Booking
+@using Vakantiepark.Shared.DTOs.Reservations
+@inject IReservationService ReservationService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(reservation is null ? "Reservering" : $"Reservering {reservation.BookingNumber}") | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving · Reserveringen</div>
+        <h1 class="page-title mt-2">@(reservation is null ? "Reservering" : $"Reservering {reservation.BookingNumber}")</h1>
+        @if (reservation is not null)
+        {
+            <p class="page-intro mt-3 mb-0">@reservation.Name · @reservation.AccommodationTypeName · @reservation.ArrivalDate.ToString(DateFormat) t/m @reservation.DepartureDate.ToString(DateFormat)</p>
+        }
+        <button type="button" class="btn btn-du-light mt-3" @onclick="BackAsync">Terug naar de lijst</button>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+        else if (reservation is null)
+        {
+            <div class="text-center py-5" role="status">
+                <div class="spinner-border text-success"><span class="visually-hidden">Reservering wordt geladen…</span></div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                    <div class="detail-meta-card h-100">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                            <h2 class="h4 mb-0">Gegevens</h2>
+                            <span class="badge rounded-pill @BookingStatusBadge.CssClass(reservation.Status) fs-6">@reservation.Status</span>
+                        </div>
+
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Boekingsnummer</dt>
+                            <dd class="col-sm-8">@reservation.BookingNumber</dd>
+
+                            <dt class="col-sm-4">Geboekt op</dt>
+                            <dd class="col-sm-8">@reservation.CreatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</dd>
+
+                            <dt class="col-sm-4">Verblijf</dt>
+                            <dd class="col-sm-8">@reservation.AccommodationTypeName · @reservation.UnitCode · zone @reservation.Zone</dd>
+
+                            <dt class="col-sm-4">Data</dt>
+                            <dd class="col-sm-8">@reservation.ArrivalDate.ToString(DateFormat) t/m @reservation.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
+
+                            <dt class="col-sm-4">Aankomst en vertrek</dt>
+                            <dd class="col-sm-8">Aankomst vanaf @reservation.ArrivalTime.ToString(TimeFormat), vertrek vóór @reservation.DepartureTime.ToString(TimeFormat)</dd>
+
+                            <dt class="col-sm-4">Aantal personen</dt>
+                            <dd class="col-sm-8">@reservation.NumberOfGuests</dd>
+
+                            <dt class="col-sm-4">Reisgezelschap</dt>
+                            <dd class="col-sm-8">
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (GuestResponse guest in reservation.Guests)
+                                    {
+                                        <li>@guest.Name (@guest.BirthDate.ToString(DateFormat))@(guest.IsMainBooker ? " · hoofdboeker" : null)</li>
+                                    }
+                                </ul>
+                            </dd>
+
+                            <dt class="col-sm-4">Huisdieren</dt>
+                            <dd class="col-sm-8">@(reservation.NumberOfPets == 0 ? "Geen" : $"{reservation.NumberOfPets} {(reservation.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+
+                            <dt class="col-sm-4">Rolstoeltoegankelijk</dt>
+                            <dd class="col-sm-8">@(reservation.WheelchairAccessible ? "Ja" : "Nee")</dd>
+
+                            <dt class="col-sm-4">Contactgegevens</dt>
+                            <dd class="col-sm-8 mb-0">@reservation.Name<br /><a class="admin-link fw-normal" href="mailto:@reservation.Email">@reservation.Email</a><br /><a class="admin-link fw-normal" href="tel:@reservation.PhoneNumber">@reservation.PhoneNumber</a></dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-5">
+                    <div class="detail-meta-card h-100">
+                        <h2 class="h4 mb-3">Prijsspecificatie</h2>
+                        <table class="table mb-0">
+                            <tbody>
+                                <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@reservation.AccommodationPrice.ToString("C")</td></tr>
+                                <tr><td>Eindschoonmaak</td><td class="text-end">@reservation.CleaningFee.ToString("C")</td></tr>
+                                <tr><td>Toeristenbelasting</td><td class="text-end">@reservation.TouristTax.ToString("C")</td></tr>
+                                <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@reservation.TotalPrice.ToString("C")</td></tr>
+                                <tr><td>Aanbetaling</td><td class="text-end">@reservation.Deposit.ToString("C")</td></tr>
+                                @if (reservation.CancellationFee is not null)
+                                {
+                                    <tr class="fw-semibold"><td class="text-danger">Annuleringskosten</td><td class="text-end text-danger">@reservation.CancellationFee.Value.ToString("C")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private const string DateFormat = "dd-MM-yyyy";
+    private const string TimeFormat = "HH:mm";
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ReservationDetailResponse? reservation;
+    private string? errorMessage;
+
+    private int NumberOfNights => reservation is null ? 0 : reservation.DepartureDate.DayNumber - reservation.ArrivalDate.DayNumber;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        reservation = null;
+        errorMessage = null;
+
+        ApiResponse<ReservationDetailResponse> response = await ReservationService.GetAsync(Id);
+        if (response.Succeeded && response.Value is not null)
+            reservation = response.Value;
+        else
+            errorMessage = response.Message ?? "De reservering kon niet worden geladen. Probeer het later opnieuw.";
+    }
+
+    // Back in the browser history keeps the search and page the staff member came from.
+    private async Task BackAsync()
+        => await JSRuntime.InvokeVoidAsync("history.back");
+}

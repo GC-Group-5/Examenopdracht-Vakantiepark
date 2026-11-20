@@ -1,0 +1,29 @@
+﻿@* Previous/next buttons for every paged list. Each button is a link, so the page number
+   stays in the address and the browser's back button returns to the same page. *@
+
+@if (TotalPages > 1)
+{
+    <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3" aria-label="@Label">
+        <a class="btn btn-du-light @(IsFirst ? "disabled" : null)" href="@(IsFirst ? null : PageUrl(Page - 1))" aria-disabled="@(IsFirst ? "true" : "false")">Vorige</a>
+        <span class="small text-muted-du">Pagina @Page van @TotalPages</span>
+        <a class="btn btn-du-light @(IsLast ? "disabled" : null)" href="@(IsLast ? null : PageUrl(Page + 1))" aria-disabled="@(IsLast ? "true" : "false")">Volgende</a>
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public int Page { get; set; }
+
+    [Parameter, EditorRequired]
+    public int TotalPages { get; set; }
+
+    // Builds the address of a page, e.g. the current address with ?pagina=3.
+    [Parameter, EditorRequired]
+    public Func<int, string> PageUrl { get; set; } = null!;
+
+    [Parameter]
+    public string Label { get; set; } = "Pagina's";
+
+    private bool IsFirst => Page <= 1;
+    private bool IsLast => Page >= TotalPages;
+}
