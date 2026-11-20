@@ -7,7 +7,7 @@ namespace Vakantiepark.UI.Application.Extensions
         public static string AgeGroupLabel(this DateOnly birthDate, DateOnly arrivalDate) =>
             AgeOn(birthDate, arrivalDate) >= AdultAge ? "Volwassene" : "Kind";
 
-        private static int AgeOn(DateOnly birthDate, DateOnly date)
+        public static int AgeOn(this DateOnly birthDate, DateOnly date)
         {
             int age = date.Year - birthDate.Year;
             if (birthDate > date.AddYears(-age))

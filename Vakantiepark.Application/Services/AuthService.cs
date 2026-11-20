@@ -12,7 +12,7 @@ namespace Vakantiepark.Application.Services
         public const int LockoutMinutes = 15;
 
         private const string InvalidStaffLogin = "Het e-mailadres of wachtwoord is onjuist.";
-        private const string InvalidGuestLogin = "Het boekingsnummer of e-mailadres is onjuist.";
+        private const string InvalidGuestLogin = "Boeking niet gevonden. Controleer je boekingsnummer en e-mailadres.";
         private const string LockedOut = "Je hebt te vaak een verkeerd wachtwoord ingevuld. Probeer het over 15 minuten opnieuw.";
         private const string InactiveAccount = "Je account is niet actief. Neem contact op met een beheerder.";
         private const string StayEnded = "Je verblijf is afgelopen, daarom kun je niet meer inloggen.";

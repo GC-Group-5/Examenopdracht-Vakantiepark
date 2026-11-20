@@ -249,6 +249,7 @@
     private const int DefaultGuests = 2;
     private const int MaxGuests = 20;
     private const int MaxPets = 3;
+    private const int MinimumMainBookerAge = 18;
 
     private readonly CreateBookingRequest request = new CreateBookingRequest();
     private BookingQuoteResponse? quote;
@@ -385,9 +386,19 @@
         if (isRefreshingQuote || quoteErrorMessage is not null)
             return;
 
-        errorMessage = MissingTravellerDetails();
+        errorMessage = MainBookerValidationError() ?? MissingTravellerDetails();
         if (errorMessage is null)
             showSummary = true;
+    }
+
+    private string? MainBookerValidationError()
+    {
+        if (request.BirthDate is null)
+            return null;
+
+        return request.BirthDate.Value.AgeOn(request.ArrivalDate) < MinimumMainBookerAge
+            ? $"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn."
+            : null;
     }
 
     // The fields of the main booker are checked by the validator; the travellers are checked here.
