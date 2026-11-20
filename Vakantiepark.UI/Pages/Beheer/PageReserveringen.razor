@@ -1,0 +1,210 @@
+@page "/beheer/reserveringen"
+@attribute [Authorize(Roles = Roles.Staff)]
+@using System.Globalization
+@using Vakantiepark.Shared.DTOs.Reservations
+@inject IReservationService ReservationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Reserveringen | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <h1 class="page-title mt-2">Reserveringen</h1>
+        <p class="page-intro mt-4">Zoek op boekingsnummer, naam of e-mailadres, of filter op periode, status en verblijfstype.</p>
+        <a class="btn btn-du-light mt-3" href="beheer">Terug naar beheer</a>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <form class="detail-meta-card p-3" @onsubmit="SubmitSearch" @onsubmit:preventDefault>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label fw-semibold" for="reservation-search">Zoeken</label>
+                    <input id="reservation-search" class="form-control" @bind="searchText" placeholder="Boekingsnummer, naam of e-mailadres" autocomplete="off" />
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-semibold" for="reservation-from">Van</label>
+                    <input id="reservation-from" type="date" class="form-control" @bind="fromDate" />
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-semibold" for="reservation-to">Tot en met</label>
+                    <input id="reservation-to" type="date" class="form-control" @bind="toDate" />
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-semibold" for="reservation-status">Status</label>
+                    <select id="reservation-status" class="form-select" @bind="status">
+                        <option value="">Alle statussen</option>
+                        <option value="@BookingStatuses.Bevestigd">@BookingStatuses.Bevestigd</option>
+                        <option value="@BookingStatuses.Afgerond">@BookingStatuses.Afgerond</option>
+                        <option value="@BookingStatuses.Geannuleerd">@BookingStatuses.Geannuleerd</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-semibold" for="reservation-type">Verblijfstype</label>
+                    <select id="reservation-type" class="form-select" @bind="typeSlug">
+                        <option value="">Alle types</option>
+                        @foreach (AccommodationTypeResponse type in types)
+                        {
+                            <option value="@type.Slug">@type.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-du">Zoeken</button>
+                    <button type="button" class="btn btn-du-light" @onclick="ClearFilters">Filters wissen</button>
+                </div>
+            </div>
+        </form>
+
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
+        }
+        else if (result is null)
+        {
+            <div class="text-center py-5" role="status">
+                <div class="spinner-border text-success"><span class="visually-hidden">Reserveringen worden geladen…</span></div>
+            </div>
+        }
+        else if (result.Items.Count == 0)
+        {
+            <div class="detail-meta-card p-4 mt-4">Geen reserveringen gevonden. Probeer een andere zoekterm of minder filters.</div>
+        }
+        else
+        {
+            <div class="small text-muted-du mt-4 mb-2">@result.TotalCount @(result.TotalCount == 1 ? "reservering" : "reserveringen") gevonden</div>
+
+            <div class="detail-meta-card p-0 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 admin-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Boekingsnummer</th>
+                                <th scope="col">Naam gast</th>
+                                <th scope="col">Verblijf</th>
+                                <th scope="col">Aankomst</th>
+                                <th scope="col">Vertrek</th>
+                                <th scope="col">Personen</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (ReservationListItemResponse reservation in result.Items)
+                            {
+                                <tr>
+                                    @* stretched-link makes the whole row clickable while the row holds only one link. *@
+                                    <td><a class="admin-link stretched-link" href="@DetailUrl(reservation.Id)">@reservation.BookingNumber</a></td>
+                                    <td>@reservation.Name<div class="small text-muted-du">@reservation.Email</div></td>
+                                    <td>@reservation.AccommodationTypeName<div class="small text-muted-du">@reservation.UnitCode</div></td>
+                                    <td>@reservation.ArrivalDate.ToString(DateFormat)</td>
+                                    <td>@reservation.DepartureDate.ToString(DateFormat)</td>
+                                    <td>@reservation.NumberOfGuests</td>
+                                    <td><span class="badge rounded-pill @BookingStatusBadge.CssClass(reservation.Status)">@reservation.Status</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <Pagination Page="result.Page" TotalPages="result.TotalPages" PageUrl="PageUrl" Label="Pagina's met reserveringen" />
+        }
+    </div>
+</section>
+
+@code {
+    private const string DateFormat = "dd-MM-yyyy";
+
+    // The filters live in the address, so the back button from a reservation returns to the same list.
+    [SupplyParameterFromQuery(Name = "zoek")]
+    public string? Search { get; set; }
+
+    [SupplyParameterFromQuery(Name = "van")]
+    public string? From { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tot")]
+    public string? To { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? Status { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? Type { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pagina")]
+    public int? PageNumber { get; set; }
+
+    private List<AccommodationTypeResponse> types = [];
+    private PagedResponse<ReservationListItemResponse>? result;
+    private string? errorMessage;
+
+    private string? searchText;
+    private DateOnly? fromDate;
+    private DateOnly? toDate;
+    private string status = string.Empty;
+    private string typeSlug = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<AccommodationTypeResponse>> response = await ReservationService.GetTypesAsync();
+        if (response.Succeeded && response.Value is not null)
+            types = response.Value;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        searchText = Search;
+        fromDate = ParseDate(From);
+        toDate = ParseDate(To);
+        status = Status ?? string.Empty;
+        typeSlug = Type ?? string.Empty;
+
+        result = null;
+        errorMessage = null;
+
+        ApiResponse<PagedResponse<ReservationListItemResponse>> response = await ReservationService.SearchAsync(new ReservationSearchRequest()
+        {
+            Search = searchText,
+            From = fromDate,
+            To = toDate,
+            Status = status,
+            AccommodationTypeSlug = typeSlug,
+            Page = Math.Max(PageNumber ?? 1, 1),
+            PageSize = PagedRequest.DefaultPageSize,
+        });
+
+        if (response.Succeeded && response.Value is not null)
+            result = response.Value;
+        else
+            errorMessage = response.Message ?? "De reserveringen konden niet worden geladen. Probeer het later opnieuw.";
+    }
+
+    private void SubmitSearch()
+        => NavigationManager.NavigateTo(ListUrl(1));
+
+    private void ClearFilters()
+        => NavigationManager.NavigateTo("beheer/reserveringen");
+
+    private static string DetailUrl(Guid id)
+        => $"beheer/reserveringen/{id}";
+
+    // Paging keeps the filters that were searched with, not what is half typed in the form.
+    private string PageUrl(int pageNumber)
+        => NavigationManager.GetUriWithQueryParameter("pagina", pageNumber);
+
+    private string ListUrl(int pageNumber)
+        => NavigationManager.GetUriWithQueryParameters($"{NavigationManager.BaseUri}beheer/reserveringen", new Dictionary<string, object?>()
+        {
+            ["zoek"] = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim(),
+            ["van"] = fromDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["tot"] = toDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["status"] = string.IsNullOrEmpty(status) ? null : status,
+            ["type"] = string.IsNullOrEmpty(typeSlug) ? null : typeSlug,
+            ["pagina"] = pageNumber,
+        });
+
+    private static DateOnly? ParseDate(string? value)
+        => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date) ? date : null;
+}

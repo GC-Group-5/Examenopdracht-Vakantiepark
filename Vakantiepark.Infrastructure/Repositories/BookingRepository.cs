@@ -1,6 +1,10 @@
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Infrastructure.Persistence;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
+using Vakantiepark.Domain.Filters;
+using Vakantiepark.Domain.Paging;
+using Vakantiepark.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -112,6 +116,50 @@ namespace Vakantiepark.Infrastructure.Repositories
                 return false;
             }
         }
+
+        public async Task<PagedResult<Booking>> SearchAsync(BookingSearchFilter filter, DateOnly today, int page, int pageSize)
+        {
+            IQueryable<Booking> query = Set.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(filter.Search))
+            {
+                string pattern = $"%{EscapeLikePattern(filter.Search.Trim())}%";
+                query = query.Where(x => EF.Functions.ILike(x.BookingNumber, pattern)
+                    || EF.Functions.ILike(x.Name, pattern)
+                    || EF.Functions.ILike(x.Email, pattern));
+            }
+
+            // The departure day counts as a day in the period: the guest is still there that morning.
+            if (filter.From is DateOnly from)
+                query = query.Where(x => x.DepartureDate >= from);
+
+            if (filter.To is DateOnly to)
+                query = query.Where(x => x.ArrivalDate <= to);
+
+            if (!string.IsNullOrWhiteSpace(filter.AccommodationTypeSlug))
+            {
+                string slug = filter.AccommodationTypeSlug.Trim().ToLowerInvariant();
+                query = query.Where(x => x.AccommodationUnit.Type.Slug == slug);
+            }
+
+            query = filter.State switch
+            {
+                BookingState.Cancelled => query.Where(x => x.DeletedAt != null),
+                BookingState.Completed => query.Where(x => x.DeletedAt == null && x.DepartureDate < today),
+                BookingState.Confirmed => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today),
+                _ => query,
+            };
+
+            return await query
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+                .OrderByDescending(x => x.ArrivalDate)
+                .ThenBy(x => x.BookingNumber)
+                .ToPagedResultAsync(page, pageSize);
+        }
+
+        // % and _ typed by a staff member are searched literally, not as wildcards.
+        private static string EscapeLikePattern(string text)
+            => text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
         private IQueryable<Booking> WithDetails()
             => Set
