@@ -331,6 +331,8 @@ a {
     background: #fff;
     border-radius: 1.8rem;
     padding: 2rem;
+    box-shadow: 0 22px 65px rgba(18,49,40,.14);
+    border: 1px solid var(--du-line);
 }
 
 .booking-card {

@@ -273,7 +273,6 @@
     };
 
     private const string LoadFailedMessage = "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
-    private const string BookingNotFoundMessage = "Boeking niet gevonden.";
 
     // Via the link from the email, or for a guest who is already logged in.
     protected override async Task OnParametersSetAsync()
@@ -312,7 +311,7 @@
         if (login.Succeeded)
             await LoadMineAsync();
         else
-            errorMessage = BookingNotFoundMessage;
+            errorMessage = login.Message ?? LoadFailedMessage;
 
         isSearching = false;
     }
