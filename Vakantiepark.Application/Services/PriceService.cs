@@ -1,5 +1,6 @@
 using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Interfaces;
+using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Price;
@@ -12,7 +13,7 @@ namespace Vakantiepark.Application.Services
     // mixed price. A night that falls in no season, in a season without a
     // rate for this verblijfstype, or when no seasons are configured at all,
     // falls back to the type's default night price. Eindschoonmaak is added
-    // once per booking; toeristenbelasting is alle personen × nachten, and
+    // once per booking; toeristenbelasting is personen van 12 jaar en ouder × nachten (US-38), and
     // for every night the tax rate that was valid on that night is used (a
     // new rate is a new TouristTaxRate row, so old nights keep the old rate).
     // The deposit is the configured percentage of the total.
@@ -42,10 +43,14 @@ namespace Vakantiepark.Application.Services
             string accommodationTypeSlug,
             DateOnly arrivalDate,
             DateOnly departureDate,
-            int numberOfGuests)
+            int numberOfGuests,
+            int numberOfChildrenUnder12)
         {
             if (numberOfGuests < 1)
                 throw new ArgumentException("Er moet minimaal één gast zijn.", nameof(numberOfGuests));
+
+            CreateBookingRequestValidation.ValidateChildrenUnder12(numberOfGuests, numberOfChildrenUnder12);
+            int personsPayingTax = numberOfGuests - numberOfChildrenUnder12;
 
             // The departure day is excluded: that night is not billed.
             int nights = departureDate.DayNumber - arrivalDate.DayNumber;
@@ -80,7 +85,7 @@ namespace Vakantiepark.Application.Services
                 if (taxRate is null)
                     throw new InvalidOperationException($"Voor de nacht van {night:dd-MM-yyyy} is nog geen geldig toeristenbelastingtarief ingesteld.");
 
-                touristTax += numberOfGuests * taxRate.AmountPerPersonPerNight;
+                touristTax += personsPayingTax * taxRate.AmountPerPersonPerNight;
 
                 night = night.AddDays(1);
             }

@@ -53,7 +53,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.Generate())
                 .Returns("K7M2XQ9P");
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
 
             _sut = new BookingService(
@@ -133,7 +133,7 @@ namespace Vakantiepark.UnitTests
         public async Task GetQuoteAsync_FiveNightsInHighSeason_IsRejectedBeforeTheGuestFillsInDetails()
         {
             await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.GetQuoteAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 15), new AccommodationUnitFilter { NumberOfGuests = 4 }, null));
+                () => _sut.GetQuoteAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 15), new AccommodationUnitFilter { NumberOfGuests = 4 }, 0, null));
         }
     }
 }
