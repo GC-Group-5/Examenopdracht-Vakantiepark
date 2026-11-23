@@ -105,13 +105,12 @@
                                     <div class="form-text">Tellingen de hoofdboeker en alle reisgenoten.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    @if (takesPets)
-                                    {
-                                        <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
-                                        <InputNumber id="booking-pets" class="form-control" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync" min="1" max="@((quote?.MaxPets ?? 1))" step="1" />
-                                        <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
-                                    }
+                                    <div class="form-check">
+                                        <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
+                                        <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
+                                    </div>
                                 </div>
+
                                 <div class="col-md-6">
                                     <div class="form-check">
                                         <InputCheckbox id="booking-pets-checkbox" class="form-check-input" Value="takesPets" ValueExpression="() => takesPets" ValueChanged="OnTakesPetsChangedAsync" disabled="@((quote?.MaxPets ?? 0) < 1)" />
@@ -119,10 +118,12 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-check">
-                                        <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
-                                        <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
-                                    </div>
+                                    @if (takesPets)
+                                    {
+                                        <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
+                                        <InputNumber id="booking-pets" class="form-control" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync" min="1" max="@((quote?.MaxPets ?? 1))" step="1" />
+                                        <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
+                                    }
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-name">Naam</label>
