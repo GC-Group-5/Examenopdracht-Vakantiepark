@@ -42,12 +42,20 @@
     z-index: 1000;
     top: calc(100% + .25rem);
     left: 0;
-    width: 19rem;
+    /* As wide as the field: the search sidebar scrolls, so anything wider is cut off. */
+    width: 100%;
+    min-width: 15rem;
     padding: .75rem;
     background: #fff;
     border: 1px solid var(--du-line);
     border-radius: .75rem;
 }
+
+    /* Month and year may shrink, so the arrows stay visible in a narrow calendar. */
+    .dutch-date-calendar select {
+        min-width: 0;
+        padding-left: .5rem;
+    }
 
 .dutch-date-grid {
     display: grid;
