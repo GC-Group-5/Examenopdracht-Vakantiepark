@@ -62,6 +62,7 @@
                         <span class="badge rounded-pill @StatusClass fs-6">@booking.Status</span>
                         @if (isLoggedInAsGuest)
                         {
+                            <a class="btn btn-du-light btn-sm" href="parkinformatie">Parkinformatie</a>
                             <button type="button" class="btn btn-du-light btn-sm" @onclick="LogoutAsync">Uitloggen</button>
                         }
                     </div>
