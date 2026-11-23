@@ -45,7 +45,7 @@ namespace Vakantiepark.UnitTests
                 .Callback<Booking>(booking => _savedBooking = booking)
                 .ReturnsAsync(true);
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
             _bookingNumberGenerator
                 .Setup(x => x.Generate())
@@ -124,7 +124,7 @@ namespace Vakantiepark.UnitTests
         {
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());
 
-            _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 2), Times.Once);
+            _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 2, 0), Times.Once);
         }
 
         [Fact]
@@ -302,14 +302,14 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_MorePetsThanAnyUnitAllows_ThrowsNoPlaceMessage()
+        public async Task CreateAsync_MorePetsThanAnyUnitAllows_ThrowsMaximumMessage()
         {
             _secondUnit.Features.Add(MaxPets(2));
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
                 () => _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 3)));
 
-            Assert.Equal("Eik Luxe 6 heeft geen plek voor 4 personen met 3 huisdieren. Kies een ander verblijf.", exception.Message);
+            Assert.Equal("Dit verblijfstype staat maximaal 2 huisdieren toe.", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
         }
 
@@ -371,6 +371,23 @@ namespace Vakantiepark.UnitTests
                 It.IsAny<string>(),
                 It.Is<string>(html => html.Contains("1 huisdier") && html.Contains("Rolstoeltoegankelijk</td><td style=\"padding:8px 0;\">ja")),
                 It.Is<string>(text => text.Contains("Huisdieren:     1 huisdier") && text.Contains("Rolstoeltoegankelijk: ja"))), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_WithPetCleaningFee_EmailShowsTheFeeAsAPriceRow()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+            _priceService
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(TestData.CreatePriceSpecification(price => price.PetCleaningFee = 25m));
+
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 1));
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("Schoonmaak huisdieren</td><td align=\"right\" style=\"padding:6px 0;\">€") && html.Contains("25,00") && !html.Contains("&lt;tr")),
+                It.Is<string>(text => text.Contains("Extra schoonmaakkosten: €") && text.Contains("25,00"))), Times.Once);
         }
 
         [Fact]

@@ -8,6 +8,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
         public static void Configure(this EntityTypeBuilder<ParkSettings> builder)
         {
             builder.Property(settings => settings.DepositPercentage).HasPrecision(5, 2);
+            builder.Property(settings => settings.PetCleaningFee).HasPrecision(18, 2);
         }
     }
 }
