@@ -217,11 +217,17 @@
 
                                 <dt class="col-sm-4">Reisgezelschap</dt>
                                 <dd class="col-sm-8">
-                                    @PartyLabel<br />
-                                    Hoofdboeker: @request.Name (@request.BirthDate?.ToString(DateFormat))
-                                    @foreach (TravellerRequest traveller in request.CoTravellers.Where(traveller => !string.IsNullOrWhiteSpace(traveller.Name)))
+                                    @PartyLabel
+                                    <ul class="list-unstyled mb-0">
+                                        <li>@TravellerAgeExtensions.TravellerLabel(request.Name, request.BirthDate, request.ArrivalDate, isMainBooker: true)</li>
+                                        @foreach (TravellerRequest traveller in NamedTravellers)
+                                        {
+                                            <li>@TravellerAgeExtensions.TravellerLabel(traveller.Name!, traveller.BirthDate, request.ArrivalDate)</li>
+                                        }
+                                    </ul>
+                                    @if (TravellerAgeExtensions.MissingTravellersLabel(request.NumberOfGuests, NamedTravellers.Count + 1) is string missing)
                                     {
-                                        <br />@traveller.Name@(traveller.BirthDate is DateOnly birthDate ? $" ({birthDate.ToString(DateFormat)})" : null)
+                                        <div class="text-muted-du small">@missing</div>
                                     }
                                 </dd>
 
@@ -381,6 +387,9 @@
         ResizeCoTravellers();
         await OnPartyChangedAsync();
     }
+
+    private List<TravellerRequest> NamedTravellers
+        => request.CoTravellers.Where(traveller => !string.IsNullOrWhiteSpace(traveller.Name)).ToList();
 
     // One row per fellow traveller; what was already filled in stays.
     private void ResizeCoTravellers()
