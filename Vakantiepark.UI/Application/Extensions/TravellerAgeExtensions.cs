@@ -35,6 +35,13 @@ namespace Vakantiepark.UI.Application.Extensions
             return name.Trim() + details + (isMainBooker ? " · hoofdboeker" : "");
         }
 
+        // e.g. "4 personen, waarvan 2 jonger dan 12".
+        public static string PartyLabel(int numberOfGuests, int childrenUnder12)
+        {
+            string persons = $"{numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")}";
+            return childrenUnder12 == 0 ? persons : $"{persons}, waarvan {childrenUnder12} jonger dan {BookingRules.TouristTaxMinimumAge}";
+        }
+
         // The persons of whom not even a name is known yet.
         public static string? MissingTravellersLabel(int numberOfGuests, int numberKnown)
         {

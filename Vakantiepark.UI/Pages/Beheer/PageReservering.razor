@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = Roles.Staff)]
 @using Vakantiepark.Shared.DTOs.Booking
 @using Vakantiepark.Shared.DTOs.Reservations
+@using Vakantiepark.UI.Application.Extensions
 @inject IReservationService ReservationService
 @inject IJSRuntime JSRuntime
 
@@ -46,7 +47,7 @@
                             <dd class="col-sm-8">@reservation.BookingNumber</dd>
 
                             <dt class="col-sm-4">Geboekt op</dt>
-                            <dd class="col-sm-8">@reservation.CreatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</dd>
+                            <dd class="col-sm-8">@reservation.CreatedAt.ToLocalTime().ToString($"{DateFormat} {TimeFormat}")</dd>
 
                             <dt class="col-sm-4">Verblijf</dt>
                             <dd class="col-sm-8">@reservation.AccommodationTypeName · @reservation.UnitCode · zone @reservation.Zone</dd>
@@ -57,17 +58,19 @@
                             <dt class="col-sm-4">Aankomst en vertrek</dt>
                             <dd class="col-sm-8">Aankomst vanaf @reservation.ArrivalTime.ToString(TimeFormat), vertrek vóór @reservation.DepartureTime.ToString(TimeFormat)</dd>
 
-                            <dt class="col-sm-4">Aantal personen</dt>
-                            <dd class="col-sm-8">@reservation.NumberOfGuests</dd>
-
                             <dt class="col-sm-4">Reisgezelschap</dt>
                             <dd class="col-sm-8">
+                                @TravellerAgeExtensions.PartyLabel(reservation.NumberOfGuests, reservation.NumberOfChildrenUnder12)
                                 <ul class="list-unstyled mb-0">
                                     @foreach (GuestResponse guest in reservation.Guests)
                                     {
-                                        <li>@guest.Name (@guest.BirthDate.ToString(DateFormat))@(guest.IsMainBooker ? " · hoofdboeker" : null)</li>
+                                        <li>@TravellerAgeExtensions.TravellerLabel(guest.Name, guest.BirthDate, reservation.ArrivalDate, guest.IsMainBooker)</li>
                                     }
                                 </ul>
+                                @if (TravellerAgeExtensions.MissingTravellersLabel(reservation.NumberOfGuests, reservation.Guests.Count) is string missing)
+                                {
+                                    <div class="text-muted-du small">@missing</div>
+                                }
                             </dd>
 
                             <dt class="col-sm-4">Huisdieren</dt>
@@ -89,6 +92,10 @@
                             <tbody>
                                 <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@reservation.AccommodationPrice.ToString("C")</td></tr>
                                 <tr><td>Eindschoonmaak</td><td class="text-end">@reservation.CleaningFee.ToString("C")</td></tr>
+                                @if (reservation.PetCleaningFee > 0m)
+                                {
+                                    <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@reservation.PetCleaningFee.ToString("C")</td></tr>
+                                }
                                 <tr><td>Toeristenbelasting</td><td class="text-end">@reservation.TouristTax.ToString("C")</td></tr>
                                 <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@reservation.TotalPrice.ToString("C")</td></tr>
                                 <tr><td>Aanbetaling</td><td class="text-end">@reservation.Deposit.ToString("C")</td></tr>
@@ -106,8 +113,8 @@
 </section>
 
 @code {
-    private const string DateFormat = "dd-MM-yyyy";
-    private const string TimeFormat = "HH:mm";
+    private const string DateFormat = DateFormats.Date;
+    private const string TimeFormat = DateFormats.Time;
 
     [Parameter]
     public Guid Id { get; set; }

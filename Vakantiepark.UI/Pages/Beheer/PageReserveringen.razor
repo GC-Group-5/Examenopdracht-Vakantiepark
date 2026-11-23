@@ -26,11 +26,11 @@
                 </div>
                 <div class="col-6 col-md-3 col-lg-2">
                     <label class="form-label fw-semibold" for="reservation-from">Van</label>
-                    <input id="reservation-from" type="date" class="form-control" @bind="fromDate" />
+                    <InputDutchDate id="reservation-from" class="form-control" @bind-Value="fromDate" MinYear="@FirstYear" RangeEnd="@toDate" />
                 </div>
                 <div class="col-6 col-md-3 col-lg-2">
                     <label class="form-label fw-semibold" for="reservation-to">Tot en met</label>
-                    <input id="reservation-to" type="date" class="form-control" @bind="toDate" />
+                    <InputDutchDate id="reservation-to" class="form-control" @bind-Value="toDate" MinYear="@FirstYear" MinDate="@fromDate" RangeStart="@fromDate" />
                 </div>
                 <div class="col-6 col-md-3 col-lg-2">
                     <label class="form-label fw-semibold" for="reservation-status">Status</label>
@@ -115,7 +115,10 @@
 </section>
 
 @code {
-    private const string DateFormat = "dd-MM-yyyy";
+    private const string DateFormat = DateFormats.Date;
+
+    // Staff also look up last year's bookings; older years only make the year list longer.
+    private static readonly int FirstYear = DateTime.Today.Year - 1;
 
     // The filters live in the address, so the back button from a reservation returns to the same list.
     [SupplyParameterFromQuery(Name = "zoek")]
