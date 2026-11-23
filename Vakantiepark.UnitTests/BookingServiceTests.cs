@@ -86,7 +86,7 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_ValidRequest_StoresOnlyTheMainBookerAndCountsTheChildren()
+        public async Task CreateAsync_NoTravellers_StoresOnlyTheMainBookerAndCountsTheChildren()
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest();
 
@@ -99,6 +99,24 @@ namespace Vakantiepark.UnitTests
                 && booking.Guests[0].BirthDate == new DateOnly(1985, 5, 1)
                 && booking.NumberOfGuests == 4
                 && booking.NumberOfChildrenUnder12 == 2)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_WithTravellers_StoresTheOnesWithANameAndSkipsEmptyRows()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r => r.CoTravellers =
+            [
+                new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                new TravellerRequest() { Name = "Piet Jansen" },
+                new TravellerRequest(),
+            ]);
+
+            await _sut.CreateAsync(request);
+
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking =>
+                booking.Guests.Count == 3
+                && booking.Guests[1].Name == "Els Jansen" && booking.Guests[1].BirthDate == new DateOnly(1987, 9, 12)
+                && booking.Guests[2].Name == "Piet Jansen" && booking.Guests[2].BirthDate == null)), Times.Once);
         }
 
         [Fact]

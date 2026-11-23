@@ -7,7 +7,7 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        // Only the main booker becomes a BookingGuest; fellow travellers are only counted (US-38).
+        // The main booker and every fellow traveller with a name become a BookingGuest.
         public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
             => new Booking()
             {
@@ -32,9 +32,17 @@ namespace Vakantiepark.Application.Extensions
                 AccommodationUnitId = accommodationUnitId,
                 Guests =
                 [
-                    new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
+                    new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true },
+                    .. request.CoTravellers.ToGuests(),
                 ],
             };
+
+        // Only travellers with a name are saved; an empty row means "not known yet".
+        public static List<BookingGuest> ToGuests(this List<TravellerRequest> coTravellers)
+            => coTravellers
+                .Where(traveller => !string.IsNullOrWhiteSpace(traveller.Name))
+                .Select(traveller => new BookingGuest() { Name = traveller.Name!.Trim(), BirthDate = traveller.BirthDate })
+                .ToList();
 
         public static BookingResponse ToResponse(this Booking booking)
             => booking.ToResponse<BookingResponse>();

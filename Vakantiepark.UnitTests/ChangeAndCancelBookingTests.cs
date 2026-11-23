@@ -39,7 +39,7 @@ namespace Vakantiepark.UnitTests
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>()))
                 .ReturnsAsync(new List<Guid>());
-            _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>())).ReturnsAsync(true);
+            _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>())).ReturnsAsync(true);
             _unitRepository
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _currentUnit, _otherUnit });
@@ -159,7 +159,7 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(600m, quote.OldTotalPrice);
             Assert.Equal(817m, quote.NewPrice.TotalPrice);
             Assert.False(quote.OtherUnit);
-            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>()), Times.Never);
+            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>()), Times.Never);
         }
 
         [Fact]
@@ -227,13 +227,13 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal(BookingService.NoUnitForChangeMessage, exception.Message);
             Assert.Equal(oldArrival, _booking.ArrivalDate);
-            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>()), Times.Never);
+            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>()), Times.Never);
         }
 
         [Fact]
         public async Task Change_SomeoneElseBookedTheUnitMeanwhile_GivesAMessage()
         {
-            _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>())).ReturnsAsync(false);
+            _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>())).ReturnsAsync(false);
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null));
 
@@ -316,6 +316,23 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(2, _booking.NumberOfChildrenUnder12);
         }
 
+        [Fact]
+        public async Task Change_SavesTheFilledInTravellersAndSkipsEmptyRows()
+        {
+            ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
+            request.NumberOfGuests = 3;
+            request.CoTravellers =
+            [
+                new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                new TravellerRequest(),
+            ];
+
+            await _sut.ChangeAsync(request, null);
+
+            _bookingRepository.Verify(x => x.TryUpdateAsync(_booking, It.Is<List<BookingGuest>>(guests =>
+                guests.Count == 1 && guests[0].Name == "Els Jansen")), Times.Once);
+        }
+
         // ---------- Helpers ----------
 
         private static BookingAccessRequest Access() => new BookingAccessRequest() { Token = Token };
@@ -340,6 +357,7 @@ namespace Vakantiepark.UnitTests
                 DepartureDate = _booking.DepartureDate.AddDays(shiftDays),
                 NumberOfGuests = 2,
                 NumberOfChildrenUnder12 = 0,
+                CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) }],
             };
 
         // Total 600: stay 480 + cleaning 110 + tourist tax 10; deposit 120 (20%).

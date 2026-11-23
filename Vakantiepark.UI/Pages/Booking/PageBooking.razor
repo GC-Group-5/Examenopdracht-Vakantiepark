@@ -153,6 +153,27 @@
                                 </div>
                             </div>
 
+                            @if (request.CoTravellers.Count > 0)
+                            {
+                                <h2 class="h5 mt-5 mb-1">Reisgenoten <span class="badge rounded-pill text-bg-light border fw-normal align-middle">Optioneel</span></h2>
+                                <p class="text-muted-du small mb-3">Deze velden zijn niet verplicht: je kunt ook zonder boeken. Wat je leeg laat, vult de receptie aan bij het inchecken.</p>
+                                @for (int index = 0; index < request.CoTravellers.Count; index++)
+                                {
+                                    int number = index + 2;
+                                    TravellerRequest traveller = request.CoTravellers[index];
+                                    <div class="row g-3 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold" for="@($"traveller-name-{number}")">Persoon @number: naam</label>
+                                            <InputText id="@($"traveller-name-{number}")" class="form-control" @bind-Value="traveller.Name" placeholder="Optioneel" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold" for="@($"traveller-birthdate-{number}")">Persoon @number: geboortedatum</label>
+                                            <InputDutchDate id="@($"traveller-birthdate-{number}")" class="form-control" MaxYear="@DateTime.Today.Year" @bind-Value="traveller.BirthDate" />
+                                        </div>
+                                    </div>
+                                }
+                            }
+
                             @if (quoteErrorMessage is not null)
                             {
                                 <div class="alert alert-warning mt-4 mb-0" role="alert">@quoteErrorMessage</div>
@@ -198,6 +219,10 @@
                                 <dd class="col-sm-8">
                                     @PartyLabel<br />
                                     Hoofdboeker: @request.Name (@request.BirthDate?.ToString(DateFormat))
+                                    @foreach (TravellerRequest traveller in request.CoTravellers.Where(traveller => !string.IsNullOrWhiteSpace(traveller.Name)))
+                                    {
+                                        <br />@traveller.Name@(traveller.BirthDate is DateOnly birthDate ? $" ({birthDate.ToString(DateFormat)})" : null)
+                                    }
                                 </dd>
 
                                 <dt class="col-sm-4">Contactgegevens</dt>
@@ -305,6 +330,7 @@
         request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
         request.NumberOfChildrenUnder12 = 0;
+        ResizeCoTravellers();
 
         // The server checks the stay first, so the guest hears about a full period
         // or a too-short high-season stay before filling in any details.
@@ -352,7 +378,17 @@
     {
         request.NumberOfGuests = newGuests;
         request.NumberOfChildrenUnder12 = Math.Clamp(request.NumberOfChildrenUnder12, 0, Math.Max(newGuests - 1, 0));
+        ResizeCoTravellers();
         await OnPartyChangedAsync();
+    }
+
+    // One row per fellow traveller; what was already filled in stays.
+    private void ResizeCoTravellers()
+    {
+        List<TravellerRequest> previous = request.CoTravellers;
+        request.CoTravellers = Enumerable.Range(0, Math.Max(request.NumberOfGuests - 1, 0))
+            .Select(index => index < previous.Count ? previous[index] : new TravellerRequest())
+            .ToList();
     }
 
     // Children under 12 pay no tourist tax, so the price is fetched again.

@@ -13,7 +13,7 @@ namespace Vakantiepark.Shared.DTOs.Booking
         [Range(1, 20, ErrorMessage = "Kies tussen 1 en 20 personen.")]
         public int NumberOfGuests { get; set; }
 
-        // Fellow travellers are only counted (US-38); reception records their names at check-in.
+        // Counted separately for the tourist tax, also when no birth dates are filled in (US-38).
         [Range(0, 19, ErrorMessage = "Kies tussen 0 en 19 kinderen.")]
         public int NumberOfChildrenUnder12 { get; set; }
 
@@ -41,6 +41,18 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vul je geboortedatum in.")]
+        public DateOnly? BirthDate { get; set; }
+
+        // Optional: whatever the guest leaves open, reception fills in at check-in.
+        public List<TravellerRequest> CoTravellers { get; set; } = [];
+    }
+
+    // A fellow traveller; both fields may stay empty.
+    public class TravellerRequest
+    {
+        [StringLength(100, ErrorMessage = "Een naam mag maximaal 100 tekens zijn.")]
+        public string? Name { get; set; }
+
         public DateOnly? BirthDate { get; set; }
     }
 }

@@ -225,7 +225,7 @@ namespace Vakantiepark.Application.Services
             booking.Deposit = newPrice.Deposit;
 
             // Someone else may have booked the unit since the check; then nothing is saved.
-            if (!await BookingRepository.TryUpdateAsync(booking))
+            if (!await BookingRepository.TryUpdateAsync(booking, request.CoTravellers.ToGuests()))
                 throw new ArgumentException(NoUnitForChangeMessage);
 
             await SendChangeAsync(booking, plan.Type, oldTotalPrice);
@@ -251,10 +251,11 @@ namespace Vakantiepark.Application.Services
             CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, Today());
 
             BookingGuest? mainBooker = booking.Guests.FirstOrDefault(guest => guest.IsMainBooker);
-            if (mainBooker is not null && CreateBookingRequestValidation.AgeOn(mainBooker.BirthDate, request.ArrivalDate) < CreateBookingRequestValidation.MinimumMainBookerAge)
+            if (mainBooker?.BirthDate is DateOnly mainBirthDate && CreateBookingRequestValidation.AgeOn(mainBirthDate, request.ArrivalDate) < CreateBookingRequestValidation.MinimumMainBookerAge)
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {CreateBookingRequestValidation.MinimumMainBookerAge} jaar zijn.");
 
             CreateBookingRequestValidation.ValidateChildrenUnder12(request.NumberOfGuests, request.NumberOfChildrenUnder12);
+            CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, Today());
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
             AccommodationUnitFilter filter = new AccommodationUnitFilter()

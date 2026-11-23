@@ -49,6 +49,41 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public void Validate_EmptyTravellers_DoesNotThrow()
+        {
+            Request(r => r.CoTravellers = [new TravellerRequest(), new TravellerRequest() { Name = "Els Jansen" }]).Validate(Today);
+        }
+
+        [Fact]
+        public void Validate_TravellerBirthDateWithoutName_Throws()
+        {
+            CreateBookingRequest request = Request(r => r.CoTravellers = [new TravellerRequest() { BirthDate = new DateOnly(2015, 1, 1) }]);
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
+        public void Validate_TravellerBornInTheFuture_Throws()
+        {
+            CreateBookingRequest request = Request(r => r.CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = Today.AddDays(1) }]);
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
+        public void Validate_MoreTravellersThanPersons_Throws()
+        {
+            CreateBookingRequest request = Request(r =>
+            {
+                r.NumberOfGuests = 2;
+                r.NumberOfChildrenUnder12 = 0;
+                r.CoTravellers = [new TravellerRequest() { Name = "Els" }, new TravellerRequest() { Name = "Piet" }];
+            });
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
         public void Validate_NoBirthDate_Throws()
         {
             Assert.Throws<ArgumentException>(() => Request(r => r.BirthDate = null).Validate(Today));

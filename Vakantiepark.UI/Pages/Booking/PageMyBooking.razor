@@ -86,7 +86,7 @@
                         <ul class="list-unstyled mb-0">
                             @foreach (GuestResponse guest in booking.Guests)
                             {
-                                <li>@guest.Name (@guest.BirthDate.ToString(BirthDateFormat))@(guest.IsMainBooker ? " · hoofdboeker" : null)</li>
+                                <li>@guest.Name@(guest.BirthDate is DateOnly birthDate ? $" ({birthDate.ToString(BirthDateFormat)})" : null)@(guest.IsMainBooker ? " · hoofdboeker" : null)</li>
                             }
                         </ul>
                     </dd>
@@ -187,6 +187,27 @@
                                     <div class="form-text">Over kinderen jonger dan 12 betaal je geen toeristenbelasting.</div>
                                 </div>
                             </div>
+
+                            @if (changeRequest.CoTravellers.Count > 0)
+                            {
+                                <h4 class="h6 mt-4 mb-1">Reisgenoten <span class="badge rounded-pill text-bg-light border fw-normal align-middle">Optioneel</span></h4>
+                                <p class="text-muted-du small mb-2">Deze velden zijn niet verplicht. Wat je leeg laat, vult de receptie aan bij het inchecken.</p>
+                                @for (int index = 0; index < changeRequest.CoTravellers.Count; index++)
+                                {
+                                    int number = index + 2;
+                                    TravellerRequest traveller = changeRequest.CoTravellers[index];
+                                    <div class="row g-3 mb-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small" for="@($"change-name-{number}")">Persoon @number: naam</label>
+                                            <InputText id="@($"change-name-{number}")" class="form-control" @bind-Value="traveller.Name" placeholder="Optioneel" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small" for="@($"change-birthdate-{number}")">Persoon @number: geboortedatum</label>
+                                            <InputDutchDate id="@($"change-birthdate-{number}")" class="form-control" MaxYear="@Today.Year" @bind-Value="traveller.BirthDate" />
+                                        </div>
+                                    </div>
+                                }
+                            }
 
                             @if (changeQuote is null)
                             {
@@ -393,7 +414,12 @@
             DepartureDate = booking.DepartureDate,
             NumberOfGuests = booking.NumberOfGuests,
             NumberOfChildrenUnder12 = booking.NumberOfChildrenUnder12,
+            CoTravellers = booking.Guests
+                .Where(guest => !guest.IsMainBooker)
+                .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
+                .ToList(),
         };
+        ResizeCoTravellers();
         mode = Mode.Change;
     }
 
@@ -408,7 +434,17 @@
         changeRequest.NumberOfGuests = Math.Max(1, numberOfGuests);
         // The main booker is 18 or older, so fewer persons can mean fewer children.
         changeRequest.NumberOfChildrenUnder12 = Math.Clamp(changeRequest.NumberOfChildrenUnder12, 0, changeRequest.NumberOfGuests - 1);
+        ResizeCoTravellers();
         ClearChangeQuote();
+    }
+
+    // One row per fellow traveller; what was already filled in stays.
+    private void ResizeCoTravellers()
+    {
+        List<TravellerRequest> previous = changeRequest.CoTravellers;
+        changeRequest.CoTravellers = Enumerable.Range(0, Math.Max(changeRequest.NumberOfGuests - 1, 0))
+            .Select(index => index < previous.Count ? previous[index] : new TravellerRequest())
+            .ToList();
     }
 
     private void OnChangeChildren(int numberOfChildren)

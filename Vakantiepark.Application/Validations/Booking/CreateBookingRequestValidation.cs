@@ -40,6 +40,26 @@ namespace Vakantiepark.Application.Validations.Booking
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn.");
 
             ValidateChildrenUnder12(request.NumberOfGuests, request.NumberOfChildrenUnder12);
+            ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, today);
+        }
+
+        // Fellow travellers are optional; what is filled in must make sense. Also used when a guest changes his booking.
+        public static void ValidateCoTravellers(int numberOfGuests, List<TravellerRequest> coTravellers, DateOnly today)
+        {
+            if (coTravellers.Count > numberOfGuests - 1)
+                throw new ArgumentException($"Met {numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")} zijn er hoogstens {numberOfGuests - 1} reisgenoten.");
+
+            foreach (TravellerRequest traveller in coTravellers)
+            {
+                if (traveller.BirthDate is null)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(traveller.Name))
+                    throw new ArgumentException("Vul bij een ingevulde geboortedatum ook de naam van de reisgenoot in.");
+
+                if (traveller.BirthDate.Value > today)
+                    throw new ArgumentException($"De geboortedatum van {traveller.Name.Trim()} ligt in de toekomst.");
+            }
         }
 
         // The main booker is 18 or older, so at most everyone else is under 12 (US-38).
