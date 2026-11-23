@@ -1,0 +1,24 @@
+@* Progress bar of the booking flow: done steps get a check mark, the current one is highlighted. *@
+<nav aria-label="Stappen van je boeking">
+    <ol class="booking-steps">
+        @for (int index = 0; index < Steps.Length; index++)
+        {
+            int number = index + 1;
+            <li class="booking-step @StateClass(number)" aria-current="@(number == CurrentStep ? "step" : null)">
+                <span class="booking-step-number">@(number < CurrentStep ? "✓" : number.ToString())</span>
+                <span class="booking-step-label">@Steps[index]</span>
+            </li>
+        }
+    </ol>
+</nav>
+
+@code {
+    private static readonly string[] Steps = ["Verblijf kiezen", "Gegevens", "Controleren", "Bevestigd"];
+
+    // 1 = verblijf kiezen, 2 = gegevens, 3 = controleren, 4 = bevestigd.
+    [Parameter, EditorRequired]
+    public int CurrentStep { get; set; }
+
+    private string StateClass(int number)
+        => number < CurrentStep ? "done" : number == CurrentStep ? "current" : "";
+}

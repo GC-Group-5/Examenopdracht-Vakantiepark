@@ -1,12 +1,13 @@
 namespace Vakantiepark.Domain.Entities
 {
-    // One person in the travel party. Name and date of birth are needed for the
-    // tourist tax; the main booker is one of them (IsMainBooker).
+    // One person in the travel party; the main booker is one of them (IsMainBooker).
+    // A fellow traveller's birth date may be missing: the guest can leave it open and
+    // reception completes it at check-in.
     public class BookingGuest
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public DateOnly BirthDate { get; set; }
+        public DateOnly? BirthDate { get; set; }
         public bool IsMainBooker { get; set; }
 
         // Navigation Keys

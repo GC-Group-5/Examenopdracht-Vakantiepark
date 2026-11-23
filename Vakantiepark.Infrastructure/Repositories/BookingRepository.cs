@@ -89,8 +89,8 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Distinct()
                 .ToListAsync();
 
-        // Saves a changed booking and replaces the co-travellers (the main booker stays). When the
-        // overlap constraint refuses it, nothing is saved and the booking stays as it was.
+        // Saves a changed booking and replaces the fellow travellers (the main booker stays).
+        // When the overlap constraint refuses it, nothing is saved and the booking stays as it was.
         public async Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers)
         {
             List<BookingGuest> oldCoTravellers = booking.Guests.Where(guest => !guest.IsMainBooker).ToList();

@@ -11,10 +11,12 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public TimeOnly ArrivalTime { get; set; }
         public TimeOnly DepartureTime { get; set; }
         public int NumberOfGuests { get; set; }
+        public int NumberOfChildrenUnder12 { get; set; }
         public int NumberOfPets { get; set; }
         public bool WheelchairAccessible { get; set; }
         public decimal AccommodationPrice { get; set; }
         public decimal CleaningFee { get; set; }
+        public decimal PetCleaningFee { get; set; }
         public decimal TouristTax { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }

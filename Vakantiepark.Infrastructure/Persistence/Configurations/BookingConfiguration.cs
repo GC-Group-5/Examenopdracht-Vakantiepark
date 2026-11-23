@@ -22,6 +22,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.AccommodationPrice).HasPrecision(18, 2);
             builder.Property(x => x.CleaningFee).HasPrecision(18, 2);
+            builder.Property(x => x.PetCleaningFee).HasPrecision(18, 2);
             builder.Property(x => x.TouristTax).HasPrecision(18, 2);
             builder.Property(x => x.TotalPrice).HasPrecision(18, 2);
             builder.Property(x => x.Deposit).HasPrecision(18, 2);

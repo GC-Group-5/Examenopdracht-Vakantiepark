@@ -304,6 +304,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<int>("NumberOfChildrenUnder12")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_children_under12");
+
                     b.Property<int>("NumberOfGuests")
                         .HasColumnType("integer")
                         .HasColumnName("number_of_guests");
@@ -311,6 +315,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<int>("NumberOfPets")
                         .HasColumnType("integer")
                         .HasColumnName("number_of_pets");
+
+                    b.Property<decimal>("PetCleaningFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("pet_cleaning_fee");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -360,7 +369,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateOnly>("BirthDate")
+                    b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date")
                         .HasColumnName("birth_date");
 
@@ -539,6 +548,77 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("maintenance_periods", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkFacility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("category");
+
+                    b.Property<TimeOnly?>("ClosesAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("closes_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<TimeOnly?>("OpensAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("opens_at");
+
+                    b.Property<string>("PhotoUrl")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("photo_url");
+
+                    b.Property<DateTime?>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_park_facilities");
+
+                    b.ToTable("park_facilities", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.ParkSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -578,6 +658,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<int>("NoRefundDaysBeforeArrival")
                         .HasColumnType("integer")
                         .HasColumnName("no_refund_days_before_arrival");
+
+                    b.Property<decimal>("PetCleaningFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("pet_cleaning_fee");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

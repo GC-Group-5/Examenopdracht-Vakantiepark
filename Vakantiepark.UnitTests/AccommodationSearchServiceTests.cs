@@ -79,9 +79,9 @@ namespace Vakantiepark.UnitTests
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync([]);
-            _priceService.Setup(x => x.CalculateAsync("berk-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+            _priceService.Setup(x => x.CalculateAsync("berk-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new PriceSpecificationResponse { TotalPrice = 936m });
-            _priceService.Setup(x => x.CalculateAsync("wilg-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()))
+            _priceService.Setup(x => x.CalculateAsync("wilg-4", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new PriceSpecificationResponse { TotalPrice = 300m });
 
             _sut = new AccommodationSearchService(
@@ -169,7 +169,7 @@ namespace Vakantiepark.UnitTests
 
             Assert.Empty(result.Results);
             Assert.Contains("In het hoogseizoen (Zomervakantie 2027) moet een boeking minimaal 7 nachten zijn.", result.Message);
-            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>()), Times.Never);
+            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

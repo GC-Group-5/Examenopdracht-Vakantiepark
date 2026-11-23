@@ -44,11 +44,11 @@
                         </div>
                         <div class="col-6 col-lg-12">
                             <label class="form-label fw-semibold" for="search-arrival">Aankomst</label>
-                            <InputDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" min="@Today" />
+                            <InputDutchDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@DepartureDate" />
                         </div>
                         <div class="col-6 col-lg-12">
                             <label class="form-label fw-semibold" for="search-departure">Vertrek</label>
-                            <InputDate id="search-departure" class="form-control" @bind-Value="DepartureDate" min="@Today" />
+                            <InputDutchDate id="search-departure" class="form-control" @bind-Value="DepartureDate" MinDate="@ArrivalDate.AddDays(1)" MinYear="@Today.Year" RangeStart="@ArrivalDate" />
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold" for="search-guests">Personen</label>

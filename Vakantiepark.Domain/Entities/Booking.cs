@@ -23,12 +23,14 @@ namespace Vakantiepark.Domain.Entities
         public TimeOnly DepartureTime { get; set; }
 
         public int NumberOfGuests { get; set; }
+        public int NumberOfChildrenUnder12 { get; set; }
         public int NumberOfPets { get; set; }
         public bool WheelchairAccessible { get; set; }
 
         // The price is fixed when booking; a later rate change does not alter it (US-07).
         public decimal AccommodationPrice { get; set; }
         public decimal CleaningFee { get; set; }
+        public decimal PetCleaningFee { get; set; }
         public decimal TouristTax { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }

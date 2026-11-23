@@ -67,18 +67,19 @@
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
                             <div>
                                 <h2 class="section-title h4 mb-1">Periode toevoegen</h2>
-                                <p class="small text-muted-du mb-0">@overview.UnitCode · @overview.UnitName</p>
+                                <img class="d-block w-50 img-fluid rounded mb-2" src="@($"img/accommodaties/{SelectedUnit?.TypeSlug}/1.webp")" alt="Afbeelding @SelectedUnit?.TypeName" />
+                                <p class="fw-semibold mb-0">@overview.UnitCode · @overview.UnitName</p>
                             </div>
                         </div>
 
                         <div class="row g-2">
                             <div class="col-6">
                                 <label class="form-label fw-semibold" for="maintenance-start">Van</label>
-                                <input id="maintenance-start" type="date" class="form-control" @bind="newStartDate" min="@Today.ToString("yyyy-MM-dd")" disabled="@hasPendingConfirmation" />
+                                <InputDutchDate id="maintenance-start" class="form-control" @bind-Value="newStartDate" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@newEndDate" disabled="@hasPendingConfirmation" />
                             </div>
                             <div class="col-6">
                                 <label class="form-label fw-semibold" for="maintenance-end">Tot en met</label>
-                                <input id="maintenance-end" type="date" class="form-control" @bind="newEndDate" min="@newStartDate.ToString("yyyy-MM-dd")" disabled="@hasPendingConfirmation" />
+                                <InputDutchDate id="maintenance-end" class="form-control" @bind-Value="newEndDate" MinDate="@newStartDate" MinYear="@Today.Year" RangeStart="@newStartDate" disabled="@hasPendingConfirmation" />
                             </div>
                             <div class="col-12 col-sm-6 col-xl-12">
                                 <label class="form-label fw-semibold" for="maintenance-reason">Reden</label>
@@ -127,7 +128,7 @@
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                             <div>
                                 <div class="small text-uppercase text-muted fw-semibold">Overzicht</div>
-                                <h2 class="section-title h4 mb-1">Periodes</h2>
+                                <h2 class="section-title h4 mb-1">Onderhoudsperiodes</h2>
                                 <p class="small text-muted-du mb-0">Historie en geplande blokkades</p>
                             </div>
 
@@ -207,13 +208,13 @@
                                         <div class="row g-2 mt-2 align-items-end">
                                             <div class="col-6 col-md-4">
                                                 <label class="form-label small fw-semibold" for="edit-start-@period.Id">Van</label>
-                                                <input id="edit-start-@period.Id" type="date" class="form-control" @bind="editStartDate"
-                                                       min="@Today.ToString("yyyy-MM-dd")" disabled="@(period.StartDate <= Today)" />
+                                                <InputDutchDate id="@($"edit-start-{period.Id}")" class="form-control" @bind-Value="editStartDate"
+                                                                MinDate="@Today" MinYear="@Today.Year" RangeEnd="@editEndDate" disabled="@(period.StartDate <= Today)" />
                                             </div>
                                             <div class="col-6 col-md-4">
                                                 <label class="form-label small fw-semibold" for="edit-end-@period.Id">Tot en met</label>
-                                                <input id="edit-end-@period.Id" type="date" class="form-control" @bind="editEndDate"
-                                                       min="@EditEndMin" />
+                                                <InputDutchDate id="@($"edit-end-{period.Id}")" class="form-control" @bind-Value="editEndDate"
+                                                                MinDate="@EditEndMin" MinYear="@Today.Year" RangeStart="@editStartDate" />
                                             </div>
                                             <div class="col-12 col-md-4 d-flex gap-2">
                                                 <button type="button" class="btn btn-du" @onclick="() => AskToConfirmUpdate(period, editStartDate, editEndDate)" disabled="@isBusy">Opslaan</button>
@@ -335,13 +336,15 @@
     private DateOnly editEndDate;
     private PendingUpdate? pendingUpdate;
     private string periodFilter = "all";
+    private AccommodationResponse? SelectedUnit
+        => units.FirstOrDefault(unit => unit.Code == SelectedUnitCode);
 
     private List<MaintenancePeriodResponse> VisiblePeriods
         => (overview?.Periods ?? []).Where(period => MatchesFilter(period, periodFilter)).ToList();
 
     // The new end date may not lie before the start or in the past.
-    private string EditEndMin
-        => (editStartDate > Today ? editStartDate : Today).ToString("yyyy-MM-dd");
+    private DateOnly EditEndMin
+        => editStartDate > Today ? editStartDate : Today;
 
     private bool isBusy;
     private string? errorMessage;

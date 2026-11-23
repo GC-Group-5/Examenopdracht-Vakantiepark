@@ -13,6 +13,8 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public TimeOnly ArrivalTime { get; set; }
         public TimeOnly DepartureTime { get; set; }
         public int NumberOfGuests { get; set; }
+        public int NumberOfChildrenUnder12 { get; set; }
+        public int MaxPets { get; set; }
         public PriceSpecificationResponse Price { get; set; } = new();
 
         // Cancellation terms (US-12): free before this many days, no refund within the other.
