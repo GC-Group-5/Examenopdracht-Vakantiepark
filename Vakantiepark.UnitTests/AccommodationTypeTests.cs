@@ -26,7 +26,13 @@ namespace Vakantiepark.UnitTests
             _accommodationRepository.Setup(x => x.GetAllWithDetailsAsync()).ReturnsAsync(import.Accommodations);
         }
 
-        private AccommodationService CreateService() => new AccommodationService(_accommodationRepository.Object, _featureRepository.Object, _zoneRepository.Object);
+        private AccommodationService CreateService() => new AccommodationService(
+            _accommodationRepository.Object,
+            _featureRepository.Object,
+            _zoneRepository.Object,
+            new Mock<IRepository<Season>>().Object,
+            new Mock<IRepository<AccommodationTypePrice>>().Object,
+            new FixedTimeProvider(Now));
 
         public static TheoryData<string, string[]> TemplateChips => new()
         {
