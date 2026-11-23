@@ -15,7 +15,12 @@
     <link rel="stylesheet" href="css/theme.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link href="Vakantiepark.UI.styles.css" rel="stylesheet" />
+    <link href="manifest.webmanifest" rel="manifest" />
     <script type="importmap"></script>
+    <script>
+        if ('serviceWorker' in navigator)
+            navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
+    </script>
 </head>
 
 <body>
@@ -34,5 +39,4 @@
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
-
 </html>
