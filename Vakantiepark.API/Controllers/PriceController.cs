@@ -26,12 +26,13 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] DateOnly arrivalDate,
             [FromQuery] DateOnly departureDate,
             [FromQuery] int numberOfGuests,
+            [FromQuery] int numberOfChildrenUnder12 = 0,
             [FromQuery] int numberOfPets = 0)
         {
             try
             {
                 PriceSpecificationResponse price = await PriceService.CalculateAsync(
-                    accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, numberOfPets);
+                    accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, numberOfChildrenUnder12, numberOfPets);
 
                 return Ok(ApiResponse<PriceSpecificationResponse>.Ok(price));
             }

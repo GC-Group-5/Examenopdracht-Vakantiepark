@@ -1,0 +1,72 @@
+.booking-steps {
+    display: flex;
+    gap: .5rem;
+    margin: 0 0 2rem;
+    padding: 0;
+    list-style: none;
+}
+
+.booking-step {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: .5rem;
+    color: var(--du-muted);
+    font-size: .9rem;
+}
+
+    .booking-step:last-child {
+        flex: 0 0 auto;
+    }
+
+    /* The line between two steps. */
+    .booking-step:not(:last-child)::after {
+        content: "";
+        flex: 1;
+        height: 2px;
+        background: var(--du-line);
+    }
+
+    .booking-step.done:not(:last-child)::after {
+        background: var(--du-green);
+    }
+
+.booking-step-number {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    font-weight: 700;
+    background: #fff;
+    border: 2px solid var(--du-line);
+    border-radius: 50%;
+}
+
+.booking-step.done .booking-step-number {
+    color: #fff;
+    background: var(--du-green);
+    border-color: var(--du-green);
+}
+
+.booking-step.current {
+    color: var(--du-ink);
+    font-weight: 700;
+}
+
+    .booking-step.current .booking-step-number {
+        color: var(--du-green);
+        border-color: var(--du-green);
+    }
+
+.booking-step-label {
+    white-space: nowrap;
+}
+
+/* On a phone only the current step keeps its name. */
+@media (max-width: 575.98px) {
+    .booking-step:not(.current) .booking-step-label {
+        display: none;
+    }
+}

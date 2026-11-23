@@ -44,7 +44,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _currentUnit, _otherUnit });
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Season>());
 
@@ -105,6 +105,17 @@ namespace Vakantiepark.UnitTests
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access(), null));
 
             Assert.Equal(BookingService.CannotCancelMessage, exception.Message);
+            _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Cancel_AlreadyCancelled_SaysSoAndNothingIsSaved()
+        {
+            _booking.DeletedAt = DateTime.UtcNow;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CancelAsync(Access(), null));
+
+            Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
             _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
         }
 
@@ -248,6 +259,16 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task Change_AlreadyCancelled_SaysSo()
+        {
+            _booking.DeletedAt = DateTime.UtcNow;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null));
+
+            Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
+        }
+
+        [Fact]
         public async Task Change_Within30DaysOfArrival_IsRefused()
         {
             SetArrival(29);
@@ -273,12 +294,43 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task Change_MissingCoTraveller_IsRefused()
+        public async Task Change_TooManyChildren_IsRefused()
         {
             ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
             request.NumberOfGuests = 3;
+            request.NumberOfChildrenUnder12 = 3;
 
             await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request, null));
+        }
+
+        [Fact]
+        public async Task Change_SavesTheNewNumberOfChildren()
+        {
+            ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
+            request.NumberOfGuests = 4;
+            request.NumberOfChildrenUnder12 = 2;
+
+            await _sut.ChangeAsync(request, null);
+
+            Assert.Equal(4, _booking.NumberOfGuests);
+            Assert.Equal(2, _booking.NumberOfChildrenUnder12);
+        }
+
+        [Fact]
+        public async Task Change_SavesTheFilledInTravellersAndSkipsEmptyRows()
+        {
+            ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
+            request.NumberOfGuests = 3;
+            request.CoTravellers =
+            [
+                new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                new TravellerRequest(),
+            ];
+
+            await _sut.ChangeAsync(request, null);
+
+            _bookingRepository.Verify(x => x.TryUpdateAsync(_booking, It.Is<List<BookingGuest>>(guests =>
+                guests.Count == 1 && guests[0].Name == "Els Jansen")), Times.Once);
         }
 
         // ---------- Helpers ----------
@@ -304,6 +356,7 @@ namespace Vakantiepark.UnitTests
                 ArrivalDate = _booking.ArrivalDate.AddDays(shiftDays),
                 DepartureDate = _booking.DepartureDate.AddDays(shiftDays),
                 NumberOfGuests = 2,
+                NumberOfChildrenUnder12 = 0,
                 CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) }],
             };
 

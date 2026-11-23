@@ -304,6 +304,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<int>("NumberOfChildrenUnder12")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_children_under12");
+
                     b.Property<int>("NumberOfGuests")
                         .HasColumnType("integer")
                         .HasColumnName("number_of_guests");
@@ -365,7 +369,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateOnly>("BirthDate")
+                    b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date")
                         .HasColumnName("birth_date");
 

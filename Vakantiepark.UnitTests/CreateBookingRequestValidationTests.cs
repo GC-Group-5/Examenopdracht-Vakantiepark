@@ -58,31 +58,66 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public void Validate_EmptyTravellers_DoesNotThrow()
+        {
+            Request(r => r.CoTravellers = [new TravellerRequest(), new TravellerRequest() { Name = "Els Jansen" }]).Validate(Today);
+        }
+
+        [Fact]
+        public void Validate_TravellerBirthDateWithoutName_Throws()
+        {
+            CreateBookingRequest request = Request(r => r.CoTravellers = [new TravellerRequest() { BirthDate = new DateOnly(2015, 1, 1) }]);
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
+        public void Validate_TravellerBornInTheFuture_Throws()
+        {
+            CreateBookingRequest request = Request(r => r.CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = Today.AddDays(1) }]);
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
+        public void Validate_MoreTravellersThanPersons_Throws()
+        {
+            CreateBookingRequest request = Request(r =>
+            {
+                r.NumberOfGuests = 2;
+                r.NumberOfChildrenUnder12 = 0;
+                r.CoTravellers = [new TravellerRequest() { Name = "Els" }, new TravellerRequest() { Name = "Piet" }];
+            });
+
+            Assert.Throws<ArgumentException>(() => request.Validate(Today));
+        }
+
+        [Fact]
         public void Validate_NoBirthDate_Throws()
         {
             Assert.Throws<ArgumentException>(() => Request(r => r.BirthDate = null).Validate(Today));
         }
 
         [Fact]
-        public void Validate_FewerTravellersThanPersons_ThrowsDutchMessage()
+        public void Validate_EveryoneButTheMainBookerUnder12_DoesNotThrow()
         {
-            CreateBookingRequest request = Request(r => r.CoTravellers.RemoveAt(0));
+            Request(r => r.NumberOfChildrenUnder12 = 3).Validate(Today);
+        }
+
+        [Fact]
+        public void Validate_AsManyChildrenAsPersons_ThrowsDutchMessage()
+        {
+            CreateBookingRequest request = Request(r => r.NumberOfChildrenUnder12 = 4);
 
             ArgumentException exception = Assert.Throws<ArgumentException>(() => request.Validate(Today));
 
-            Assert.Equal("Vul de naam en geboortedatum in van alle 4 personen.", exception.Message);
+            Assert.Equal("Met 4 personen zijn er hoogstens 3 kinderen jonger dan 12: de hoofdboeker is 18 jaar of ouder.", exception.Message);
         }
 
         [Fact]
-        public void Validate_TravellerWithoutName_Throws()
+        public void Validate_NegativeNumberOfChildren_Throws()
         {
-            Assert.Throws<ArgumentException>(() => Request(r => r.CoTravellers[1].Name = " ").Validate(Today));
-        }
-
-        [Fact]
-        public void Validate_TravellerBornInTheFuture_Throws()
-        {
-            Assert.Throws<ArgumentException>(() => Request(r => r.CoTravellers[2].BirthDate = Today.AddDays(1)).Validate(Today));
+            Assert.Throws<ArgumentException>(() => Request(r => r.NumberOfChildrenUnder12 = -1).Validate(Today));
         }
 
         [Fact]
@@ -98,9 +133,9 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public void Validate_OnePersonWithoutTravellers_DoesNotThrow()
+        public void Validate_OnePersonWithoutChildren_DoesNotThrow()
         {
-            Request(r => { r.NumberOfGuests = 1; r.CoTravellers.Clear(); }).Validate(Today);
+            Request(r => { r.NumberOfGuests = 1; r.NumberOfChildrenUnder12 = 0; }).Validate(Today);
         }
 
         [Theory]
