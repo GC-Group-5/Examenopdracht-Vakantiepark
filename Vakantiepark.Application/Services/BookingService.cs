@@ -404,11 +404,8 @@ namespace Vakantiepark.Application.Services
 
         private async Task<int> GetMaximumPetsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
         {
-            List<Accommodation>? units = await AccommodationUnitRepository.GetInServiceUnitsAsync(accommodationTypeSlug, arrivalDate, departureDate);
-            if (units is null)
-                return 0;
+            List<Accommodation> units = await AccommodationUnitRepository.GetInServiceUnitsAsync(accommodationTypeSlug, arrivalDate, departureDate);
             decimal maximum = units
-                .Where(unit => unit.DeletedAt is null)
                 .Select(unit => unit.GetNumber(FeatureKeys.MaxPets) ?? 0m)
                 .DefaultIfEmpty(0m)
                 .Max();

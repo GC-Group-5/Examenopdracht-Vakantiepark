@@ -41,13 +41,6 @@ namespace Vakantiepark.Application.Services
             string accommodationTypeSlug,
             DateOnly arrivalDate,
             DateOnly departureDate,
-            int numberOfGuests)
-            => await CalculateAsync(accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, 0);
-
-        public async Task<PriceSpecificationResponse> CalculateAsync(
-            string accommodationTypeSlug,
-            DateOnly arrivalDate,
-            DateOnly departureDate,
             int numberOfGuests,
             int numberOfPets)
         {

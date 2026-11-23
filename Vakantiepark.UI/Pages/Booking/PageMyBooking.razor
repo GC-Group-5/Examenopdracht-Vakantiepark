@@ -102,6 +102,10 @@
                     <tbody>
                         <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@booking.AccommodationPrice.ToString("C")</td></tr>
                         <tr><td>Eindschoonmaak</td><td class="text-end">@booking.CleaningFee.ToString("C")</td></tr>
+                        @if (booking.PetCleaningFee > 0m)
+                        {
+                            <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@booking.PetCleaningFee.ToString("C")</td></tr>
+                        }
                         <tr><td>Toeristenbelasting</td><td class="text-end">@booking.TouristTax.ToString("C")</td></tr>
                         <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@booking.TotalPrice.ToString("C")</td></tr>
                         <tr><td>Aanbetaling</td><td class="text-end">@booking.Deposit.ToString("C")</td></tr>

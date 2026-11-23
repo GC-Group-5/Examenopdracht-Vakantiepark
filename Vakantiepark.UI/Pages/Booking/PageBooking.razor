@@ -47,7 +47,7 @@
                     @* The stay being booked, like a listing card: sticky next to the form on large screens, on top on a phone. *@
                     <aside class="booking-card zoek-sidebar">
                         <img class="boek-card-image" src="@($"img/accommodaties/{AccommodationTypeSlug}/1.webp")" alt="@quote.AccommodationTypeName"
-                             onerror="this.onerror=null;this.src='img/placeholder-image.svg'" />
+                             onerror="this.onerror=null; this.src='img/placeholder-image.svg'" />
                         <div class="eyebrow">Jouw verblijf</div>
                         <h2 class="h3 mt-2 mb-1">@quote.AccommodationTypeName</h2>
                         <p class="small text-muted-du mb-3">@(quote.Zone is null ? "Geen voorkeurszone" : $"Zone {quote.Zone}")</p>
@@ -323,7 +323,7 @@
         CheckMainBookerAge();
         // A hand-edited URL with an impossible value falls back to the default.
         request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
-        request.NumberOfPets = Pets is >= 0 and <= 10 ? Pets.Value : 0;
+        request.NumberOfPets = Pets is >= 0 and <= MaxPets.MaxPetsInUrl ? Pets.Value : 0;
         takesPets = request.NumberOfPets > 0;
         request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
