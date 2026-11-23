@@ -82,6 +82,7 @@
 
                     <dt class="col-sm-4">Reisgezelschap</dt>
                     <dd class="col-sm-8">
+                        @PartyLabel(booking.NumberOfGuests, booking.NumberOfChildrenUnder12)
                         <ul class="list-unstyled mb-0">
                             @foreach (GuestResponse guest in booking.Guests)
                             {
@@ -167,40 +168,25 @@
                         <EditForm Model="changeRequest" OnValidSubmit="ShowChangeQuoteAsync" class="border rounded-4 p-4">
                             <DataAnnotationsValidator />
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="change-arrival">Aankomst</label>
-                                    <InputDate id="change-arrival" class="form-control" @bind-Value="changeRequest.ArrivalDate" @bind-Value:after="ClearChangeQuote" />
+                                    <InputDutchDate id="change-arrival" class="form-control" @bind-Value="changeRequest.ArrivalDate" @bind-Value:after="ClearChangeQuote" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@changeRequest.DepartureDate" />
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="change-departure">Vertrek</label>
-                                    <InputDate id="change-departure" class="form-control" @bind-Value="changeRequest.DepartureDate" @bind-Value:after="ClearChangeQuote" />
+                                    <InputDutchDate id="change-departure" class="form-control" @bind-Value="changeRequest.DepartureDate" @bind-Value:after="ClearChangeQuote" MinDate="@changeRequest.ArrivalDate.AddDays(1)" MinYear="@Today.Year" RangeStart="@changeRequest.ArrivalDate" />
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="change-guests">Aantal personen</label>
                                     <InputNumber id="change-guests" class="form-control" Value="changeRequest.NumberOfGuests" TValue="int" ValueExpression="() => changeRequest.NumberOfGuests" ValueChanged="OnChangeGuests" min="1" step="1" />
                                     <div class="form-text">Inclusief hoofdboeker</div>
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="change-children">Waarvan jonger dan 12</label>
+                                    <InputNumber id="change-children" class="form-control" Value="changeRequest.NumberOfChildrenUnder12" TValue="int" ValueExpression="() => changeRequest.NumberOfChildrenUnder12" ValueChanged="OnChangeChildren" min="0" max="@(changeRequest.NumberOfGuests - 1)" step="1" />
+                                    <div class="form-text">Over kinderen jonger dan 12 betaal je geen toeristenbelasting.</div>
+                                </div>
                             </div>
-
-                            @if (changeRequest.CoTravellers.Count > 0)
-                            {
-                                <h4 class="h6 mt-4 mb-2">Reisgenoten</h4>
-                                @for (int index = 0; index < changeRequest.CoTravellers.Count; index++)
-                                {
-                                    int number = index + 2;
-                                    TravellerRequest traveller = changeRequest.CoTravellers[index];
-                                    <div class="row g-3 mb-2">
-                                        <div class="col-md-6">
-                                            <label class="form-label small" for="@($"change-name-{number}")">Naam persoon @number</label>
-                                            <InputText id="@($"change-name-{number}")" class="form-control" @bind-Value="traveller.Name" />
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small" for="@($"change-birthdate-{number}")">Geboortedatum persoon @number</label>
-                                            <InputDate id="@($"change-birthdate-{number}")" class="form-control" @bind-Value="traveller.BirthDate" />
-                                        </div>
-                                    </div>
-                                }
-                            }
 
                             @if (changeQuote is null)
                             {
@@ -236,9 +222,9 @@
 </section>
 
 @code {
-    private const string DateFormat = "ddd d MMMM yyyy";
-    private const string BirthDateFormat = "d-M-yyyy";
-    private const string TimeFormat = "HH:mm";
+    private const string DateFormat = DateFormats.Date;
+    private const string BirthDateFormat = DateFormats.Date;
+    private const string TimeFormat = DateFormats.Time;
 
     [Parameter]
     public string? Token { get; set; }
@@ -406,10 +392,7 @@
             ArrivalDate = booking.ArrivalDate,
             DepartureDate = booking.DepartureDate,
             NumberOfGuests = booking.NumberOfGuests,
-            CoTravellers = booking.Guests
-                .Where(guest => !guest.IsMainBooker)
-                .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
-                .ToList(),
+            NumberOfChildrenUnder12 = booking.NumberOfChildrenUnder12,
         };
         mode = Mode.Change;
     }
@@ -423,11 +406,24 @@
     private void OnChangeGuests(int numberOfGuests)
     {
         changeRequest.NumberOfGuests = Math.Max(1, numberOfGuests);
-        List<TravellerRequest> previous = changeRequest.CoTravellers;
-        changeRequest.CoTravellers = Enumerable.Range(0, changeRequest.NumberOfGuests - 1)
-            .Select(index => index < previous.Count ? previous[index] : new TravellerRequest())
-            .ToList();
+        // The main booker is 18 or older, so fewer persons can mean fewer children.
+        changeRequest.NumberOfChildrenUnder12 = Math.Clamp(changeRequest.NumberOfChildrenUnder12, 0, changeRequest.NumberOfGuests - 1);
         ClearChangeQuote();
+    }
+
+    private void OnChangeChildren(int numberOfChildren)
+    {
+        changeRequest.NumberOfChildrenUnder12 = Math.Clamp(numberOfChildren, 0, changeRequest.NumberOfGuests - 1);
+        ClearChangeQuote();
+    }
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    // e.g. "4 personen, waarvan 2 jonger dan 12"
+    private static string PartyLabel(int numberOfGuests, int childrenUnder12)
+    {
+        string persons = $"{numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")}";
+        return childrenUnder12 == 0 ? persons : $"{persons}, waarvan {childrenUnder12} jonger dan 12";
     }
 
     private async Task ShowChangeQuoteAsync()

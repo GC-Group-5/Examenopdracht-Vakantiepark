@@ -83,3 +83,21 @@
         background: var(--du-green);
         color: #fff;
     }
+
+    /* The stay between arrival and departure, like on booking sites: a light band with both ends marked. */
+    .dutch-date-day.in-range {
+        background: #e4f1e7;
+        border-radius: 0;
+    }
+
+    .dutch-date-day.range-start,
+    .dutch-date-day.range-end {
+        background: var(--du-green);
+        color: #fff;
+    }
+
+    .dutch-date-day:disabled {
+        color: var(--du-line);
+        background: transparent;
+        cursor: not-allowed;
+    }

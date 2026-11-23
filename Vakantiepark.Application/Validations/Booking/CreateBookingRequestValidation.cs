@@ -52,25 +52,6 @@ namespace Vakantiepark.Application.Validations.Booking
                 throw new ArgumentException($"Met {numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")} zijn er hoogstens {numberOfGuests - 1} {(numberOfGuests - 1 == 1 ? "kind" : "kinderen")} jonger dan 12: de hoofdboeker is 18 jaar of ouder.");
         }
 
-        // Everyone except the main booker, with name and birth date; only used when a guest changes his booking (US-12).
-        public static void ValidateCoTravellers(int numberOfGuests, List<TravellerRequest> coTravellers, DateOnly today)
-        {
-            if (coTravellers.Count != numberOfGuests - 1)
-                throw new ArgumentException($"Vul de naam en geboortedatum in van alle {numberOfGuests} personen.");
-
-            foreach (TravellerRequest traveller in coTravellers)
-            {
-                if (string.IsNullOrWhiteSpace(traveller.Name))
-                    throw new ArgumentException("Vul de naam van iedere reisgenoot in.");
-
-                if (traveller.BirthDate is null)
-                    throw new ArgumentException($"Vul de geboortedatum van {traveller.Name.Trim()} in.");
-
-                if (traveller.BirthDate.Value > today)
-                    throw new ArgumentException($"De geboortedatum van {traveller.Name.Trim()} ligt in de toekomst.");
-            }
-        }
-
         // Age in whole years on a date; someone born on 29 February turns a year older on 1 March.
         public static int AgeOn(DateOnly birthDate, DateOnly date)
         {

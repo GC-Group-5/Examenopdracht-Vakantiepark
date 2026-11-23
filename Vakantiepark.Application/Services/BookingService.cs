@@ -194,7 +194,7 @@ namespace Vakantiepark.Application.Services
         public async Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, ChildrenUnder12(plan.Booking, request.NumberOfGuests));
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
 
             return new ChangeQuoteResponse()
             {
@@ -209,12 +209,13 @@ namespace Vakantiepark.Application.Services
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
             Booking booking = plan.Booking;
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, ChildrenUnder12(plan.Booking, request.NumberOfGuests));
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
             decimal oldTotalPrice = booking.TotalPrice;
 
             booking.ArrivalDate = request.ArrivalDate;
             booking.DepartureDate = request.DepartureDate;
             booking.NumberOfGuests = request.NumberOfGuests;
+            booking.NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12;
             // Only the key: the unit itself was loaded without tracking and must not be saved again.
             booking.AccommodationUnitId = plan.Unit.Id;
             booking.AccommodationPrice = newPrice.AccommodationPrice;
@@ -223,12 +224,8 @@ namespace Vakantiepark.Application.Services
             booking.TotalPrice = newPrice.TotalPrice;
             booking.Deposit = newPrice.Deposit;
 
-            List<BookingGuest> coTravellers = request.CoTravellers
-                .Select(traveller => new BookingGuest() { Name = traveller.Name.Trim(), BirthDate = traveller.BirthDate!.Value })
-                .ToList();
-
             // Someone else may have booked the unit since the check; then nothing is saved.
-            if (!await BookingRepository.TryUpdateAsync(booking, coTravellers))
+            if (!await BookingRepository.TryUpdateAsync(booking))
                 throw new ArgumentException(NoUnitForChangeMessage);
 
             await SendChangeAsync(booking, plan.Type, oldTotalPrice);
@@ -237,10 +234,6 @@ namespace Vakantiepark.Application.Services
             Booking saved = await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
             return ToMine(saved, plan.Settings);
         }
-
-        // A change keeps the children counted at booking (US-38), but never more than the new party allows.
-        private static int ChildrenUnder12(Booking booking, int numberOfGuests)
-            => Math.Min(booking.NumberOfChildrenUnder12, numberOfGuests - 1);
 
         private sealed record ChangePlan(Booking Booking, ParkSettings Settings, AccommodationType Type, Accommodation Unit, bool OtherUnit);
 
@@ -261,7 +254,7 @@ namespace Vakantiepark.Application.Services
             if (mainBooker is not null && CreateBookingRequestValidation.AgeOn(mainBooker.BirthDate, request.ArrivalDate) < CreateBookingRequestValidation.MinimumMainBookerAge)
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {CreateBookingRequestValidation.MinimumMainBookerAge} jaar zijn.");
 
-            CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, Today());
+            CreateBookingRequestValidation.ValidateChildrenUnder12(request.NumberOfGuests, request.NumberOfChildrenUnder12);
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
             AccommodationUnitFilter filter = new AccommodationUnitFilter()

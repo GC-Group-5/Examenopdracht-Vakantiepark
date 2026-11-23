@@ -52,6 +52,7 @@ namespace Vakantiepark.Application.Extensions
                 ArrivalTime = booking.ArrivalTime,
                 DepartureTime = booking.DepartureTime,
                 NumberOfGuests = booking.NumberOfGuests,
+                NumberOfChildrenUnder12 = booking.NumberOfChildrenUnder12,
                 NumberOfPets = booking.NumberOfPets,
                 WheelchairAccessible = booking.WheelchairAccessible,
                 AccommodationPrice = booking.AccommodationPrice,

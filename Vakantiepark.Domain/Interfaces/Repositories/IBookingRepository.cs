@@ -16,6 +16,6 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         // US-12: changing a booking. The booking itself is left out of the overlap check,
         // otherwise a guest who shifts his stay would block himself.
         Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId);
-        Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers);
+        Task<bool> TryUpdateAsync(Booking booking);
     }
 }

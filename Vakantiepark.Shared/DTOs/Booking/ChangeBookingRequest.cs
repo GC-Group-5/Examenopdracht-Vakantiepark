@@ -7,6 +7,7 @@
 
         public int NumberOfGuests { get; set; }
 
-        public List<TravellerRequest> CoTravellers { get; set; } = [];
+        // Fellow travellers are only counted, as when booking (US-38).
+        public int NumberOfChildrenUnder12 { get; set; }
     }
 }
