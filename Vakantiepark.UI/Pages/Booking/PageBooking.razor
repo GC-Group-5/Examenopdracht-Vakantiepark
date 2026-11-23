@@ -128,14 +128,16 @@
                                         <label class="form-check-label" for="booking-pets-checkbox">Ik neem huisdieren mee</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    @if (takesPets)
-                                    {
+                                @if (takesPets)
+                                {
+                                    <div class="col-12 col-md-6">
                                         <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
                                         <InputNumber id="booking-pets" class="form-control" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync" min="1" max="@((quote?.MaxPets ?? 1))" step="1" />
                                         <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
-                                    }
-                                </div>
+                                    </div>
+                                    @* Keeps Naam on a new row, so it never ends up next to the pet count. *@
+                                    <div class="w-100 d-none d-md-block"></div>
+                                }
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-name">Naam</label>
                                     <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
@@ -346,7 +348,7 @@
         CheckMainBookerAge();
         // A hand-edited URL with an impossible value falls back to the default.
         request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
-        request.NumberOfPets = Pets is >= 0 and <= MaxPets.MaxPetsInUrl ? Pets.Value : 0;
+        request.NumberOfPets = Pets is >= 0 and <= BookingRules.MaxPetsInUrl ? Pets.Value : 0;
         takesPets = request.NumberOfPets > 0;
         request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;

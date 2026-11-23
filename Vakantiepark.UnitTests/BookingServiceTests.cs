@@ -374,6 +374,23 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CreateAsync_WithPetCleaningFee_EmailShowsTheFeeAsAPriceRow()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+            _priceService
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(TestData.CreatePriceSpecification(price => price.PetCleaningFee = 25m));
+
+            await _sut.CreateAsync(TestData.CreateNewBookingRequest(request => request.NumberOfPets = 1));
+
+            _emailSender.Verify(x => x.SendAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(html => html.Contains("Schoonmaak huisdieren</td><td align=\"right\" style=\"padding:6px 0;\">€") && html.Contains("25,00") && !html.Contains("&lt;tr")),
+                It.Is<string>(text => text.Contains("Huisdierschoonmaak: €") && text.Contains("25,00"))), Times.Once);
+        }
+
+        [Fact]
         public async Task CreateAsync_NoPetsNoWheelchair_EmailSaysGeenAndNee()
         {
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());

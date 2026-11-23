@@ -453,12 +453,6 @@ namespace Vakantiepark.Application.Services
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
                     ["PetCleaningFee"] = booking.PetCleaningFee.ToString("C", dutch),
-                    ["PetCleaningFeeRow"] = booking.PetCleaningFee > 0m
-                        ? $"<tr><td style=\"padding:6px 0;\">Schoonmaakkosten huisdieren</td><td align=\"right\" style=\"padding:6px 0;\">{booking.PetCleaningFee.ToString("C", dutch)}</td></tr>"
-                        : string.Empty,
-                    ["PetCleaningFeeText"] = booking.PetCleaningFee > 0m
-                        ? $"Schoonmaakkosten huisdieren: {booking.PetCleaningFee.ToString("C", dutch)}"
-                        : string.Empty,
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
                     ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),

@@ -15,7 +15,7 @@ Rolstoeltoegankelijk: {{WheelchairAccessible}}
 PRIJSSPECIFICATIE
 Verblijf:           {{AccommodationPrice}}
 Eindschoonmaak:     {{CleaningFee}}
-Extra schoonmaakkosten: {{PetCleaningFeeText}}
+Huisdierschoonmaak: {{PetCleaningFee}}
 Toeristenbelasting: {{TouristTax}}
 Totaal:             {{TotalPrice}}
 Aanbetaling ({{DepositPercentage}}%): {{Deposit}}

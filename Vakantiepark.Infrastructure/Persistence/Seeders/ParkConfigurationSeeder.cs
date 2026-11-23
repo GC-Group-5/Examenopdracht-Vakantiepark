@@ -48,8 +48,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
         {
             DateTime now = DateTime.UtcNow;
 
-            ParkSettings? settings = await context.ParkSettings.FirstOrDefaultAsync(cancellationToken);
-            if (settings is null)
+            if (!await context.ParkSettings.AnyAsync(cancellationToken))
                 context.ParkSettings.Add(BuildParkSettings(now));
 
             if (!await context.TouristTaxRates.AnyAsync(cancellationToken))
