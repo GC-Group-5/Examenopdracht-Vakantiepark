@@ -39,26 +39,37 @@ namespace Vakantiepark.Application.Validations.Booking
             if (AgeOn(request.BirthDate.Value, request.ArrivalDate) < MinimumMainBookerAge)
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {MinimumMainBookerAge} jaar zijn.");
 
+            ValidateChildrenUnder12(request.NumberOfGuests, request.NumberOfChildrenUnder12);
             ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, today);
         }
 
-        // Everyone except the main booker, with name and birth date; also used when a guest changes his booking (US-12).
+        // Fellow travellers are optional; what is filled in must make sense. Also used when a guest changes his booking.
         public static void ValidateCoTravellers(int numberOfGuests, List<TravellerRequest> coTravellers, DateOnly today)
         {
-            if (coTravellers.Count != numberOfGuests - 1)
-                throw new ArgumentException($"Vul de naam en geboortedatum in van alle {numberOfGuests} personen.");
+            if (coTravellers.Count > numberOfGuests - 1)
+                throw new ArgumentException($"Met {numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")} zijn er hoogstens {numberOfGuests - 1} reisgenoten.");
 
             foreach (TravellerRequest traveller in coTravellers)
             {
-                if (string.IsNullOrWhiteSpace(traveller.Name))
-                    throw new ArgumentException("Vul de naam van iedere reisgenoot in.");
-
                 if (traveller.BirthDate is null)
-                    throw new ArgumentException($"Vul de geboortedatum van {traveller.Name.Trim()} in.");
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(traveller.Name))
+                    throw new ArgumentException("Vul bij een ingevulde geboortedatum ook de naam van de reisgenoot in.");
 
                 if (traveller.BirthDate.Value > today)
                     throw new ArgumentException($"De geboortedatum van {traveller.Name.Trim()} ligt in de toekomst.");
             }
+        }
+
+        // The main booker is 18 or older, so at most everyone else is under 12 (US-38).
+        public static void ValidateChildrenUnder12(int numberOfGuests, int numberOfChildrenUnder12)
+        {
+            if (numberOfChildrenUnder12 < 0)
+                throw new ArgumentException("Het aantal kinderen jonger dan 12 kan niet negatief zijn.");
+
+            if (numberOfChildrenUnder12 >= numberOfGuests)
+                throw new ArgumentException($"Met {numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")} zijn er hoogstens {numberOfGuests - 1} {(numberOfGuests - 1 == 1 ? "kind" : "kinderen")} jonger dan 12: de hoofdboeker is 18 jaar of ouder.");
         }
 
         // Age in whole years on a date; someone born on 29 February turns a year older on 1 March.

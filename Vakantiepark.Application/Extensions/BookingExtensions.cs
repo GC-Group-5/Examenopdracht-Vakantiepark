@@ -7,7 +7,7 @@ namespace Vakantiepark.Application.Extensions
 {
     public static class BookingExtensions
     {
-        // Everyone who stays becomes a BookingGuest, the main booker first.
+        // The main booker and every fellow traveller with a name become a BookingGuest.
         public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
             => new Booking()
             {
@@ -21,6 +21,7 @@ namespace Vakantiepark.Application.Extensions
                 ArrivalTime = settings.ArrivalTime,
                 DepartureTime = settings.DepartureTime,
                 NumberOfGuests = request.NumberOfGuests,
+                NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12,
                 NumberOfPets = request.NumberOfPets,
                 WheelchairAccessible = request.WheelchairAccessible,
                 AccommodationPrice = price.AccommodationPrice,
@@ -29,17 +30,19 @@ namespace Vakantiepark.Application.Extensions
                 TotalPrice = price.TotalPrice,
                 Deposit = price.Deposit,
                 AccommodationUnitId = accommodationUnitId,
-                Guests = new List<BookingGuest>()
-                    {
-                        new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true }
-                    }
-                    .Concat(request.CoTravellers.Select(traveller => new BookingGuest()
-                    {
-                        Name = traveller.Name.Trim(),
-                        BirthDate = traveller.BirthDate!.Value,
-                    }))
-                    .ToList(),
+                Guests =
+                [
+                    new BookingGuest() { Name = request.Name.Trim(), BirthDate = request.BirthDate!.Value, IsMainBooker = true },
+                    .. request.CoTravellers.ToGuests(),
+                ],
             };
+
+        // Only travellers with a name are saved; an empty row means "not known yet".
+        public static List<BookingGuest> ToGuests(this List<TravellerRequest> coTravellers)
+            => coTravellers
+                .Where(traveller => !string.IsNullOrWhiteSpace(traveller.Name))
+                .Select(traveller => new BookingGuest() { Name = traveller.Name!.Trim(), BirthDate = traveller.BirthDate })
+                .ToList();
 
         public static BookingResponse ToResponse(this Booking booking)
             => booking.ToResponse<BookingResponse>();
@@ -57,6 +60,7 @@ namespace Vakantiepark.Application.Extensions
                 ArrivalTime = booking.ArrivalTime,
                 DepartureTime = booking.DepartureTime,
                 NumberOfGuests = booking.NumberOfGuests,
+                NumberOfChildrenUnder12 = booking.NumberOfChildrenUnder12,
                 NumberOfPets = booking.NumberOfPets,
                 WheelchairAccessible = booking.WheelchairAccessible,
                 AccommodationPrice = booking.AccommodationPrice,

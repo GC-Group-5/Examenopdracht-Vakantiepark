@@ -28,6 +28,7 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] DateOnly departureDate,
             [FromQuery] int numberOfGuests,
             [FromQuery] string? preferredZone,
+            [FromQuery] int numberOfChildrenUnder12 = 0,
             [FromQuery] int numberOfPets = 0,
             [FromQuery] bool wheelchairAccessible = false)
         {
@@ -39,7 +40,7 @@ namespace Vakantiepark.API.Controllers
                     NumberOfPets = numberOfPets,
                     WheelchairAccessible = wheelchairAccessible,
                 };
-                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, filter, preferredZone);
+                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, filter, numberOfChildrenUnder12, preferredZone);
                 return Ok(ApiResponse<BookingQuoteResponse>.Ok(quote));
             }
             catch (ArgumentException exception)

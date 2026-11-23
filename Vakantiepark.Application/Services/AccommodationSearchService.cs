@@ -109,7 +109,8 @@ namespace Vakantiepark.Application.Services
                 if (freeUnits.Count == 0)
                     continue;
 
-                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests);
+                // The search does not ask for children under 12 yet, so everyone counts for the tourist tax.
+                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, 0);
 
                 results.Add(new AccommodationTypeAvailability
                 {
