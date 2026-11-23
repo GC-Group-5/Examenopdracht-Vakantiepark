@@ -316,6 +316,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("number_of_pets");
 
+                    b.Property<decimal>("PetCleaningFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("pet_cleaning_fee");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -582,6 +587,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<int>("NoRefundDaysBeforeArrival")
                         .HasColumnType("integer")
                         .HasColumnName("no_refund_days_before_arrival");
+
+                    b.Property<decimal>("PetCleaningFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("pet_cleaning_fee");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
