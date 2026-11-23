@@ -166,6 +166,19 @@
     [SupplyParameterFromQuery(Name = "type")]
     public string? TypeFromQuery { get; set; }
 
+    // The quick search on the homepage (US-42) sends these.
+    [SupplyParameterFromQuery(Name = "aankomst")]
+    public DateOnly? ArrivalFromQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "vertrek")]
+    public DateOnly? DepartureFromQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "personen")]
+    public int? GuestsFromQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "soort")]
+    public string? CategoryFromQuery { get; set; }
+
     private string SelectedZoneId = "";
     private int NumberOfGuests = 2;
     private int NumberOfPets = 0;
@@ -218,13 +231,30 @@
 
         allZones = zones.Succeeded && zones.Value is not null ? zones.Value : [];
 
+        ApplyQuerySearch();
         ApplyQueryType();
+
+        if (ArrivalFromQuery is not null && DepartureFromQuery is not null)
+            await SearchAsync();
     }
 
-    // Criterion: ?type=… in the URL preselects the accommodation type.
+    private void ApplyQuerySearch()
+    {
+        ArrivalDate = ArrivalFromQuery ?? ArrivalDate;
+        DepartureDate = DepartureFromQuery ?? DepartureDate;
+        NumberOfGuests = GuestsFromQuery ?? NumberOfGuests;
+        SelectedCategory = CategoryFromQuery?.ToLowerInvariant() switch
+        {
+            "vakantiewoningen" => "HolidayHome",
+            "kampeerplaatsen" => "CampingPitch",
+            _ => SelectedCategory,
+        };
+    }
+
+    // Criterion: ?type=… in the URL preselects the accommodation type, if it fits the chosen category.
     private void ApplyQueryType()
     {
-        if (!string.IsNullOrWhiteSpace(TypeFromQuery) && TypeOptions.Any(type => type.Slug == TypeFromQuery))
+        if (!string.IsNullOrWhiteSpace(TypeFromQuery) && VisibleTypeOptions.Any(type => type.Slug == TypeFromQuery))
             SelectedTypeSlug = TypeFromQuery;
     }
 
@@ -264,7 +294,9 @@
             ArrivalDate, DepartureDate, NumberOfGuests, NumberOfPets, WheelchairAccessible,
             zoneId, allZones.FirstOrDefault(zone => zone.Id == zoneId)?.Name);
 
+        // Also shows "Zoeken…" when the search starts from the URL, where no click re-renders the page.
         isSearching = true;
+        StateHasChanged();
         ApiResponse<AccommodationSearchResponse> response = await SearchService.SearchAsync(
             criteria.TypeSlug, criteria.Category, criteria.ArrivalDate, criteria.DepartureDate,
             criteria.NumberOfGuests, criteria.NumberOfPets, criteria.WheelchairAccessible, criteria.ZoneId);
