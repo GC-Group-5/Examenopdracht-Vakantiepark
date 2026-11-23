@@ -387,7 +387,7 @@ namespace Vakantiepark.UnitTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.Is<string>(html => html.Contains("Schoonmaak huisdieren</td><td align=\"right\" style=\"padding:6px 0;\">€") && html.Contains("25,00") && !html.Contains("&lt;tr")),
-                It.Is<string>(text => text.Contains("Huisdierschoonmaak: €") && text.Contains("25,00"))), Times.Once);
+                It.Is<string>(text => text.Contains("Extra schoonmaakkosten: €") && text.Contains("25,00"))), Times.Once);
         }
 
         [Fact]
