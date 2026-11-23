@@ -3,7 +3,7 @@
 
 <div class="dutch-date" @onkeydown="OnKeyDown">
     @* The icon sits inside the field, like a browser date input. *@
-    <div class="dutch-date-field">
+    <div class="dutch-date-field" @ref="field">
         <input @attributes="AdditionalAttributes" type="text" inputmode="numeric" placeholder="dd-mm-jjjj"
                class="@CssClass" value="@CurrentValueAsString" @onchange="OnTextChanged" />
         <button type="button" class="dutch-date-toggle" aria-label="Kalender openen" aria-expanded="@isOpen" disabled="@IsFieldDisabled" @onclick="ToggleCalendar">
@@ -19,7 +19,7 @@
         @* An invisible layer over the rest of the page: a click next to the calendar closes it. *@
         <div class="dutch-date-backdrop" @onclick="Close"></div>
 
-        <div class="dutch-date-calendar shadow-sm" role="dialog" aria-label="Kies een datum">
+        <div class="dutch-date-calendar shadow-sm" role="dialog" aria-label="Kies een datum" @ref="calendar">
             <div class="d-flex align-items-center gap-1 mb-2">
                 <button type="button" class="btn btn-sm btn-light" aria-label="Vorige maand" @onclick="() => ShowMonth(-1)">‹</button>
                 <select class="form-select form-select-sm" aria-label="Maand" @bind:get="shownMonth.Month" @bind:set="SetMonth">
