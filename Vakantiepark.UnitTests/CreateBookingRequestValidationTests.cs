@@ -33,6 +33,15 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public void ValidatePetCount_AboveAccommodationMaximum_ThrowsDutchMessage()
+        {
+            ArgumentException exception = Assert.Throws<ArgumentException>(
+                () => CreateBookingRequestValidation.ValidatePetCount(3, 2));
+
+            Assert.Equal("Dit verblijfstype staat maximaal 2 huisdieren toe.", exception.Message);
+        }
+
+        [Fact]
         public void Validate_MainBookerSeventeenOnArrival_ThrowsDutchMessage()
         {
             CreateBookingRequest request = Request(r => r.BirthDate = new DateOnly(2009, 4, 11));

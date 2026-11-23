@@ -7,6 +7,6 @@ namespace Vakantiepark.Application.Interfaces
     /// </summary>
     public interface IPriceService
     {
-        Task<PriceSpecificationResponse> CalculateAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfChildrenUnder12);
+        Task<PriceSpecificationResponse> CalculateAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfChildrenUnder12, int numberOfPets);
     }
 }

@@ -16,6 +16,7 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public bool WheelchairAccessible { get; set; }
         public decimal AccommodationPrice { get; set; }
         public decimal CleaningFee { get; set; }
+        public decimal PetCleaningFee { get; set; }
         public decimal TouristTax { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }

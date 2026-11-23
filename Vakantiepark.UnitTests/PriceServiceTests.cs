@@ -22,6 +22,7 @@ namespace Vakantiepark.UnitTests
         private const decimal NieuweBelasting = 3.00m;
         private const decimal StandaardPrijs = 90m;
         private const decimal AanbetalingsPercentage = 20m;
+        private const decimal HuisdierSchoonmaak = 25m;
 
         private readonly Mock<IAccommodationTypeRepository> _typeRepository = new();
         private readonly Mock<IRepository<Season>> _seasonRepository = new();
@@ -72,7 +73,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CalculateAsync_WithinOneSeason_UsesThatSeasonsRatePerNight()
         {
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
 
             Assert.Equal(7 * ZomerPrijs, price.AccommodationPrice);
             // 791 verblijf + 75 schoonmaak + 4 gasten × 7 nachten × 2.50 = 70 belasting.
@@ -80,9 +81,28 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CalculateAsync_WithPets_AddsConfiguredPetCleaningFeeOnce()
+        {
+            PriceSpecificationResponse price = await _sut.CalculateAsync(
+                "berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 2);
+
+            Assert.Equal(HuisdierSchoonmaak, price.PetCleaningFee);
+            Assert.Equal(936m + HuisdierSchoonmaak, price.TotalPrice);
+        }
+
+        [Fact]
+        public async Task CalculateAsync_WithoutPets_AddsNoPetCleaningFee()
+        {
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
+
+            Assert.Equal(0m, price.PetCleaningFee);
+            Assert.Equal(936m, price.TotalPrice);
+        }
+
+        [Fact]
         public async Task CalculateAsync_DepositIsPercentageOfTotal()
         {
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
 
             Assert.Equal(Math.Round(936m * AanbetalingsPercentage / 100m, 2), price.Deposit);
         }
@@ -96,7 +116,7 @@ namespace Vakantiepark.UnitTests
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([pinksteren2027]);
             _priceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([TypePrice(_typeId, pinksteren2027.Id, PinksterenPrijs)]);
 
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2027, 5, 20), new DateOnly(2027, 5, 24), 4, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2027, 5, 20), new DateOnly(2027, 5, 24), 4, 0, 0);
 
             Assert.Equal(2 * StandaardPrijs + 2 * PinksterenPrijs, price.AccommodationPrice);
         }
@@ -106,7 +126,7 @@ namespace Vakantiepark.UnitTests
         {
             // School-holiday seasons leave most of the year uncovered; those
             // nights must fall back to the type's default night price.
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2027, 4, 10), new DateOnly(2027, 4, 15), 2, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2027, 4, 10), new DateOnly(2027, 4, 15), 2, 0, 0);
 
             Assert.Equal(5 * StandaardPrijs, price.AccommodationPrice);
         }
@@ -116,7 +136,7 @@ namespace Vakantiepark.UnitTests
         {
             _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
 
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 13), 2, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 13), 2, 0, 0);
 
             Assert.Equal(3 * StandaardPrijs, price.AccommodationPrice);
         }
@@ -126,7 +146,7 @@ namespace Vakantiepark.UnitTests
         {
             _priceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
 
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0, 0);
 
             Assert.Equal(2 * StandaardPrijs, price.AccommodationPrice);
         }
@@ -134,7 +154,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CalculateAsync_AddsCleaningExactlyOnce_AndTaxPerPersonPerNight()
         {
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
 
             Assert.Equal(Schoonmaak, price.CleaningFee);
             Assert.Equal(4 * 7 * Belasting, price.TouristTax);
@@ -143,8 +163,8 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task CalculateAsync_TwoChildrenUnder12_TaxOnlyForPersonsAged12OrOlder()
         {
-            PriceSpecificationResponse withoutChildren = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0);
-            PriceSpecificationResponse withChildren = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 2);
+            PriceSpecificationResponse withoutChildren = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
+            PriceSpecificationResponse withChildren = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 2, 0);
 
             Assert.Equal(2 * 7 * Belasting, withChildren.TouristTax);
             Assert.Equal(withoutChildren.TotalPrice - 2 * 7 * Belasting, withChildren.TotalPrice);
@@ -154,7 +174,7 @@ namespace Vakantiepark.UnitTests
         public async Task CalculateAsync_AsManyChildrenAsPersons_ThrowsDutchMessage()
         {
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 2, 2));
+                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 2, 2, 0));
 
             Assert.Equal("Met 2 personen zijn er hoogstens 1 kind jonger dan 12: de hoofdboeker is 18 jaar of ouder.", exception.Message);
         }
@@ -169,7 +189,7 @@ namespace Vakantiepark.UnitTests
                 TaxRate(NieuweBelasting, new DateOnly(2026, 7, 1)),
             ]);
 
-            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 6, 29), new DateOnly(2026, 7, 6), 4, 0);
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 6, 29), new DateOnly(2026, 7, 6), 4, 0, 0);
 
             Assert.Equal(2 * 4 * Belasting + 5 * 4 * NieuweBelasting, price.TouristTax);
         }
@@ -178,7 +198,7 @@ namespace Vakantiepark.UnitTests
         public async Task CalculateAsync_DepartureNotAfterArrival_ThrowsDutchMessage()
         {
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 10), 2, 0));
+                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 10), 2, 0, 0));
 
             Assert.Contains("De vertrekdatum moet na de aankomstdatum liggen.", exception.Message);
         }
@@ -187,7 +207,7 @@ namespace Vakantiepark.UnitTests
         public async Task CalculateAsync_UnknownTypeSlug_ThrowsDutchMessage()
         {
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => _sut.CalculateAsync("bestaatniet", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0));
+                () => _sut.CalculateAsync("bestaatniet", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0, 0));
 
             Assert.Contains("Onbekende verblijfstype", exception.Message);
         }
@@ -198,7 +218,7 @@ namespace Vakantiepark.UnitTests
             _taxRateRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
 
             InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0));
+                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0, 0));
 
             Assert.Equal("Er is nog geen toeristenbelastingtarief ingesteld.", exception.Message);
         }
@@ -209,7 +229,7 @@ namespace Vakantiepark.UnitTests
             _parkSettingsRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
 
             InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0));
+                () => _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 12), 2, 0, 0));
 
             Assert.Equal("De parkinstellingen zijn niet ingesteld.", exception.Message);
         }
@@ -236,6 +256,7 @@ namespace Vakantiepark.UnitTests
             DepartureTime = new TimeOnly(10, 0),
             HighSeasonMinimumNights = 7,
             DepositPercentage = AanbetalingsPercentage,
+            PetCleaningFee = HuisdierSchoonmaak,
         };
     }
 }
