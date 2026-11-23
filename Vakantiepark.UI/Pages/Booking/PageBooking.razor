@@ -297,6 +297,8 @@
         request.AccommodationTypeSlug = AccommodationTypeSlug!;
         request.ArrivalDate = ArrivalDate!.Value;
         request.DepartureDate = DepartureDate!.Value;
+        // The age counts on the arrival date, so a new stay may change the outcome.
+        CheckMainBookerAge();
         // A hand-edited URL with an impossible value falls back to the default.
         request.NumberOfGuests = Guests is >= 1 and <= MaxGuests ? Guests.Value : DefaultGuests;
         request.NumberOfPets = Pets is >= 0 and <= MaxPets ? Pets.Value : 0;
