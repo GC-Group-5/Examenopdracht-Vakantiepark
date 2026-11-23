@@ -38,13 +38,12 @@
 }
 
 .dutch-date-calendar {
-    position: absolute;
+    /* Fixed, so a scrolling parent cannot cut it off; InputDutchDate.razor.js sets top and left
+       and makes it visible once it is in place. */
+    position: fixed;
     z-index: 1000;
-    top: calc(100% + .25rem);
-    left: 0;
-    /* As wide as the field: the search sidebar scrolls, so anything wider is cut off. */
-    width: 100%;
-    min-width: 15rem;
+    visibility: hidden;
+    width: 19rem;
     padding: .75rem;
     background: #fff;
     border: 1px solid var(--du-line);
