@@ -298,11 +298,19 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
+                    b.Property<int?>("FreeCancellationDaysBeforeArrival")
+                        .HasColumnType("integer")
+                        .HasColumnName("free_cancellation_days_before_arrival");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
+
+                    b.Property<int?>("NoRefundDaysBeforeArrival")
+                        .HasColumnType("integer")
+                        .HasColumnName("no_refund_days_before_arrival");
 
                     b.Property<int>("NumberOfChildrenUnder12")
                         .HasColumnType("integer")
@@ -716,7 +724,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_seasons_name");
+                        .HasDatabaseName("ix_seasons_name")
+                        .HasFilter("deleted_at IS NULL");
 
                     b.HasIndex("StartDate", "EndDate")
                         .HasDatabaseName("ix_seasons_start_date_end_date");

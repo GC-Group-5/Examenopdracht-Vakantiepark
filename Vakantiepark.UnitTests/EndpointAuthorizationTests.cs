@@ -60,5 +60,13 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal(Roles.Staff, attribute?.Roles);
         }
+
+        [Fact]
+        public void ParkSettings_OnlyForBeheerder()
+        {
+            AuthorizeAttribute? attribute = typeof(ParkSettingsController).GetCustomAttribute<AuthorizeAttribute>();
+
+            Assert.Equal(Roles.Beheerder, attribute?.Roles);
+        }
     }
 }
