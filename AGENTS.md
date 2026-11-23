@@ -19,18 +19,25 @@ share the same API and database:
 | **Beheeromgeving** | Medewerker, Beheerder | Reservations, daily arrivals/departures, occupancy, maintenance, park settings, pool capacity |
 | **PWA** | Guests (login with booking number + email) | Park information (partly offline), pool reservations |
 
-Business rules that apply everywhere (details are in the GitHub issues US-01 … US-30):
+Business rules that apply everywhere (details are in the GitHub issues US-01 … US-44):
 
 - 200 physical units in 12 types come from `accommodaties_dr_op_uut.json`. Availability is checked per
   **physical unit**: no overlapping active booking and not out of service for the whole period.
 - Arrival from 15:00, departure before 10:00, so a departure day and an arrival day may be the same.
 - Price = nightly price of the season each night falls in + final cleaning (once) + tourist tax
-  (persons × nights × rate). The server always recalculates; the price is stored on the booking.
+  (persons aged 12 or older on arrival × nights × rate) + a fixed pet cleaning fee when pets come along.
+  The server always recalculates; the price is stored on the booking, so later price changes never
+  change an existing booking.
+- Nothing is paid online: the website only calculates. Payment, the deposit (aanbetaling) and the
+  security deposit (borg, 250 euro, returned at checkout) are handled at reception. Pet cleaning fee
+  and borg are park settings.
 - High season has a minimum number of nights. Times, tax, minimum nights, seasons and prices are
   **settings in the database**, never constants in code.
 - A pool reservation always belongs to an active booking, falls within the stay, and never exceeds
   the slot's capacity, including under concurrent requests.
-- Collect as little personal data as possible (name, email, phone). A guest only ever sees their own data.
+- Collect as little personal data as possible: only the main booker's name, birth date (must be 18+),
+  email and phone. Fellow travellers are only counted (12+ and under 12); reception records them at
+  check-in. A guest only ever sees their own data.
 
 UI text, validation messages and exception messages shown to users are in **Dutch**. Code, comments,
 commit messages and these docs are in English.
@@ -69,7 +76,7 @@ Vakantiepark.slnx
 | Infrastructure | Domain                                |
 | API            | Application, Infrastructure (and transitively Shared) |
 | UI             | Shared only                           |
-| UnitTests      | Application, Infrastructure (only to run the seeders against the real export) |
+| UnitTests      | Application, Infrastructure (only to run the seeders against the real export), API (only for the authorization test) |
 | IntegrationTests | Infrastructure                      |
 | AppHost        | API, UI (orchestration only, no code from them is used) |
 

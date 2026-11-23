@@ -1,3 +1,4 @@
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Shared.DTOs.Booking;
 
 namespace Vakantiepark.Application.Validations.Booking
@@ -7,7 +8,7 @@ namespace Vakantiepark.Application.Validations.Booking
     public static class CreateBookingRequestValidation
     {
         public const string NotAvailableMessage = "Dit verblijf is helaas niet meer beschikbaar in de gekozen periode. Kies andere data of een ander verblijf.";
-        public const int MinimumMainBookerAge = 18;
+        public const int MinimumMainBookerAge = BookingRules.MinimumMainBookerAge;
 
         // Checks that do not need the database.
         public static void ValidateStay(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, DateOnly today)
