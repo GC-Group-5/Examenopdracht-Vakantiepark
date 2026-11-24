@@ -62,6 +62,7 @@ namespace Vakantiepark.API
                 // Seeddata first (units + types), then park settings, seasons and prices.
                 await context.SeedAccommodationsAsync();
                 await context.SeedParkConfigurationAsync();
+                await context.SeedParkFacilitiesAsync();
             }
 
             app.UseExceptionHandler("/error");

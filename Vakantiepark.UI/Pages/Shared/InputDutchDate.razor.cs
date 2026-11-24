@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using Vakantiepark.UI.Application.Helpers;
 
 namespace Vakantiepark.UI.Pages.Shared
@@ -28,9 +29,18 @@ namespace Vakantiepark.UI.Pages.Shared
         [Parameter] public DateOnly? RangeStart { get; set; }
         [Parameter] public DateOnly? RangeEnd { get; set; }
 
+        [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+
         private bool isOpen;
         private DateOnly shownMonth;
         private DateOnly? hoveredDate;
+
+        private ElementReference field;
+        private ElementReference calendar;
+        private IJSObjectReference? placementModule;
+
+        // The JS function to run after the next render: "follow" right after opening, "place" when the month changed.
+        private string? pendingPlacement;
 
         private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
@@ -53,21 +63,28 @@ namespace Vakantiepark.UI.Pages.Shared
         {
             isOpen = !isOpen;
             hoveredDate = null;
-            if (isOpen)
-                ShowMonthOf(CurrentDate ?? RangeStart ?? RangeEnd ?? MinDate ?? Today);
+            if (!isOpen)
+                return;
+
+            ShowMonthOf(CurrentDate ?? RangeStart ?? RangeEnd ?? MinDate ?? Today);
+            pendingPlacement = "follow";
         }
 
+        // A month can have one week row more or less, so the calendar is placed again.
         private void ShowMonthOf(DateOnly date)
-            => shownMonth = new DateOnly(Math.Clamp(date.Year, MinYear, MaxYear), date.Month, 1);
+        {
+            shownMonth = new DateOnly(Math.Clamp(date.Year, MinYear, MaxYear), date.Month, 1);
+            pendingPlacement ??= "place";
+        }
 
         private void ShowMonth(int months)
             => ShowMonthOf(shownMonth.AddMonths(months));
 
         private void SetMonth(int month)
-            => shownMonth = new DateOnly(shownMonth.Year, month, 1);
+            => ShowMonthOf(new DateOnly(shownMonth.Year, month, 1));
 
         private void SetYear(int year)
-            => shownMonth = new DateOnly(year, shownMonth.Month, 1);
+            => ShowMonthOf(new DateOnly(year, shownMonth.Month, 1));
 
         private bool IsDisabled(DateOnly date)
             => date < MinDate || date > MaxDate;
@@ -125,6 +142,19 @@ namespace Vakantiepark.UI.Pages.Shared
         {
             if (args.Key == "Escape")
                 Close();
+        }
+
+        // The calendar uses position: fixed, so a scrolling parent such as the search filters cannot cut it off.
+        // Its place next to the field can only be measured in the browser.
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (!isOpen || pendingPlacement is null)
+                return;
+
+            string function = pendingPlacement;
+            pendingPlacement = null;
+            placementModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./Pages/Shared/InputDutchDate.razor.js");
+            await placementModule.InvokeVoidAsync(function, field, calendar);
         }
 
         protected override string? FormatValueAsString(TValue? value)
