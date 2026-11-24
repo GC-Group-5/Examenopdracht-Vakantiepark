@@ -1,10 +1,11 @@
 @page "/beheer/instellingen"
+@page "/beheer/instellingen/{Tab}"
 @attribute [Authorize(Roles = Roles.Beheerder)]
 @using Vakantiepark.Shared.DTOs.Park
 @inject IParkSettingsService ParkSettingsService
 @inject IJSRuntime JSRuntime
 
-<PageTitle>Parkinstellingen | Vakantiepark D'r op Uut</PageTitle>
+<PageTitle>@ActiveTabTitle | Parkinstellingen | Vakantiepark D'r op Uut</PageTitle>
 
 <section class="page-head">
     <div class="container">
@@ -17,6 +18,16 @@
 
 <section class="section-pad">
     <div class="container">
+        <nav class="nav nav-tabs flex-nowrap overflow-x-auto mb-4" aria-label="Onderdelen van de parkinstellingen">
+            @foreach ((string slug, string title, string description) in Tabs)
+            {
+                <a class="nav-link text-nowrap @(slug == ActiveTab ? "active" : null)" href="@($"beheer/instellingen/{slug}")" aria-current="@(slug == ActiveTab ? "page" : null)">
+                    <span class="d-block">@title</span>
+                    <span class="small fw-normal d-none d-lg-block">@description</span>
+                </a>
+            }
+        </nav>
+
         @if (message is not null)
         {
             <div class="alert @(succeeded ? "alert-success" : "alert-danger") sticky-top d-flex justify-content-between align-items-center gap-3" role="status">
@@ -33,163 +44,290 @@
         {
             <div class="alert alert-danger" role="alert">@loadError</div>
         }
-        else
+        else if (ActiveTab == RulesTab)
         {
-            <div class="p-4 border rounded-4 bg-white mb-4">
-                <h2 class="section-title h4">Parkregels</h2>
-                <EditForm Model="settings!.Rules" OnValidSubmit="() => SaveAsync(() => ParkSettingsService.UpdateAsync(settings.Rules))">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="text-danger" />
-                    <div class="row g-3">
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="arrival-time">Aankomst vanaf</label>
-                            <InputDate id="arrival-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.ArrivalTime" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="departure-time">Vertrek voor</label>
-                            <InputDate id="departure-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.DepartureTime" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="minimum-nights">Minimum nachten hoogseizoen</label>
-                            <InputNumber id="minimum-nights" class="form-control" @bind-Value="settings.Rules.HighSeasonMinimumNights" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="deposit">Aanbetaling (%)</label>
-                            <InputNumber id="deposit" class="form-control" step="0.01" @bind-Value="settings.Rules.DepositPercentage" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="free-cancellation">Gratis annuleren tot (dagen voor aankomst)</label>
-                            <InputNumber id="free-cancellation" class="form-control" @bind-Value="settings.Rules.FreeCancellationDaysBeforeArrival" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="no-refund">Geen terugbetaling binnen (dagen voor aankomst)</label>
-                            <InputNumber id="no-refund" class="form-control" @bind-Value="settings.Rules.NoRefundDaysBeforeArrival" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="pet-fee">Schoonmaakkosten huisdieren (€)</label>
-                            <InputNumber id="pet-fee" class="form-control" step="0.01" @bind-Value="settings.Rules.PetCleaningFee" />
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-du mt-3" disabled="@isBusy">Parkregels opslaan</button>
-                </EditForm>
-            </div>
-
-            <div class="p-4 border rounded-4 bg-white mb-4">
-                <h2 class="section-title h4">Toeristenbelasting</h2>
-                <p class="small text-muted-du">Een nieuw tarief geldt vanaf de ingangsdatum. Eerdere nachten houden het oude tarief.</p>
-                <table class="table table-sm">
-                    <thead><tr><th>Ingangsdatum</th><th>Per persoon per nacht</th></tr></thead>
-                    <tbody>
-                        @foreach (AddTouristTaxRateRequest rate in settings.TouristTaxRates)
-                        {
-                            <tr><td>@rate.ValidFrom?.ToString("dd-MM-yyyy")</td><td>€ @rate.AmountPerPersonPerNight?.ToString("0.00")</td></tr>
-                        }
-                    </tbody>
-                </table>
-                <EditForm Model="newRate" OnValidSubmit="AddRateAsync">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="text-danger" />
-                    <div class="row g-3 align-items-end">
-                        <div class="col-sm-4">
-                            <label class="form-label" for="rate-from">Ingangsdatum</label>
-                            <InputDutchDate id="rate-from" class="form-control" @bind-Value="newRate.ValidFrom" />
-                        </div>
-                        <div class="col-sm-4">
-                            <label class="form-label" for="rate-amount">Bedrag (€)</label>
-                            <InputNumber id="rate-amount" class="form-control" step="0.01" @bind-Value="newRate.AmountPerPersonPerNight" />
-                        </div>
-                        <div class="col-sm-4">
-                            <button type="submit" class="btn btn-du w-100" disabled="@isBusy">Tarief toevoegen</button>
-                        </div>
-                    </div>
-                </EditForm>
-            </div>
-
-            <div class="p-4 border rounded-4 bg-white mb-4">
-                <h2 class="section-title h4">Seizoenen</h2>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle">
-                        <thead><tr><th>Naam</th><th>Van</th><th>Tot en met</th><th>Hoogseizoen</th><th></th></tr></thead>
-                        <tbody>
-                            @foreach (SeasonResponse existing in settings.Seasons)
-                            {
-                                <tr>
-                                    <td>@existing.Name</td>
-                                    <td>@existing.StartDate?.ToString("dd-MM-yyyy")</td>
-                                    <td>@existing.EndDate?.ToString("dd-MM-yyyy")</td>
-                                    <td>@(existing.IsHighSeason ? "Ja" : "Nee")</td>
-                                    <td class="text-end text-nowrap">
-                                        <button type="button" class="btn btn-du-light btn-sm" @onclick="() => EditSeason(existing)">Bewerken</button>
-                                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteSeasonAsync(existing)" disabled="@isBusy">Verwijderen</button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                <EditForm Model="season" OnValidSubmit="SaveSeasonAsync">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="text-danger" />
-                    <h3 class="h6">@(editingSeasonId is null ? "Seizoen toevoegen" : "Seizoen bewerken")</h3>
-                    <div class="row g-3 align-items-end">
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="season-name">Naam</label>
-                            <InputText id="season-name" class="form-control" @bind-Value="season.Name" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="season-start">Van</label>
-                            <InputDutchDate id="season-start" class="form-control" @bind-Value="season.StartDate" RangeEnd="@season.EndDate" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <label class="form-label" for="season-end">Tot en met</label>
-                            <InputDutchDate id="season-end" class="form-control" @bind-Value="season.EndDate" MinDate="@season.StartDate" RangeStart="@season.StartDate" />
-                        </div>
-                        <div class="col-sm-6 col-lg-3">
-                            <div class="form-check mb-2">
-                                <InputCheckbox id="season-high" class="form-check-input" @bind-Value="season.IsHighSeason" />
-                                <label class="form-check-label" for="season-high">Hoogseizoen</label>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-du mt-3" disabled="@isBusy">Seizoen opslaan</button>
-                    @if (editingSeasonId is not null)
-                    {
-                        <button type="button" class="btn btn-du-light mt-3" @onclick="ResetSeason">Annuleren</button>
-                    }
-                </EditForm>
-            </div>
-
-            <div class="p-4 border rounded-4 bg-white">
-                <h2 class="section-title h4">Prijzen per type</h2>
-                <p class="small text-muted-du">Prijzen per nacht. Een leeg seizoensveld betekent dat in dat seizoen de standaardprijs geldt.</p>
-                @foreach (TypePricesResponse type in settings.Types)
-                {
-                    <EditForm Model="type" OnValidSubmit="() => SaveAsync(() => ParkSettingsService.UpdateTypePricesAsync(type.Slug, type))" class="border-top pt-3 mt-3">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary class="text-danger" />
-                        <h3 class="h6">@type.Name</h3>
-                        <div class="row g-2 align-items-end">
-                            <div class="col-6 col-md-3 col-xl-2">
-                                <label class="form-label small" for="@($"{type.Slug}-default")">Standaardprijs (€)</label>
-                                <InputNumber id="@($"{type.Slug}-default")" class="form-control" step="0.01" @bind-Value="type.DefaultPricePerNight" />
-                            </div>
-                            <div class="col-6 col-md-3 col-xl-2">
-                                <label class="form-label small" for="@($"{type.Slug}-cleaning")">Eindschoonmaak (€)</label>
-                                <InputNumber id="@($"{type.Slug}-cleaning")" class="form-control" step="0.01" @bind-Value="type.CleaningFee" />
-                            </div>
-                            @foreach (SeasonPriceRequest seasonPrice in type.SeasonPrices)
-                            {
-                                <div class="col-6 col-md-3 col-xl-2">
-                                    <label class="form-label small" for="@($"{type.Slug}-{seasonPrice.SeasonId}")">@SeasonName(seasonPrice.SeasonId) (€)</label>
-                                    <InputNumber id="@($"{type.Slug}-{seasonPrice.SeasonId}")" class="form-control" step="0.01" @bind-Value="seasonPrice.PricePerNight" />
+            <EditForm Model="settings!.Rules" OnValidSubmit="() => SaveAsync(() => ParkSettingsService.UpdateAsync(settings.Rules))">
+                <DataAnnotationsValidator />
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <fieldset class="p-4 border rounded-4 bg-white h-100">
+                            <legend class="h5 float-none">Aankomst en vertrek</legend>
+                            <p class="small text-muted-du">Omdat gasten voor de vertrektijd weg zijn, mag een vertrekdag ook een aankomstdag zijn.</p>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="arrival-time">Aankomst vanaf</label>
+                                    <InputDate id="arrival-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.ArrivalTime" />
+                                    <ValidationMessage For="() => settings.Rules.ArrivalTime" />
                                 </div>
-                            }
-                            <div class="col-6 col-md-3 col-xl-2">
-                                <button type="submit" class="btn btn-du w-100" disabled="@isBusy">Opslaan</button>
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="departure-time">Vertrek voor</label>
+                                    <InputDate id="departure-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.DepartureTime" />
+                                    <ValidationMessage For="() => settings.Rules.DepartureTime" />
+                                </div>
                             </div>
+                        </fieldset>
+                    </div>
+                    <div class="col-lg-6">
+                        <fieldset class="p-4 border rounded-4 bg-white h-100">
+                            <legend class="h5 float-none">Verblijf en extra kosten</legend>
+                            <p class="small text-muted-du">Het minimum geldt voor boekingen met een nacht in een hoogseizoen.</p>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="minimum-nights">Minimum verblijf hoogseizoen</label>
+                                    <div class="input-group">
+                                        <InputNumber id="minimum-nights" class="form-control" @bind-Value="settings.Rules.HighSeasonMinimumNights" />
+                                        <span class="input-group-text">nachten</span>
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.HighSeasonMinimumNights" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="pet-fee">Schoonmaakkosten huisdieren</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <InputNumber id="pet-fee" class="form-control" step="0.01" @bind-Value="settings.Rules.PetCleaningFee" />
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.PetCleaningFee" />
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="col-12">
+                        <fieldset class="p-4 border rounded-4 bg-white">
+                            <legend class="h5 float-none">Betalen en annuleren</legend>
+                            <p class="small text-muted-du">De aanbetaling wordt bij de receptie voldaan. Tussen beide annuleringsgrenzen krijgt de gast een deel terug.</p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="deposit">Aanbetaling</label>
+                                    <div class="input-group">
+                                        <InputNumber id="deposit" class="form-control" step="0.01" @bind-Value="settings.Rules.DepositPercentage" />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.DepositPercentage" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="free-cancellation">Gratis annuleren tot</label>
+                                    <div class="input-group">
+                                        <InputNumber id="free-cancellation" class="form-control" @bind-Value="settings.Rules.FreeCancellationDaysBeforeArrival" />
+                                        <span class="input-group-text">dagen voor aankomst</span>
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.FreeCancellationDaysBeforeArrival" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="no-refund">Geen terugbetaling binnen</label>
+                                    <div class="input-group">
+                                        <InputNumber id="no-refund" class="form-control" @bind-Value="settings.Rules.NoRefundDaysBeforeArrival" />
+                                        <span class="input-group-text">dagen voor aankomst</span>
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.NoRefundDaysBeforeArrival" />
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-du mt-4" disabled="@isBusy">Parkregels opslaan</button>
+            </EditForm>
+        }
+        else if (ActiveTab == TaxTab)
+        {
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="p-4 border rounded-4 bg-white h-100">
+                        <h2 class="h5">Tarieven</h2>
+                        <p class="small text-muted-du">Een nieuw tarief geldt vanaf de ingangsdatum. Eerdere nachten houden het oude tarief.</p>
+                        @if (settings!.TouristTaxRates.Count == 0)
+                        {
+                            <p class="mb-0">Er is nog geen tarief ingesteld.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead><tr><th>Ingangsdatum</th><th>Per persoon (12+) per nacht</th><th></th></tr></thead>
+                                    <tbody>
+                                        @foreach (AddTouristTaxRateRequest rate in settings.TouristTaxRates.OrderByDescending(taxRate => taxRate.ValidFrom))
+                                        {
+                                            <tr>
+                                                <td>@rate.ValidFrom?.ToString("dd-MM-yyyy")</td>
+                                                <td>€ @rate.AmountPerPersonPerNight?.ToString("0.00")</td>
+                                                <td class="text-end"><span class="badge rounded-pill @RateStatusClass(rate)">@RateStatus(rate)</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="p-4 border rounded-4 bg-white h-100">
+                        <h2 class="h5">Nieuw tarief toevoegen</h2>
+                        <EditForm Model="newRate" OnValidSubmit="AddRateAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label" for="rate-from">Ingangsdatum</label>
+                                <InputDutchDate id="rate-from" class="form-control" @bind-Value="newRate.ValidFrom" />
+                                <ValidationMessage For="() => newRate.ValidFrom" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="rate-amount">Bedrag per persoon per nacht</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <InputNumber id="rate-amount" class="form-control" step="0.01" @bind-Value="newRate.AmountPerPersonPerNight" />
+                                </div>
+                                <ValidationMessage For="() => newRate.AmountPerPersonPerNight" />
+                            </div>
+                            <button type="submit" class="btn btn-du" disabled="@isBusy">Tarief toevoegen</button>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (ActiveTab == SeasonsTab)
+        {
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="p-4 border rounded-4 bg-white h-100">
+                        <h2 class="h5">Seizoenen</h2>
+                        <p class="small text-muted-du">Buiten een seizoen geldt de standaardprijs van een type.</p>
+                        @if (settings!.Seasons.Count == 0)
+                        {
+                            <p class="mb-0">Er zijn nog geen seizoenen.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead><tr><th>Naam</th><th>Periode</th><th class="visually-hidden">Acties</th></tr></thead>
+                                    <tbody>
+                                        @foreach (SeasonResponse existing in settings.Seasons.OrderBy(candidate => candidate.StartDate))
+                                        {
+                                            <tr class="@(existing.Id == editingSeasonId ? "table-active" : null)">
+                                                <td>
+                                                    @existing.Name
+                                                    @if (existing.IsHighSeason)
+                                                    {
+                                                        <span class="badge rounded-pill text-bg-warning ms-1">Hoogseizoen</span>
+                                                    }
+                                                </td>
+                                                <td class="text-nowrap">@existing.StartDate?.ToString("dd-MM-yyyy") t/m @existing.EndDate?.ToString("dd-MM-yyyy")</td>
+                                                <td class="text-end text-nowrap">
+                                                    <button type="button" class="btn btn-du-light btn-sm" @onclick="() => EditSeason(existing)">Bewerken</button>
+                                                    <button type="button" class="btn btn-du-danger btn-sm" @onclick="() => DeleteSeasonAsync(existing)" disabled="@isBusy">Verwijderen</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="p-4 border rounded-4 bg-white h-100 @(editingSeasonId is null ? null : "border-success")">
+                        <h2 class="h5">@(editingSeasonId is null ? "Seizoen toevoegen" : "Seizoen bewerken")</h2>
+                        <EditForm Model="season" OnValidSubmit="SaveSeasonAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label" for="season-name">Naam</label>
+                                <InputText id="season-name" class="form-control" @bind-Value="season.Name" />
+                                <ValidationMessage For="() => season.Name" />
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="season-start">Van</label>
+                                    <InputDutchDate id="season-start" class="form-control" @bind-Value="season.StartDate" RangeEnd="@season.EndDate" />
+                                    <ValidationMessage For="() => season.StartDate" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="season-end">Tot en met</label>
+                                    <InputDutchDate id="season-end" class="form-control" @bind-Value="season.EndDate" MinDate="@season.StartDate" RangeStart="@season.StartDate" />
+                                    <ValidationMessage For="() => season.EndDate" />
+                                </div>
+                            </div>
+                            <div class="form-check mb-3">
+                                <InputCheckbox id="season-high" class="form-check-input" @bind-Value="season.IsHighSeason" />
+                                <label class="form-check-label" for="season-high">Hoogseizoen (minimum verblijf geldt)</label>
+                            </div>
+                            <button type="submit" class="btn btn-du" disabled="@isBusy">Seizoen opslaan</button>
+                            @if (editingSeasonId is not null)
+                            {
+                                <button type="button" class="btn btn-du-light ms-2" @onclick="ResetSeason">Annuleren</button>
+                            }
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (ActiveTab == PricesTab)
+        {
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="p-4 border rounded-4 bg-white">
+                        <h2 class="h5" id="type-list-title">Accommodatietypes</h2>
+                        <div class="d-grid gap-2" role="group" aria-labelledby="type-list-title">
+                            @foreach (TypePricesResponse type in settings!.Types)
+                            {
+                                <button type="button" class="btn @(type.Slug == SelectedType?.Slug ? "btn-du" : "btn-du-light") btn-sm d-flex justify-content-between align-items-center gap-2 text-start"
+                                        aria-pressed="@(type.Slug == SelectedType?.Slug ? "true" : "false")" @onclick="() => selectedTypeSlug = type.Slug">
+                                    <span>@type.Name</span>
+                                    <span class="small text-nowrap">€ @type.DefaultPricePerNight?.ToString("0.00")</span>
+                                </button>
+                            }
                         </div>
-                    </EditForm>
-                }
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    @if (SelectedType is TypePricesResponse selected)
+                    {
+                        <div class="p-4 border rounded-4 bg-white">
+                            <EditForm Model="selected" OnValidSubmit="() => SaveAsync(() => ParkSettingsService.UpdateTypePricesAsync(selected.Slug, selected))">
+                                <DataAnnotationsValidator />
+                                <h2 class="h5">@selected.Name</h2>
+                                <p class="small text-muted-du">Prijzen per nacht. Een leeg seizoensveld betekent dat in dat seizoen de standaardprijs geldt.</p>
+
+                                <h3 class="h6 mt-4">Basisprijzen</h3>
+                                <div class="row g-3">
+                                    <div class="col-sm-6">
+                                        <label class="form-label" for="@($"{selected.Slug}-default")">Standaardprijs per nacht</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">€</span>
+                                            <InputNumber id="@($"{selected.Slug}-default")" class="form-control" step="0.01" @bind-Value="selected.DefaultPricePerNight" />
+                                        </div>
+                                        <ValidationMessage For="() => selected.DefaultPricePerNight" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label" for="@($"{selected.Slug}-cleaning")">Eindschoonmaak (eenmalig)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">€</span>
+                                            <InputNumber id="@($"{selected.Slug}-cleaning")" class="form-control" step="0.01" @bind-Value="selected.CleaningFee" />
+                                        </div>
+                                        <ValidationMessage For="() => selected.CleaningFee" />
+                                    </div>
+                                </div>
+
+                                @if (selected.SeasonPrices.Count > 0)
+                                {
+                                    <h3 class="h6 mt-4">Seizoensprijzen per nacht</h3>
+                                    <div class="row g-3">
+                                        @foreach (SeasonPriceRequest seasonPrice in selected.SeasonPrices)
+                                        {
+                                            <div class="col-sm-6 col-xl-4">
+                                                <label class="form-label" for="@($"{selected.Slug}-{seasonPrice.SeasonId}")">@SeasonName(seasonPrice.SeasonId)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <InputNumber id="@($"{selected.Slug}-{seasonPrice.SeasonId}")" class="form-control" step="0.01" placeholder="@($"Standaard {selected.DefaultPricePerNight:0.00}")" @bind-Value="seasonPrice.PricePerNight" />
+                                                </div>
+                                                <ValidationMessage For="() => seasonPrice.PricePerNight" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <button type="submit" class="btn btn-du mt-4" disabled="@isBusy">Prijzen @selected.Name opslaan</button>
+                            </EditForm>
+                        </div>
+                    }
+                </div>
             </div>
         }
     </div>
@@ -197,17 +335,49 @@
 
 @code {
     private const string LoadFailedMessage = "De instellingen konden niet worden opgehaald. Probeer het opnieuw.";
+    private const string RulesTab = "parkregels";
+    private const string TaxTab = "toeristenbelasting";
+    private const string SeasonsTab = "seizoenen";
+    private const string PricesTab = "prijzen";
+
+    private static readonly (string Slug, string Title, string Description)[] Tabs =
+    [
+        (RulesTab, "Parkregels", "Tijden, verblijf en annuleren"),
+        (TaxTab, "Toeristenbelasting", "Tarief per persoon per nacht"),
+        (SeasonsTab, "Seizoenen", "Periodes en hoogseizoen"),
+        (PricesTab, "Prijzen per type", "Nacht- en schoonmaakprijzen"),
+    ];
+
+    [Parameter] public string? Tab { get; set; }
 
     private ParkSettingsResponse? settings;
     private string? loadError;
     private AddTouristTaxRateRequest newRate = new();
     private SaveSeasonRequest season = new();
     private Guid? editingSeasonId;
+    private string? selectedTypeSlug;
     private string? message;
     private bool succeeded;
     private bool isBusy;
 
+    // An unknown tab in the URL falls back to the first tab instead of showing an empty page.
+    private string ActiveTab => Tabs.Any(tab => tab.Slug == Tab) ? Tab! : RulesTab;
+
+    private string ActiveTabTitle => Tabs.First(tab => tab.Slug == ActiveTab).Title;
+
+    private TypePricesResponse? SelectedType => settings?.Types.FirstOrDefault(type => type.Slug == selectedTypeSlug) ?? settings?.Types.FirstOrDefault();
+
+    // The newest rate that has started; later rates are planned, older ones no longer apply to new nights.
+    private AddTouristTaxRateRequest? CurrentRate => settings?.TouristTaxRates
+        .Where(rate => rate.ValidFrom <= Today)
+        .MaxBy(rate => rate.ValidFrom);
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    // Switching tabs keeps typed values (same component), but the last message belongs to the old tab.
+    protected override void OnParametersSet() => message = null;
 
     private async Task AddRateAsync()
     {
@@ -242,7 +412,8 @@
         if (!await JSRuntime.InvokeAsync<bool>("confirm", $"Seizoen '{existing.Name}' verwijderen? In deze periode geldt daarna de standaardprijs."))
             return;
 
-        await SaveAsync(() => ParkSettingsService.DeleteSeasonAsync(existing.Id), reload: true);
+        if (await SaveAsync(() => ParkSettingsService.DeleteSeasonAsync(existing.Id), reload: true) && existing.Id == editingSeasonId)
+            ResetSeason();
     }
 
     private async Task LoadAsync()
@@ -265,6 +436,22 @@
             await LoadAsync();
 
         return response.Succeeded;
+    }
+
+    private string RateStatus(AddTouristTaxRateRequest rate)
+    {
+        if (rate == CurrentRate)
+            return "Geldt nu";
+
+        return rate.ValidFrom > Today ? "Gepland" : "Verlopen";
+    }
+
+    private string RateStatusClass(AddTouristTaxRateRequest rate)
+    {
+        if (rate == CurrentRate)
+            return "text-bg-success";
+
+        return rate.ValidFrom > Today ? "text-bg-light border" : "text-bg-light text-muted-du fw-normal";
     }
 
     private string SeasonName(Guid seasonId) => settings!.Seasons.First(existing => existing.Id == seasonId).Name;
