@@ -1,4 +1,4 @@
-1@page "/beheer/reserveringen/{Id:guid}"
+@page "/beheer/reserveringen/{Id:guid}"
 @attribute [Authorize(Roles = Roles.Staff)]
 @using Vakantiepark.Shared.DTOs.Booking
 @using Vakantiepark.Shared.DTOs.Reservations
@@ -97,9 +97,8 @@
                                     <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@reservation.PetCleaningFee.ToString("C")</td></tr>
                                 }
                                 <tr><td>Toeristenbelasting</td><td class="text-end">@reservation.TouristTax.ToString("C")</td></tr>
-                                <tr><td>Borg (krijg je terug bj vertrek)</td><td class="text-end">@reservation.SecurityDeposit.ToString("C")</td></tr>
-
                                 <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@reservation.TotalPrice.ToString("C")</td></tr>
+                                <tr><td>Borg (retour bij vertrek)<div class="small text-muted-du">Innen bij aankomst, terugbetalen bij vertrek</div></td><td class="text-end">@reservation.SecurityDeposit.ToString("C")</td></tr>
                                 <tr><td>Aanbetaling</td><td class="text-end">@reservation.Deposit.ToString("C")</td></tr>
                                 @if (reservation.CancellationFee is not null)
                                 {
