@@ -23,5 +23,8 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         // US-13: one page of the reservations overview. Cancelled bookings are included;
         // today decides which bookings count as completed.
         Task<PagedResult<Booking>> SearchAsync(BookingSearchFilter filter, DateOnly today, int page, int pageSize);
+
+        // US-15: the bookings that arrive or depart on this day, with unit, type and zone. Cancelled ones are left out.
+        Task<List<Booking>> GetArrivingOrDepartingOnAsync(DateOnly date);
     }
 }
