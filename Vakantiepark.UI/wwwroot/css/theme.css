@@ -702,3 +702,53 @@ a {
 .form-control.invalid, .form-select.invalid {
     border-color: var(--du-danger);
 }
+
+/* Lists in the beheeromgeving (US-13): a calm header, room at the edges and a whole row that is clickable. */
+.admin-table {
+    --bs-table-hover-bg: #f3f7f1;
+}
+
+.admin-table th {
+    background: #f6f8f4;
+    color: var(--du-muted);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: .9rem 1rem;
+}
+
+.admin-table th:first-child,
+.admin-table td:first-child {
+    padding-left: 1.5rem;
+}
+
+.admin-table th:last-child,
+.admin-table td:last-child {
+    padding-right: 1.5rem;
+}
+
+.admin-table tbody tr {
+    position: relative;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-link {
+    color: var(--du-green);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-link:hover,
+.admin-link:focus-visible {
+    color: var(--du-green-bright);
+    text-decoration: underline;
+}

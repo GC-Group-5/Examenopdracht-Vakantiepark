@@ -336,15 +336,7 @@ namespace Vakantiepark.Application.Services
         }
 
         private string GetStatus(Booking booking)
-        {
-            if (booking.DeletedAt is not null)
-                return BookingStatuses.Geannuleerd;
-
-            if (booking.DepartureDate < Today())
-                return BookingStatuses.Afgerond;
-
-            return BookingStatuses.Bevestigd;
-        }
+            => BookingStatus.Get(booking, Today());
 
 
         // Free units of the type that fit the party (the same filter as the search), in the

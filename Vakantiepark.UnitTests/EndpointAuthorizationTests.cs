@@ -62,11 +62,11 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public void ParkSettings_OnlyForBeheerder()
+        public void Reservations_OnlyForStaff()
         {
-            AuthorizeAttribute? attribute = typeof(ParkSettingsController).GetCustomAttribute<AuthorizeAttribute>();
+            AuthorizeAttribute? attribute = typeof(ReservationsController).GetCustomAttribute<AuthorizeAttribute>();
 
-            Assert.Equal(Roles.Beheerder, attribute?.Roles);
+            Assert.Equal(Roles.Staff, attribute?.Roles);
         }
     }
 }
