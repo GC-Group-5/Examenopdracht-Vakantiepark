@@ -10,7 +10,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
         {
             builder.Property(settings => settings.DepositPercentage).HasPrecision(5, 2);
             builder.Property(settings => settings.PetCleaningFee).HasPrecision(18, 2);
-            builder.Property(settings => settings.SecurityDeposit).HasPrecision(18, 2).HasDefaultValue(250m);
+            builder.Property(settings => settings.SecurityDeposit).HasPrecision(18, 2);
         }
     }
 }

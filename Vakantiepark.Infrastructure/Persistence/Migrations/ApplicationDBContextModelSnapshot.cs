@@ -328,10 +328,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnName("phone_number");
 
                     b.Property<decimal>("SecurityDeposit")
-                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(250m)
                         .HasColumnName("security_deposit");
 
                     b.Property<decimal>("TotalPrice")
@@ -672,10 +670,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnName("pet_cleaning_fee");
 
                     b.Property<decimal>("SecurityDeposit")
-                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(250m)
                         .HasColumnName("security_deposit");
 
                     b.Property<DateTime?>("UpdatedAt")
