@@ -65,13 +65,13 @@ namespace Vakantiepark.UnitTests
         public async Task GetMineByToken_PricesRaisedAfterBooking_ShowsTheStoredPrice()
         {
             _priceService
-                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()))
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification(price => price.TotalPrice = 999m));
 
             MyBookingResponse response = await _sut.GetMineByTokenAsync(Token);
 
             Assert.Equal(600m, response.TotalPrice);
-            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]
