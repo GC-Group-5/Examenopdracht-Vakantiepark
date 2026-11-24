@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Shared.Constants;
 using Vakantiepark.Shared.DTOs;
@@ -36,6 +37,14 @@ namespace Vakantiepark.API.Controllers
             {
                 return BadRequest(ApiResponse<PagedResponse<ReservationListItemResponse>>.Fail(exception.Message));
             }
+        }
+
+        // US-15: who arrives and departs on this day.
+        [HttpGet("Day")]
+        public async Task<IActionResult> GetDayOverviewAsync([FromQuery, BindRequired] DateOnly date)
+        {
+            DayOverviewResponse overview = await ReservationService.GetDayOverviewAsync(date);
+            return Ok(ApiResponse<DayOverviewResponse>.Ok(overview));
         }
 
         [HttpGet("{id:guid}")]

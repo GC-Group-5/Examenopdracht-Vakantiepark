@@ -156,6 +156,70 @@ namespace Vakantiepark.UnitTests
             Assert.Equal("Gast ziek", detail.Changes[0].Reason);
         }
 
+        public async Task GetDayOverview_SplitsArrivalsAndDeparturesOfTheDay()
+        {
+            Booking arriving = CreateBooking(Today, Today.AddDays(4));
+            Booking departing = CreateBooking(Today.AddDays(-3), Today);
+            ReturnForDay(Today, arriving, departing);
+
+            DayOverviewResponse overview = await _sut.GetDayOverviewAsync(Today);
+
+            Assert.Equal(Today, overview.Date);
+            Assert.Equal(arriving.Id, Assert.Single(overview.Arrivals).Id);
+            Assert.Equal(departing.Id, Assert.Single(overview.Departures).Id);
+        }
+
+        [Fact]
+        public async Task GetDayOverview_StayThatOnlyCoversTheDay_IsInNeitherList()
+        {
+            Booking staying = CreateBooking(Today.AddDays(-1), Today.AddDays(1));
+            ReturnForDay(Today, staying);
+
+            DayOverviewResponse overview = await _sut.GetDayOverviewAsync(Today);
+
+            Assert.Empty(overview.Arrivals);
+            Assert.Empty(overview.Departures);
+        }
+
+        [Fact]
+        public async Task GetDayOverview_SortsByZoneThenUnit()
+        {
+            Booking bosrandB = CreateBooking(Today, Today.AddDays(2), unit: TestData.CreateAccommodation("B-02", "Bosrand"));
+            Booking waterkant = CreateBooking(Today, Today.AddDays(2), unit: TestData.CreateAccommodation("A-01", "Waterkant"));
+            Booking bosrandA = CreateBooking(Today, Today.AddDays(2), unit: TestData.CreateAccommodation("B-01", "Bosrand"));
+            ReturnForDay(Today, waterkant, bosrandB, bosrandA);
+
+            DayOverviewResponse overview = await _sut.GetDayOverviewAsync(Today);
+
+            Assert.Equal(new List<string>() { "B-01", "B-02", "A-01" }, overview.Arrivals.Select(item => item.UnitCode).ToList());
+        }
+
+        [Fact]
+        public async Task GetDayOverview_ShowsNameUnitZoneGuestsPetsAndBookingNumber()
+        {
+            Booking booking = CreateBooking(Today, Today.AddDays(3), booking =>
+            {
+                booking.NumberOfGuests = 3;
+                booking.NumberOfPets = 1;
+            });
+            ReturnForDay(Today, booking);
+
+            DayOverviewItemResponse arrival = Assert.Single((await _sut.GetDayOverviewAsync(Today)).Arrivals);
+
+            Assert.Equal("Jan Jansen", arrival.Name);
+            Assert.Equal("BRK4-001", arrival.UnitCode);
+            Assert.Equal("Waterkant", arrival.Zone);
+            Assert.Equal("Berk 4", arrival.AccommodationTypeName);
+            Assert.Equal(3, arrival.NumberOfGuests);
+            Assert.Equal(1, arrival.NumberOfPets);
+            Assert.Equal("DOU-7KQ3M9XP", arrival.BookingNumber);
+        }
+
+        private void ReturnForDay(DateOnly date, params Booking[] bookings)
+            => _bookingRepository
+                .Setup(x => x.GetArrivingOrDepartingOnAsync(date))
+                .ReturnsAsync(bookings.ToList());
+
         private void ReturnFromSearch(List<Booking> bookings, int totalCount)
             => _bookingRepository
                 .Setup(x => x.SearchAsync(It.IsAny<BookingSearchFilter>(), Today, It.IsAny<int>(), It.IsAny<int>()))
@@ -167,13 +231,13 @@ namespace Vakantiepark.UnitTests
                 })
                 .ReturnsAsync(new PagedResult<Booking>() { Items = bookings, TotalCount = totalCount });
 
-        private static Booking CreateBooking(DateOnly arrival, DateOnly departure, Action<Booking>? configure = null)
+        private static Booking CreateBooking(DateOnly arrival, DateOnly departure, Action<Booking>? configure = null, Accommodation? unit = null)
             => TestData.CreateBooking(Today, booking =>
             {
                 booking.ArrivalDate = arrival;
                 booking.DepartureDate = departure;
-                booking.AccommodationUnit = TestData.CreateAccommodation("BRK4-001", configure: unit =>
-                    unit.Type = TestData.CreateAccommodationType(type => type.Name = "Berk 4"));
+                booking.AccommodationUnit = unit ?? TestData.CreateAccommodation("BRK4-001");
+                booking.AccommodationUnit.Type = TestData.CreateAccommodationType(type => type.Name = "Berk 4");
                 configure?.Invoke(booking);
             });
     }

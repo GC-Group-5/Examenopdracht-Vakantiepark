@@ -157,6 +157,14 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .ToPagedResultAsync(page, pageSize);
         }
 
+        public async Task<List<Booking>> GetArrivingOrDepartingOnAsync(DateOnly date)
+            => await Set
+                .AsNoTracking()
+                .Where(x => x.DeletedAt == null && (x.ArrivalDate == date || x.DepartureDate == date))
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone)
+                .ToListAsync();
+
         // % and _ typed by a staff member are searched literally, not as wildcards.
         private static string EscapeLikePattern(string text)
             => text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");

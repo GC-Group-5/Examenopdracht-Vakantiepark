@@ -171,7 +171,7 @@ a {
     left: 12%;
     top: 52px;
     z-index: 3;
-    width: 300px;
+    width: 340px;
     background: #fff;
     border-radius: 1.5rem;
     padding: 1.25rem;
@@ -179,7 +179,7 @@ a {
     border-top: 5px solid var(--du-aqua);
 }
 
-.booking-peek .fake-input, .booking-card .fake-input {
+.booking-card .fake-input {
     background: var(--du-cream);
     border: 1px solid transparent;
     border-radius: 1rem;
@@ -540,8 +540,11 @@ a {
         height: 180px;
     }
 
+    /* On a phone the quick search sits under the photos instead of on top of them. */
     .booking-peek {
-        display: none;
+        position: static;
+        width: auto;
+        margin-top: 1.5rem;
     }
 
     .detail-photo {
@@ -656,15 +659,6 @@ a {
 
 .navbar-toggler:focus {
     box-shadow: 0 0 0 .2rem rgba(73,168,170,.35);
-}
-
-.booking-peek a.fake-input {
-    display: block;
-    text-decoration: none;
-}
-
-.booking-peek a.fake-input:hover {
-    border-color: var(--du-green);
 }
 
 .footer-main a:hover {
