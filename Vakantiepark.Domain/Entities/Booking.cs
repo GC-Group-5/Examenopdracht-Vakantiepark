@@ -46,5 +46,6 @@ namespace Vakantiepark.Domain.Entities
         // Navigation Properties
         public Accommodation AccommodationUnit { get; set; } = null!;
         public List<BookingGuest> Guests { get; set; } = [];
+        public List<BookingChange> Changes { get; set; } = [];
     }
 }

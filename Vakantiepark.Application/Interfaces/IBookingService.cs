@@ -1,5 +1,6 @@
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Shared.DTOs.Booking;
+using Vakantiepark.Shared.DTOs.Reservations;
 
 namespace Vakantiepark.Application.Interfaces
 {
@@ -12,11 +13,15 @@ namespace Vakantiepark.Application.Interfaces
         Task<MyBookingResponse> GetMineByTokenAsync(string token);
         Task<MyBookingResponse> GetMineAsync(Guid bookingId);
 
-        // US-12: cancel or change the guest's own booking. guestBookingId comes from the guest login
-        // token; without it the request must carry the code from the email link.
+
         Task<CancellationQuoteResponse> GetCancellationQuoteAsync(BookingAccessRequest access, Guid? guestBookingId);
         Task<MyBookingResponse> CancelAsync(BookingAccessRequest access, Guid? guestBookingId);
         Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId);
         Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request, Guid? guestBookingId);
+
+        Task ChangeByStaffAsync(Guid bookingId, StaffChangeBookingRequest request, Guid staffUserId);
+
+        Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId);
+        Task CancelByStaffAsync(Guid bookingId, StaffCancelBookingRequest request, Guid staffUserId);
     }
 }

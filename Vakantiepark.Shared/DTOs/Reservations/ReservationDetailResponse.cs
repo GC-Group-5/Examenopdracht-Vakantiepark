@@ -8,5 +8,8 @@ namespace Vakantiepark.Shared.DTOs.Reservations
         public Guid Id { get; set; }
         public string UnitCode { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+
+        // Newest first (US-14).
+        public List<BookingChangeResponse> Changes { get; set; } = [];
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Accommodation;
+using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.UI.Application.Extensions;
 using Vakantiepark.UI.Application.Interfaces;
@@ -39,5 +40,17 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<List<AccommodationTypeResponse>>> GetTypesAsync()
             => await HttpService.GetAsync<List<AccommodationTypeResponse>>("/AccommodationType");
+
+        public async Task<ApiResponse<List<AccommodationResponse>>> GetUnitsAsync()
+            => await HttpService.GetAsync<List<AccommodationResponse>>("/Accommodation");
+
+        public async Task<ApiResponse<ReservationDetailResponse>> ChangeAsync(Guid id, StaffChangeBookingRequest request)
+            => await HttpService.PutAsync<ReservationDetailResponse, StaffChangeBookingRequest>($"/Reservations/{id}", request);
+
+        public async Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(Guid id)
+            => await HttpService.GetAsync<CancellationQuoteResponse>($"/Reservations/{id}/cancel/quote");
+
+        public async Task<ApiResponse<ReservationDetailResponse>> CancelAsync(Guid id, StaffCancelBookingRequest request)
+            => await HttpService.PostAsync<ReservationDetailResponse, StaffCancelBookingRequest>($"/Reservations/{id}/cancel", request);
     }
 }
