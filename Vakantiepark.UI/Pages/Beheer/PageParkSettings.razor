@@ -4,6 +4,7 @@
 @using Vakantiepark.Shared.DTOs.Park
 @inject IParkSettingsService ParkSettingsService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 
 <PageTitle>@ActiveTabTitle | Parkinstellingen | Vakantiepark D'r op Uut</PageTitle>
 
@@ -18,10 +19,10 @@
 
 <section class="section-pad">
     <div class="container">
-        <nav class="nav nav-tabs flex-nowrap overflow-x-auto mb-4" aria-label="Onderdelen van de parkinstellingen">
+        <nav class="nav nav-tabs nav-fill flex-wrap mb-4" aria-label="Onderdelen van de parkinstellingen">
             @foreach ((string slug, string title, string description) in Tabs)
             {
-                <a class="nav-link text-nowrap @(slug == ActiveTab ? "active" : null)" href="@($"beheer/instellingen/{slug}")" aria-current="@(slug == ActiveTab ? "page" : null)">
+                <a class="nav-link @(slug == ActiveTab ? "active" : null)" href="@($"beheer/instellingen/{slug}")" aria-current="@(slug == ActiveTab ? "page" : null)" @onclick="() => NavigateToTabAsync(slug)" @onclick:preventDefault="true">
                     <span class="d-block">@title</span>
                     <span class="small fw-normal d-none d-lg-block">@description</span>
                 </a>
@@ -359,6 +360,8 @@
     private string? message;
     private bool succeeded;
     private bool isBusy;
+    private double tabScrollPosition;
+    private bool restoreTabScrollPosition;
 
     // An unknown tab in the URL falls back to the first tab instead of showing an empty page.
     private string ActiveTab => Tabs.Any(tab => tab.Slug == Tab) ? Tab! : RulesTab;
@@ -378,6 +381,22 @@
 
     // Switching tabs keeps typed values (same component), but the last message belongs to the old tab.
     protected override void OnParametersSet() => message = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!restoreTabScrollPosition)
+            return;
+
+        restoreTabScrollPosition = false;
+        await JSRuntime.InvokeVoidAsync("setScrollPosition", tabScrollPosition);
+    }
+
+    private async Task NavigateToTabAsync(string slug)
+    {
+        tabScrollPosition = await JSRuntime.InvokeAsync<double>("getScrollPosition");
+        restoreTabScrollPosition = true;
+        NavigationManager.NavigateTo($"beheer/instellingen/{slug}");
+    }
 
     private async Task AddRateAsync()
     {
