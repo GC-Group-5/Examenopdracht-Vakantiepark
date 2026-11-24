@@ -118,6 +118,7 @@ namespace Vakantiepark.Application.Services
                 PetCleaningFee = petCleaningFee,
                 TouristTax = touristTax,
                 TotalPrice = totalPrice,
+                SecurityDeposit = settings.SecurityDeposit,
                 Deposit = deposit,
             };
         }

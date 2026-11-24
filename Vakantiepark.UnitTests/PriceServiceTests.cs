@@ -108,6 +108,15 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CalculateAsync_SecurityDepositIsAddedSeparatelyAndNotIncludedInTotal()
+        {
+            PriceSpecificationResponse price = await _sut.CalculateAsync("berk-4", new DateOnly(2026, 7, 10), new DateOnly(2026, 7, 17), 4, 0, 0);
+
+            Assert.Equal(250m, price.SecurityDeposit);
+            Assert.Equal(936m, price.TotalPrice);
+        }
+
+        [Fact]
         public async Task CalculateAsync_AcrossSeasonBoundary_MixesSeasonRateAndDefaultPrice()
         {
             // 2027-05-20 and -21 fall in no season (default night price),
@@ -257,6 +266,7 @@ namespace Vakantiepark.UnitTests
             HighSeasonMinimumNights = 7,
             DepositPercentage = AanbetalingsPercentage,
             PetCleaningFee = HuisdierSchoonmaak,
+            SecurityDeposit = 250m,
         };
     }
 }

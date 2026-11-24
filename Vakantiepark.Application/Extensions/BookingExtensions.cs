@@ -29,6 +29,7 @@ namespace Vakantiepark.Application.Extensions
                 PetCleaningFee = price.PetCleaningFee,
                 TouristTax = price.TouristTax,
                 TotalPrice = price.TotalPrice,
+                SecurityDeposit = price.SecurityDeposit,
                 Deposit = price.Deposit,
                 AccommodationUnitId = accommodationUnitId,
                 Guests =
@@ -69,6 +70,7 @@ namespace Vakantiepark.Application.Extensions
                 PetCleaningFee = booking.PetCleaningFee,
                 TouristTax = booking.TouristTax,
                 TotalPrice = booking.TotalPrice,
+                SecurityDeposit = booking.SecurityDeposit,
                 Deposit = booking.Deposit,
             };
 

@@ -318,7 +318,7 @@ namespace Vakantiepark.Application.Services
                 return $"Je annuleert meer dan {settings.FreeCancellationDaysBeforeArrival} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
 
             if (fee == booking.Deposit)
-                return $"Je annuleert {settings.FreeCancellationDaysBeforeArrival} tot {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. De aanbetaling van {settings.DepositPercentage.ToString("0.##", dutch)}% ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+                return $"Je annuleert {settings.FreeCancellationDaysBeforeArrival} tot {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. Het volledige bedrag vervalt; Je krijgt de aanbetaling van {settings.DepositPercentage.ToString("0.##", dutch)}% ({fee.ToString("C", dutch)}) terug";
 
             return $"Je annuleert minder dan {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
         }
@@ -455,6 +455,7 @@ namespace Vakantiepark.Application.Services
                     ["PetCleaningFee"] = booking.PetCleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
                     ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["SecurityDeposit"] = booking.SecurityDeposit.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
                     ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
@@ -519,6 +520,7 @@ namespace Vakantiepark.Application.Services
                     ["Party"] = party,
                     ["OldTotalPrice"] = oldTotalPrice.ToString("C", dutch),
                     ["NewTotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["SecurityDeposit"] = booking.SecurityDeposit.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
                 });
