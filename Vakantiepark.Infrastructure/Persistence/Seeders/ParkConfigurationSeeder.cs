@@ -70,6 +70,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             DepartureTime = new TimeOnly(10, 0),
             HighSeasonMinimumNights = 7,
             PetCleaningFee = 25m,
+            SecurityDeposit = 250m,
             DepositPercentage = 20m,
             FreeCancellationDaysBeforeArrival = 30,
             NoRefundDaysBeforeArrival = 7,

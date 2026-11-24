@@ -71,6 +71,7 @@ namespace Vakantiepark.UnitTests
                 CleaningFee = 75m,
                 TouristTax = 42m,
                 TotalPrice = 817m,
+                SecurityDeposit = 250m,
                 Deposit = 163.40m
             };
 
@@ -129,6 +130,7 @@ namespace Vakantiepark.UnitTests
                 ArrivalTime = new TimeOnly(15, 0),
                 DepartureTime = new TimeOnly(10, 0),
                 HighSeasonMinimumNights = 7,
+                SecurityDeposit = 250m,
                 DepositPercentage = 20m,
                 FreeCancellationDaysBeforeArrival = 30,
                 NoRefundDaysBeforeArrival = 7,
