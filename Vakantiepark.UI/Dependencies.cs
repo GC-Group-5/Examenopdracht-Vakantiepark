@@ -48,6 +48,7 @@ namespace Vakantiepark.UI
             services.AddScoped<IMaintenanceService, MaintenanceService>();
             services.AddScoped<IReservationService, ReservationService>();
             services.AddScoped<IParkFacilityService, ParkFacilityService>();
+            services.AddScoped<IOccupancyService, OccupancyService>();
             services.AddSingleton(TimeProvider.System);
 
             return services;
