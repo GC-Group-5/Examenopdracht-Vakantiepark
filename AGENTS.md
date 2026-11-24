@@ -340,6 +340,16 @@ Every response body is an `ApiResponse<T>`:
 - Model-state failure: `ApiResponse<T>.Error(List<ApiErrors>)` (generated automatically).
 - 401/403/429/500 responses are also wrapped (configured in `API/Dependencies.cs`). Keep it that way.
 
+### Paged lists
+Every list that can grow (reservations, and later day overviews, occupancy, users) is paged the same way:
+- Request: inherit from `Shared/DTOs/PagedRequest` (`Page`, `PageSize`, default 25, max 100) and
+  call `request.ValidatePaging()` (`Application/Validations/Paging`).
+- Repository: order the query, then `query.ToPagedResultAsync(page, pageSize)`
+  (`Infrastructure/Extensions`), returning `Domain/Paging/PagedResult<T>`.
+- Service: `result.ToPagedResponse(request, entity => entity.ToSomething())` gives `PagedResponse<T>`.
+- UI: `request.ToPagingQuery()` for the query string and `<Pagination Page=.. TotalPages=.. PageUrl=.. />`
+  (`Pages/Shared`). Keep page number and filters in the URL (`?pagina=2`), so the back button works.
+
 ### Routes
 - `[Route("[controller]")]` — the route is the controller name, **PascalCase**.
 - Sub-routes are PascalCase too: `"SignOut/Confirmation/{token}"`. The `LogEndpointMiddleware`

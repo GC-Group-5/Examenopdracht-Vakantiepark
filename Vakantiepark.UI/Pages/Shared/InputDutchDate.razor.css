@@ -38,16 +38,23 @@
 }
 
 .dutch-date-calendar {
-    position: absolute;
+    /* Fixed, so a scrolling parent cannot cut it off; InputDutchDate.razor.js sets top and left
+       and makes it visible once it is in place. */
+    position: fixed;
     z-index: 1000;
-    top: calc(100% + .25rem);
-    left: 0;
+    visibility: hidden;
     width: 19rem;
     padding: .75rem;
     background: #fff;
     border: 1px solid var(--du-line);
     border-radius: .75rem;
 }
+
+    /* Month and year may shrink, so the arrows stay visible in a narrow calendar. */
+    .dutch-date-calendar select {
+        min-width: 0;
+        padding-left: .5rem;
+    }
 
 .dutch-date-grid {
     display: grid;

@@ -1,5 +1,6 @@
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
+using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
 using System.Security.Cryptography;
 
@@ -74,8 +75,12 @@ namespace Vakantiepark.Application.Extensions
 
         // Needs Guests and AccommodationUnit with Type and Zone loaded.
         public static MyBookingResponse ToMyBookingResponse(this Booking booking, string status)
+            => booking.ToMyBookingResponse<MyBookingResponse>(status);
+
+        // Generic so the staff detail page (US-13) reuses everything the guest sees.
+        public static T ToMyBookingResponse<T>(this Booking booking, string status) where T : MyBookingResponse, new()
         {
-            MyBookingResponse response = booking.ToResponse<MyBookingResponse>();
+            T response = booking.ToResponse<T>();
             response.AccommodationTypeName = booking.AccommodationUnit.Type.Name;
             response.Zone = booking.AccommodationUnit.Zone.Name;
             response.Status = status;
@@ -91,5 +96,48 @@ namespace Vakantiepark.Application.Extensions
 
             return response;
         }
+
+        // Needs AccommodationUnit with Type and Zone loaded. Reception walks the park zone by zone,
+        // so both lists come sorted by zone and then unit.
+        public static DayOverviewResponse ToDayOverview(this List<Booking> bookings, DateOnly date)
+            => new DayOverviewResponse()
+            {
+                Date = date,
+                Arrivals = bookings.Where(booking => booking.ArrivalDate == date).ToDayOverviewItems(),
+                Departures = bookings.Where(booking => booking.DepartureDate == date).ToDayOverviewItems(),
+            };
+
+        private static List<DayOverviewItemResponse> ToDayOverviewItems(this IEnumerable<Booking> bookings)
+            => bookings
+                .OrderBy(booking => booking.AccommodationUnit.Zone.Name)
+                .ThenBy(booking => booking.AccommodationUnit.Code)
+                .Select(booking => new DayOverviewItemResponse()
+                {
+                    Id = booking.Id,
+                    BookingNumber = booking.BookingNumber,
+                    Name = booking.Name,
+                    AccommodationTypeName = booking.AccommodationUnit.Type.Name,
+                    UnitCode = booking.AccommodationUnit.Code,
+                    Zone = booking.AccommodationUnit.Zone.Name,
+                    NumberOfGuests = booking.NumberOfGuests,
+                    NumberOfPets = booking.NumberOfPets,
+                })
+                .ToList();
+
+        // Needs AccommodationUnit with Type loaded.
+        public static ReservationListItemResponse ToReservationListItem(this Booking booking, string status)
+            => new ReservationListItemResponse()
+            {
+                Id = booking.Id,
+                BookingNumber = booking.BookingNumber,
+                Name = booking.Name,
+                Email = booking.Email,
+                AccommodationTypeName = booking.AccommodationUnit.Type.Name,
+                UnitCode = booking.AccommodationUnit.Code,
+                ArrivalDate = booking.ArrivalDate,
+                DepartureDate = booking.DepartureDate,
+                NumberOfGuests = booking.NumberOfGuests,
+                Status = status,
+            };
     }
 }
