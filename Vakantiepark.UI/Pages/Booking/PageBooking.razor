@@ -222,11 +222,6 @@
                                     <dt class="col-sm-4">Schoonmaakkosten huisdieren</dt>
                                     <dd class="col-sm-8">@quote.Price.PetCleaningFee.ToString("C")</dd>
                                 }
-                                @if (quote.Price.SecurityDeposit > 0m)
-                                {
-                                    <dt class="col-sm-4">Borg (retour bij vertrek)</dt>
-                                    <dd class="col-sm-8">@quote.Price.SecurityDeposit.ToString("C")<br /><span class="small text-muted">Betaalbaar bij aankomst op het park</span></dd>
-                                }
 
                                 @if (request.WheelchairAccessible)
                                 {

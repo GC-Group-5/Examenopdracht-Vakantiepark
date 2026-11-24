@@ -118,7 +118,7 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CalculateAsync_CampingPitchHasNoSecurityDeposit()
+        public async Task CalculateAsync_CampingPitch_AlsoHasTheSecurityDeposit()
         {
             AccommodationType campingPitch = TestData.CreateAccommodationType(type =>
             {
@@ -135,7 +135,7 @@ namespace Vakantiepark.UnitTests
                 0,
                 0);
 
-            Assert.Equal(0m, price.SecurityDeposit);
+            Assert.Equal(250m, price.SecurityDeposit);
         }
 
         [Fact]
