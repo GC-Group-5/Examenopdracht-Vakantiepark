@@ -1,4 +1,6 @@
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Filters;
+using Vakantiepark.Domain.Paging;
 
 namespace Vakantiepark.Domain.Interfaces.Repositories
 {
@@ -17,5 +19,9 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         // otherwise a guest who shifts his stay would block himself.
         Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId);
         Task<bool> TryUpdateAsync(Booking booking, List<BookingGuest> coTravellers);
+
+        // US-13: one page of the reservations overview. Cancelled bookings are included;
+        // today decides which bookings count as completed.
+        Task<PagedResult<Booking>> SearchAsync(BookingSearchFilter filter, DateOnly today, int page, int pageSize);
     }
 }

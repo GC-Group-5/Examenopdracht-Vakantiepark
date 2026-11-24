@@ -84,7 +84,7 @@
 
                     <dt class="col-sm-4">Reisgezelschap</dt>
                     <dd class="col-sm-8">
-                        @PartyLabel(booking.NumberOfGuests, booking.NumberOfChildrenUnder12)
+                        @TravellerAgeExtensions.PartyLabel(booking.NumberOfGuests, booking.NumberOfChildrenUnder12)
                         <ul class="list-unstyled mb-0">
                             @foreach (GuestResponse guest in booking.Guests)
                             {
@@ -281,12 +281,7 @@
 
     private int NumberOfNights => booking is null ? 0 : booking.DepartureDate.DayNumber - booking.ArrivalDate.DayNumber;
 
-    private string StatusClass => booking?.Status switch
-    {
-        BookingStatuses.Geannuleerd => "text-bg-danger",
-        BookingStatuses.Afgerond => "text-bg-secondary",
-        _ => "text-bg-success",
-    };
+    private string StatusClass => BookingStatusBadge.CssClass(booking?.Status);
 
     private const string LoadFailedMessage = "Je boeking kon niet worden opgehaald. Probeer het opnieuw.";
 
@@ -465,12 +460,6 @@
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
     // e.g. "4 personen, waarvan 2 jonger dan 12"
-    private static string PartyLabel(int numberOfGuests, int childrenUnder12)
-    {
-        string persons = $"{numberOfGuests} {(numberOfGuests == 1 ? "persoon" : "personen")}";
-        return childrenUnder12 == 0 ? persons : $"{persons}, waarvan {childrenUnder12} jonger dan 12";
-    }
-
     private async Task ShowChangeQuoteAsync()
     {
         isBusy = true;
