@@ -12,6 +12,7 @@ using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Filters;
+using Vakantiepark.Domain.Constants;
 
 namespace Vakantiepark.Application.Services
 {
@@ -73,9 +74,11 @@ namespace Vakantiepark.Application.Services
             AccommodationType type = await GetTypeAsync(accommodationTypeSlug);
             ParkSettings settings = await GetParkSettingsAsync();
             await ValidateHighSeasonMinimumNightsAsync(arrivalDate, departureDate, settings);
+            int maxPets = await GetMaximumPetsAsync(type.Slug, arrivalDate, departureDate);
+            CreateBookingRequestValidation.ValidatePetCount(filter.NumberOfPets, maxPets);
             await GetCandidateUnitsAsync(type, arrivalDate, departureDate, filter, preferredZone);
 
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, numberOfChildrenUnder12);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, numberOfChildrenUnder12, filter.NumberOfPets);
 
             return new BookingQuoteResponse()
             {
@@ -87,6 +90,7 @@ namespace Vakantiepark.Application.Services
                 DepartureTime = settings.DepartureTime,
                 NumberOfGuests = filter.NumberOfGuests,
                 NumberOfChildrenUnder12 = numberOfChildrenUnder12,
+                MaxPets = maxPets,
                 Price = price,
                 FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
                 NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
@@ -101,6 +105,8 @@ namespace Vakantiepark.Application.Services
             AccommodationType type = await GetTypeAsync(request.AccommodationTypeSlug);
             ParkSettings settings = await GetParkSettingsAsync();
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
+            int maxPets = await GetMaximumPetsAsync(type.Slug, request.ArrivalDate, request.DepartureDate);
+            CreateBookingRequestValidation.ValidatePetCount(request.NumberOfPets, maxPets);
 
             AccommodationUnitFilter filter = new AccommodationUnitFilter()
             {
@@ -111,7 +117,7 @@ namespace Vakantiepark.Application.Services
             List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, filter, request.PreferredZone);
 
             // The server always calculates the price itself; a price from the browser is never used.
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, request.NumberOfPets);
             string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
             // Another guest may book the same unit between the availability check and saving.
@@ -194,7 +200,7 @@ namespace Vakantiepark.Application.Services
         public async Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, plan.Booking.NumberOfPets);
 
             return new ChangeQuoteResponse()
             {
@@ -209,7 +215,7 @@ namespace Vakantiepark.Application.Services
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
             Booking booking = plan.Booking;
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, booking.NumberOfPets);
             decimal oldTotalPrice = booking.TotalPrice;
 
             booking.ArrivalDate = request.ArrivalDate;
@@ -220,6 +226,7 @@ namespace Vakantiepark.Application.Services
             booking.AccommodationUnitId = plan.Unit.Id;
             booking.AccommodationPrice = newPrice.AccommodationPrice;
             booking.CleaningFee = newPrice.CleaningFee;
+            booking.PetCleaningFee = newPrice.PetCleaningFee;
             booking.TouristTax = newPrice.TouristTax;
             booking.TotalPrice = newPrice.TotalPrice;
             booking.Deposit = newPrice.Deposit;
@@ -327,15 +334,7 @@ namespace Vakantiepark.Application.Services
         }
 
         private string GetStatus(Booking booking)
-        {
-            if (booking.DeletedAt is not null)
-                return BookingStatuses.Geannuleerd;
-
-            if (booking.DepartureDate < Today())
-                return BookingStatuses.Afgerond;
-
-            return BookingStatuses.Bevestigd;
-        }
+            => BookingStatus.Get(booking, Today());
 
 
         // Free units of the type that fit the party (the same filter as the search), in the
@@ -401,6 +400,17 @@ namespace Vakantiepark.Application.Services
             => (await ParkSettingsRepository.GetAllAsync()).FirstOrDefault()
                 ?? throw new InvalidOperationException("De parkinstellingen zijn niet ingesteld.");
 
+        private async Task<int> GetMaximumPetsAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate)
+        {
+            List<Accommodation> units = await AccommodationUnitRepository.GetInServiceUnitsAsync(accommodationTypeSlug, arrivalDate, departureDate);
+            decimal maximum = units
+                .Select(unit => unit.GetNumber(FeatureKeys.MaxPets) ?? 0m)
+                .DefaultIfEmpty(0m)
+                .Max();
+
+            return (int)maximum;
+        }
+
         private DateOnly Today()
             => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
 
@@ -434,6 +444,7 @@ namespace Vakantiepark.Application.Services
                     ["WheelchairAccessible"] = booking.WheelchairAccessible ? "ja" : "nee",
                     ["AccommodationPrice"] = booking.AccommodationPrice.ToString("C", dutch),
                     ["CleaningFee"] = booking.CleaningFee.ToString("C", dutch),
+                    ["PetCleaningFee"] = booking.PetCleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
                     ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),

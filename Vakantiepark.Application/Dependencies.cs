@@ -26,6 +26,8 @@ namespace Vakantiepark.Application
             services.AddScoped<IPriceService, PriceService>();
             services.AddScoped<IAccommodationSearchService, AccommodationSearchService>();
             services.AddScoped<IMaintenancePeriodService, MaintenancePeriodService>();
+            services.AddScoped<IReservationService, ReservationService>();
+            services.AddScoped<IParkFacilityService, ParkFacilityService>();
 
             return services;
         }

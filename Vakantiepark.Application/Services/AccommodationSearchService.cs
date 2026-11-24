@@ -9,12 +9,8 @@ using Vakantiepark.Shared.DTOs.Price;
 
 namespace Vakantiepark.Application.Services
 {
-    // US-06: find bookable stays. Availability is per physical unit: the unit must be
-    // free for the whole period (no overlapping active booking; a departure day and an
-    // arrival day may be the same) and must fit the party (AccommodationUnitFilter, the
-    // same rule the booking uses), the category and the preferred zone.
-    // Zones belong to one category and never change the price. The price is taken from
-    // the price service so every screen shows the same amount.
+    // US-06: a unit is free when no active booking overlaps (departure day = arrival day is fine).
+    // Prices come from the price service, so every screen shows the same amount.
     public class AccommodationSearchService : IAccommodationSearchService
     {
         private readonly IAccommodationUnitRepository UnitRepository;
@@ -110,7 +106,7 @@ namespace Vakantiepark.Application.Services
                     continue;
 
                 // The search does not ask for children under 12 yet, so everyone counts for the tourist tax.
-                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, 0);
+                PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, filter.NumberOfGuests, 0, filter.NumberOfPets);
 
                 results.Add(new AccommodationTypeAvailability
                 {

@@ -1,0 +1,95 @@
+@page "/parkinformatie"
+@using Vakantiepark.Shared.DTOs.Park
+@inject IParkFacilityService ParkFacilityService
+
+<PageTitle>Parkinformatie | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Parkinformatie</div>
+        <h1 class="page-title mt-2">Wat is er te doen?</h1>
+        <p class="page-intro mt-3 mb-0">Horeca, de parkwinkel, activiteiten en voorzieningen, met hun openingstijden.</p>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        @if (facilities is null && errorMessage is null)
+        {
+            <div class="p-4 border rounded-4 bg-white shadow-sm" role="status">De parkinformatie wordt opgehaald…</div>
+        }
+        else if (errorMessage is not null)
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+        else if (facilities!.Count == 0)
+        {
+            <div class="p-4 border rounded-4 bg-white shadow-sm">Er is nog geen parkinformatie beschikbaar.</div>
+        }
+        else
+        {
+            @foreach ((string category, string title) in Categories)
+            {
+                List<ParkFacilityResponse> items = facilities.Where(facility => facility.Category == category).ToList();
+                if (items.Count == 0)
+                    continue;
+
+                <h2 class="h3 mt-4 mb-3">@title</h2>
+                <div class="row g-4">
+                    @foreach (ParkFacilityResponse facility in items)
+                    {
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="h-100 p-4 border rounded-4 bg-white">
+                                <img src="@facility.PhotoUrl" alt="@facility.Name" class="img-fluid rounded-3 mb-3" />
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <h3 class="h5 mb-1">@facility.Name</h3>
+                                    @if (facility.IsOpen)
+                                    {
+                                        <span class="badge rounded-pill text-bg-success">@(facility.StartsAt is null ? "Nu open" : "Nu bezig")</span>
+                                    }
+                                    else if (facility.StartsAt is null)
+                                    {
+                                        <span class="badge rounded-pill text-bg-secondary">Gesloten</span>
+                                    }
+                                </div>
+                                <p class="small text-muted-du mb-2">@facility.Location · @When(facility)</p>
+                                <p class="mb-0">@facility.Description</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    private const string LoadFailedMessage = "De parkinformatie kon niet worden opgehaald. Probeer het opnieuw.";
+
+    // Display order and Dutch headings of the categories from the API.
+    private static readonly (string Category, string Title)[] Categories =
+    [
+        ("FoodAndDrink", "Horeca"),
+        ("Supermarket", "Supermarkt"),
+        ("Activity", "Activiteiten"),
+        ("Facility", "Voorzieningen"),
+    ];
+
+    private List<ParkFacilityResponse>? facilities;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiResponse<List<ParkFacilityResponse>> response = await ParkFacilityService.GetAllAsync();
+        facilities = response.Succeeded ? response.Value ?? [] : null;
+        errorMessage = response.Succeeded ? null : response.Message ?? LoadFailedMessage;
+    }
+
+    private static string When(ParkFacilityResponse facility)
+    {
+        if (facility.StartsAt is not null && facility.EndsAt is not null)
+            return $"{facility.StartsAt.Value.ToLocalTime():dddd d MMMM, HH:mm} – {facility.EndsAt.Value.ToLocalTime():HH:mm}";
+
+        return $"Elke dag {facility.OpensAt:HH:mm} – {facility.ClosesAt:HH:mm}";
+    }
+}

@@ -1,5 +1,6 @@
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
+using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
 using System.Security.Cryptography;
 
@@ -26,6 +27,7 @@ namespace Vakantiepark.Application.Extensions
                 WheelchairAccessible = request.WheelchairAccessible,
                 AccommodationPrice = price.AccommodationPrice,
                 CleaningFee = price.CleaningFee,
+                PetCleaningFee = price.PetCleaningFee,
                 TouristTax = price.TouristTax,
                 TotalPrice = price.TotalPrice,
                 Deposit = price.Deposit,
@@ -65,6 +67,7 @@ namespace Vakantiepark.Application.Extensions
                 WheelchairAccessible = booking.WheelchairAccessible,
                 AccommodationPrice = booking.AccommodationPrice,
                 CleaningFee = booking.CleaningFee,
+                PetCleaningFee = booking.PetCleaningFee,
                 TouristTax = booking.TouristTax,
                 TotalPrice = booking.TotalPrice,
                 Deposit = booking.Deposit,
@@ -72,8 +75,12 @@ namespace Vakantiepark.Application.Extensions
 
         // Needs Guests and AccommodationUnit with Type and Zone loaded.
         public static MyBookingResponse ToMyBookingResponse(this Booking booking, string status)
+            => booking.ToMyBookingResponse<MyBookingResponse>(status);
+
+        // Generic so the staff detail page (US-13) reuses everything the guest sees.
+        public static T ToMyBookingResponse<T>(this Booking booking, string status) where T : MyBookingResponse, new()
         {
-            MyBookingResponse response = booking.ToResponse<MyBookingResponse>();
+            T response = booking.ToResponse<T>();
             response.AccommodationTypeName = booking.AccommodationUnit.Type.Name;
             response.Zone = booking.AccommodationUnit.Zone.Name;
             response.Status = status;
@@ -89,5 +96,21 @@ namespace Vakantiepark.Application.Extensions
 
             return response;
         }
+
+        // Needs AccommodationUnit with Type loaded.
+        public static ReservationListItemResponse ToReservationListItem(this Booking booking, string status)
+            => new ReservationListItemResponse()
+            {
+                Id = booking.Id,
+                BookingNumber = booking.BookingNumber,
+                Name = booking.Name,
+                Email = booking.Email,
+                AccommodationTypeName = booking.AccommodationUnit.Type.Name,
+                UnitCode = booking.AccommodationUnit.Code,
+                ArrivalDate = booking.ArrivalDate,
+                DepartureDate = booking.DepartureDate,
+                NumberOfGuests = booking.NumberOfGuests,
+                Status = status,
+            };
     }
 }

@@ -7,5 +7,8 @@
 
         // From this age a person pays tourist tax (US-38).
         public const int TouristTaxMinimumAge = 12;
+
+        // Upper bound for ?huisdieren= in a link; the real maximum comes from the accommodation.
+        public const int MaxPetsInUrl = 10;
     }
 }
