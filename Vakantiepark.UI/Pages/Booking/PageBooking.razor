@@ -90,7 +90,10 @@
                                     }
                                     <tr><td>Toeristenbelasting (@(quote.NumberOfGuests - quote.NumberOfChildrenUnder12) × @NumberOfNights, vanaf 12 jaar)</td><td class="text-end">@quote.Price.TouristTax.ToString("C")</td></tr>
                                     <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@quote.Price.TotalPrice.ToString("C")</td></tr>
-                                    <tr><td>Borg (retour bij vertrek)<br /><span class="text-muted">Betaalbaar bij aankomst op het park</span></td><td class="text-end">@quote.Price.SecurityDeposit.ToString("C")</td></tr>
+                                    @if (quote.Price.SecurityDeposit > 0m)
+                                    {
+                                        <tr><td>Borg (retour bij vertrek)<br /><span class="text-muted">Betaalbaar bij aankomst op het park</span></td><td class="text-end">@quote.Price.SecurityDeposit.ToString("C")</td></tr>
+                                    }
                                     <tr><td>Aanbetaling (@quote.DepositPercentage.ToString("0.##")%)</td><td class="text-end">@quote.Price.Deposit.ToString("C")</td></tr>
                                 </tbody>
                             </table>
@@ -219,8 +222,11 @@
                                     <dt class="col-sm-4">Schoonmaakkosten huisdieren</dt>
                                     <dd class="col-sm-8">@quote.Price.PetCleaningFee.ToString("C")</dd>
                                 }
-                                <dt class="col-sm-4">Borg (retour bij vertrek)</dt>
-                                <dd class="col-sm-8">@quote.Price.SecurityDeposit.ToString("C")<br /><span class="small text-muted">Betaalbaar bij aankomst op het park</span></dd>
+                                @if (quote.Price.SecurityDeposit > 0m)
+                                {
+                                    <dt class="col-sm-4">Borg (retour bij vertrek)</dt>
+                                    <dd class="col-sm-8">@quote.Price.SecurityDeposit.ToString("C")<br /><span class="small text-muted">Betaalbaar bij aankomst op het park</span></dd>
+                                }
 
                                 @if (request.WheelchairAccessible)
                                 {
