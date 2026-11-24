@@ -8,5 +8,6 @@ namespace Vakantiepark.Application.Interfaces
     {
         Task<PagedResponse<ReservationListItemResponse>> SearchAsync(ReservationSearchRequest request);
         Task<ReservationDetailResponse> GetByIdAsync(Guid id);
+        Task<DayOverviewResponse> GetDayOverviewAsync(DateOnly date);
     }
 }
