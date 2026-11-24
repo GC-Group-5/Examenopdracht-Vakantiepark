@@ -11,7 +11,7 @@
     <div class="container">
         <div class="eyebrow">Beheeromgeving</div>
         <h1 class="page-title mt-2">Dagoverzicht</h1>
-        <p class="page-intro mt-4">Wie er op @DayLabel aankomt en vertrekt.</p>
+        <p class="page-intro mt-4">@Intro</p>
         <a class="btn btn-du-light mt-3" href="beheer">Terug naar beheer</a>
     </div>
 </section>
@@ -102,7 +102,9 @@
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
-    private string DayLabel => date == Today ? $"vandaag, {date.ToString("dddd d MMMM", Dutch)}" : date.ToString("dddd d MMMM yyyy", Dutch);
+    private string Intro => date == Today
+        ? $"Wie er vandaag ({date.ToString("dddd d MMMM", Dutch)}) aankomt en vertrekt."
+        : $"Wie er op {date.ToString("dddd d MMMM yyyy", Dutch)} aankomt en vertrekt.";
 
     protected override async Task OnParametersSetAsync()
     {
