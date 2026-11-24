@@ -1,6 +1,7 @@
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Price;
 
@@ -118,7 +119,9 @@ namespace Vakantiepark.Application.Services
                 PetCleaningFee = petCleaningFee,
                 TouristTax = touristTax,
                 TotalPrice = totalPrice,
-                SecurityDeposit = settings.SecurityDeposit,
+                SecurityDeposit = type.Category == AccommodationCategory.HolidayHome
+                    ? settings.SecurityDeposit
+                    : 0m,
                 Deposit = deposit,
             };
         }

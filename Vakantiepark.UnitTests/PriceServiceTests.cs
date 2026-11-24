@@ -1,6 +1,7 @@
 using Moq;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Price;
 using Xunit;
@@ -114,6 +115,27 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal(250m, price.SecurityDeposit);
             Assert.Equal(936m, price.TotalPrice);
+        }
+
+        [Fact]
+        public async Task CalculateAsync_CampingPitchHasNoSecurityDeposit()
+        {
+            AccommodationType campingPitch = TestData.CreateAccommodationType(type =>
+            {
+                type.Slug = "kampeerplaats";
+                type.Category = AccommodationCategory.CampingPitch;
+            });
+            _typeRepository.Setup(x => x.GetBySlugAsync("kampeerplaats")).ReturnsAsync(campingPitch);
+
+            PriceSpecificationResponse price = await _sut.CalculateAsync(
+                "kampeerplaats",
+                new DateOnly(2026, 7, 10),
+                new DateOnly(2026, 7, 17),
+                2,
+                0,
+                0);
+
+            Assert.Equal(0m, price.SecurityDeposit);
         }
 
         [Fact]
