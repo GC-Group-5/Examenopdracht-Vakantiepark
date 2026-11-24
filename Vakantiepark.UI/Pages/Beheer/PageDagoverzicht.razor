@@ -1,0 +1,179 @@
+@page "/beheer/dagoverzicht"
+@attribute [Authorize(Roles = Roles.Staff)]
+@using System.Globalization
+@using Vakantiepark.Shared.DTOs.Reservations
+@inject IReservationService ReservationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Dagoverzicht | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <h1 class="page-title mt-2">Dagoverzicht</h1>
+        <p class="page-intro mt-4">Wie er op @DayLabel aankomt en vertrekt.</p>
+        <a class="btn btn-du-light mt-3" href="beheer">Terug naar beheer</a>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <div class="detail-meta-card p-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <label class="form-label fw-semibold" for="day-date">Datum</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-du-light" aria-label="Vorige dag" @onclick="() => ShowDay(date.AddDays(-1))">‹</button>
+                        <div class="flex-grow-1">
+                            <InputDutchDate id="day-date" class="form-control" @bind-Value="chosenDate" @bind-Value:after="ShowChosenDate" MinYear="@FirstYear" />
+                        </div>
+                        <button type="button" class="btn btn-du-light" aria-label="Volgende dag" @onclick="() => ShowDay(date.AddDays(1))">›</button>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <button type="button" class="btn btn-du w-100" disabled="@(date == Today)" @onclick="() => ShowDay(Today)">Vandaag</button>
+                </div>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <label class="form-label fw-semibold" for="day-sort">Sorteren op</label>
+                    <select id="day-sort" class="form-select" @bind="sortOrder">
+                        <option value="@SortOrder.Zone">Zone</option>
+                        <option value="@SortOrder.Unit">Eenheid</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
+        }
+        else if (overview is null)
+        {
+            <div class="text-center py-5" role="status">
+                <div class="spinner-border text-success"><span class="visually-hidden">Dagoverzicht wordt geladen…</span></div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3 mt-2">
+                <div class="col-6">
+                    <div class="info-block">
+                        <div class="small text-muted-du">Aankomsten</div>
+                        <strong class="fs-2">@overview.Arrivals.Count</strong>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="info-block">
+                        <div class="small text-muted-du">Vertrekken</div>
+                        <strong class="fs-2">@overview.Departures.Count</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-12 col-xl-6">
+                    <h2 class="h4 mb-3">Aankomst</h2>
+                    @DayTable(Sorted(overview.Arrivals), "Er komt op deze dag niemand aan.")
+                </div>
+                <div class="col-12 col-xl-6">
+                    <h2 class="h4 mb-3">Vertrek</h2>
+                    @DayTable(Sorted(overview.Departures), "Er vertrekt op deze dag niemand.")
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly CultureInfo Dutch = new CultureInfo("nl-NL");
+
+    // Staff look back at most a year; older years only make the year list longer.
+    private static readonly int FirstYear = DateTime.Today.Year - 1;
+
+    // The day lives in the address, so the back button from a reservation returns to the same day.
+    [SupplyParameterFromQuery(Name = "datum")]
+    public string? DateFromQuery { get; set; }
+
+    private DateOnly date;
+    private DateOnly chosenDate;
+    private SortOrder sortOrder = SortOrder.Zone;
+    private DayOverviewResponse? overview;
+    private string? errorMessage;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private string DayLabel => date == Today ? $"vandaag, {date.ToString("dddd d MMMM", Dutch)}" : date.ToString("dddd d MMMM yyyy", Dutch);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        date = DateOnly.TryParseExact(DateFromQuery, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsed) ? parsed : Today;
+        chosenDate = date;
+        overview = null;
+        errorMessage = null;
+
+        ApiResponse<DayOverviewResponse> response = await ReservationService.GetDayOverviewAsync(date);
+        if (response.Succeeded && response.Value is not null)
+            overview = response.Value;
+        else
+            errorMessage = response.Message ?? "Het dagoverzicht kon niet worden geladen. Probeer het later opnieuw.";
+    }
+
+    private void ShowChosenDate()
+        => ShowDay(chosenDate);
+
+    private void ShowDay(DateOnly day)
+        => NavigationManager.NavigateTo($"beheer/dagoverzicht?datum={day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}");
+
+    // The server sends both lists sorted by zone and unit.
+    private List<DayOverviewItemResponse> Sorted(List<DayOverviewItemResponse> items)
+        => sortOrder == SortOrder.Unit ? items.OrderBy(item => item.UnitCode).ToList() : items;
+
+    private static string DetailUrl(Guid id)
+        => $"beheer/reserveringen/{id}";
+
+    private static string PetsLabel(int numberOfPets)
+        => numberOfPets == 0 ? "Geen" : numberOfPets.ToString();
+
+    private RenderFragment DayTable(List<DayOverviewItemResponse> items, string emptyText) =>
+        @<div class="detail-meta-card p-0 overflow-hidden">
+            @if (items.Count == 0)
+            {
+                <div class="p-4 text-muted-du">@emptyText</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 admin-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Eenheid</th>
+                                <th scope="col">Naam</th>
+                                <th scope="col">Personen</th>
+                                <th scope="col">Huisdieren</th>
+                                <th scope="col">Boekingsnummer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (DayOverviewItemResponse item in items)
+                            {
+                                <tr>
+                                    <td>@item.UnitCode<div class="small text-muted-du">@item.Zone</div></td>
+                                    <td>@item.Name<div class="small text-muted-du">@item.AccommodationTypeName</div></td>
+                                    <td>@item.NumberOfGuests</td>
+                                    <td>@PetsLabel(item.NumberOfPets)</td>
+                                    @* stretched-link makes the whole row clickable while the row holds only one link. *@
+                                    <td><a class="admin-link stretched-link" href="@DetailUrl(item.Id)">@item.BookingNumber</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>;
+
+    private enum SortOrder
+    {
+        Zone,
+        Unit,
+    }
+}

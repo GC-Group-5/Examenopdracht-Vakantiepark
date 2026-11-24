@@ -37,6 +37,9 @@ namespace Vakantiepark.UI.Application.Services
         public async Task<ApiResponse<ReservationDetailResponse>> GetAsync(Guid id)
             => await HttpService.GetAsync<ReservationDetailResponse>($"/Reservations/{id}");
 
+        public async Task<ApiResponse<DayOverviewResponse>> GetDayOverviewAsync(DateOnly date)
+            => await HttpService.GetAsync<DayOverviewResponse>($"/Reservations/Day?date={date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}");
+
         public async Task<ApiResponse<List<AccommodationTypeResponse>>> GetTypesAsync()
             => await HttpService.GetAsync<List<AccommodationTypeResponse>>("/AccommodationType");
     }

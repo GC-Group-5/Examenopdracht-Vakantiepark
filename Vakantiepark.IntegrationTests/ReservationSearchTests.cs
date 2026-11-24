@@ -7,7 +7,7 @@ using Vakantiepark.Infrastructure.Repositories;
 
 namespace Vakantiepark.IntegrationTests
 {
-    // US-13: search and filters of the reservations overview, against a real PostgreSQL.
+    // US-13 and US-15: the staff queries on bookings (search, filters and the day overview), against a real PostgreSQL.
     // Every test uses its own unit, type and name, so tests never see each other's bookings.
     public class ReservationSearchTests : IClassFixture<PostgresFixture>
     {
@@ -96,6 +96,26 @@ namespace Vakantiepark.IntegrationTests
             PagedResult<Booking> result = await SearchAsync(new BookingSearchFilter() { Search = $"{unit.Token}%" });
 
             Assert.Equal(0, result.TotalCount);
+        }
+
+        [Fact]
+        public async Task GetArrivingOrDepartingOnAsync_ReturnsArrivalsAndDeparturesOfTheDayOnly()
+        {
+            TestUnit unit = await CreateUnitAsync();
+            Booking departing = NewBooking(unit, Today.AddDays(-4), Today);
+            Booking arriving = NewBooking(unit, Today, Today.AddDays(3));
+            Booking cancelledArrival = NewBooking(unit, Today, Today.AddDays(2), booking => booking.DeletedAt = DateTime.UtcNow);
+            Booking dayBefore = NewBooking(unit, Today.AddDays(-6), Today.AddDays(-4));
+            Booking dayAfter = NewBooking(unit, Today.AddDays(3), Today.AddDays(5));
+            await SaveAsync(departing, arriving, cancelledArrival, dayBefore, dayAfter);
+
+            await using ApplicationDBContext context = Database.CreateContext();
+            List<Booking> bookings = (await new BookingRepository(context).GetArrivingOrDepartingOnAsync(Today))
+                .Where(booking => booking.AccommodationUnitId == unit.Id)
+                .ToList();
+
+            Assert.Equal(new List<Guid>() { departing.Id, arriving.Id }.Order(), bookings.Select(booking => booking.Id).Order());
+            Assert.All(bookings, booking => Assert.Equal($"Z{unit.Token}", booking.AccommodationUnit.Zone.Name));
         }
 
         private async Task<PagedResult<Booking>> SearchAsync(TestUnit unit, BookingState? state)
