@@ -1,0 +1,14 @@
+{
+    "name": "Vakantiepark D'r op Uut",
+    "short_name": "D'r op Uut",
+    "description": "Vakantiepark D'r op Uut",
+    "id": "./",
+    "start_url": "./mijn-boeking",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0b5d3b",
+    "icons": [
+        { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" },
+        { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" }
+    ]
+}

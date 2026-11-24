@@ -171,7 +171,7 @@ a {
     left: 12%;
     top: 52px;
     z-index: 3;
-    width: 300px;
+    width: 340px;
     background: #fff;
     border-radius: 1.5rem;
     padding: 1.25rem;
@@ -179,7 +179,7 @@ a {
     border-top: 5px solid var(--du-aqua);
 }
 
-.booking-peek .fake-input, .booking-card .fake-input {
+.booking-card .fake-input {
     background: var(--du-cream);
     border: 1px solid transparent;
     border-radius: 1rem;
@@ -540,8 +540,11 @@ a {
         height: 180px;
     }
 
+    /* On a phone the quick search sits under the photos instead of on top of them. */
     .booking-peek {
-        display: none;
+        position: static;
+        width: auto;
+        margin-top: 1.5rem;
     }
 
     .detail-photo {
@@ -658,15 +661,6 @@ a {
     box-shadow: 0 0 0 .2rem rgba(73,168,170,.35);
 }
 
-.booking-peek a.fake-input {
-    display: block;
-    text-decoration: none;
-}
-
-.booking-peek a.fake-input:hover {
-    border-color: var(--du-green);
-}
-
 .footer-main a:hover {
     color: var(--du-green);
 }
@@ -683,4 +677,54 @@ a {
 
 .form-control.invalid, .form-select.invalid {
     border-color: #b42318;
+}
+
+/* Lists in the beheeromgeving (US-13): a calm header, room at the edges and a whole row that is clickable. */
+.admin-table {
+    --bs-table-hover-bg: #f3f7f1;
+}
+
+.admin-table th {
+    background: #f6f8f4;
+    color: var(--du-muted);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: .9rem 1rem;
+}
+
+.admin-table th:first-child,
+.admin-table td:first-child {
+    padding-left: 1.5rem;
+}
+
+.admin-table th:last-child,
+.admin-table td:last-child {
+    padding-right: 1.5rem;
+}
+
+.admin-table tbody tr {
+    position: relative;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-link {
+    color: var(--du-green);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-link:hover,
+.admin-link:focus-visible {
+    color: var(--du-green-bright);
+    text-decoration: underline;
 }
