@@ -29,20 +29,7 @@
 
 <section class="section-pad">
     <div class="container">
-        @if (errorMessage is not null)
-        {
-            <div class="alert alert-danger" role="alert">@errorMessage</div>
-        }
-        else if (types is null)
-        {
-            <div class="text-center py-5">
-                <div class="spinner-border text-success" role="status">
-                    <span class="visually-hidden">Bezig met laden...</span>
-                </div>
-            </div>
-        }
-        else
-        {
+        <LoadState TValue="List<AccommodationTypeResponse>" Value="types" ErrorMessage="@errorMessage" LoadingText="Verblijven worden geladen…" Context="types">
             <div class="row g-4">
                 @foreach (AccommodationTypeResponse type in types)
                 {
@@ -51,7 +38,7 @@
                     </div>
                 }
             </div>
-        }
+        </LoadState>
     </div>
 </section>
 

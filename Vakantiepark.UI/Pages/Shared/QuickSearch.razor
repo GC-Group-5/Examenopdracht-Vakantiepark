@@ -1,0 +1,110 @@
+@inject NavigationManager Navigation
+@* Quick search (US-42): dates and party, then /zoeken searches at once. On the homepage with a choice of
+   category; on the detail page of a type (US-45) with that type fixed and at most its number of persons. *@
+<div class="row g-2">
+    <div class="col-6">
+        <label class="form-label small fw-semibold mb-1" for="@($"{IdPrefix}-arrival")">Aankomst</label>
+        <InputDutchDate id="@($"{IdPrefix}-arrival")" class="form-control" @bind-Value="arrivalDate" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@departureDate" />
+    </div>
+    <div class="col-6">
+        <label class="form-label small fw-semibold mb-1" for="@($"{IdPrefix}-departure")">Vertrek</label>
+        <InputDutchDate id="@($"{IdPrefix}-departure")" class="form-control" @bind-Value="departureDate" MinDate="@((arrivalDate ?? Today).AddDays(1))" MinYear="@Today.Year" RangeStart="@arrivalDate" />
+    </div>
+    <div class="@(ShowCategory ? "col-6" : "col-12")">
+        <label class="form-label small fw-semibold mb-1" for="@($"{IdPrefix}-guests")">Personen</label>
+        <InputNumber id="@($"{IdPrefix}-guests")" class="form-control" @bind-Value="numberOfGuests" min="1" max="@MaxGuests" step="1" />
+        @if (MaxGuests is int max)
+        {
+            <div class="form-text">Maximaal @max personen</div>
+        }
+    </div>
+    @if (ShowCategory)
+    {
+        <div class="col-6">
+            <label class="form-label small fw-semibold mb-1" for="@($"{IdPrefix}-category")">Soort verblijf</label>
+            <select id="@($"{IdPrefix}-category")" class="form-select" @bind="category">
+                <option value="">Alles</option>
+                <option value="@CategoryHolidayHomes">Vakantiewoningen</option>
+                <option value="@CategoryCampingPitches">Kampeerplaatsen</option>
+            </select>
+        </div>
+    }
+    @if (message is not null)
+    {
+        <div class="col-12">
+            <div class="small text-danger" role="alert">@message</div>
+        </div>
+    }
+    <div class="col-12 mt-3">
+        <button type="button" class="btn btn-du w-100" @onclick="Search">@ButtonText</button>
+    </div>
+</div>
+
+@code {
+    // The same values PageZoeken reads from ?soort=.
+    private const string CategoryHolidayHomes = "vakantiewoningen";
+    private const string CategoryCampingPitches = "kampeerplaatsen";
+    private const int DefaultGuests = 2;
+
+    private DateOnly? arrivalDate;
+    private DateOnly? departureDate;
+    private int numberOfGuests = DefaultGuests;
+    private string category = "";
+    private string? message;
+
+    // Keeps the ids of the fields unique when a page shows more than one search block.
+    [Parameter, EditorRequired]
+    public string IdPrefix { get; set; } = string.Empty;
+
+    // Set on the detail page: the search is for this type only, so no category is asked.
+    [Parameter]
+    public string? AccommodationTypeSlug { get; set; }
+
+    [Parameter]
+    public int? MaxGuests { get; set; }
+
+    [Parameter]
+    public string ButtonText { get; set; } = "Zoeken →";
+
+    private bool ShowCategory => AccommodationTypeSlug is null;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    protected override void OnParametersSet()
+    {
+        if (MaxGuests is int max)
+            numberOfGuests = Math.Clamp(numberOfGuests, 1, max);
+    }
+
+    // The search page checks the dates and runs the search, so here only the dates and the party are required.
+    private void Search()
+    {
+        message = MissingInput();
+        if (message is not null)
+            return;
+
+        string url = new QueryString()
+            .Add("type", AccommodationTypeSlug)
+            .Add("aankomst", arrivalDate)
+            .Add("vertrek", departureDate)
+            .Add("personen", numberOfGuests)
+            .Add("soort", category)
+            .ToUrl("zoeken");
+
+        Navigation.NavigateTo(url);
+    }
+
+    private string? MissingInput()
+    {
+        if (arrivalDate is null || departureDate is null)
+            return "Kies je aankomst- en vertrekdatum.";
+
+        if (numberOfGuests < 1)
+            return "Kies minimaal één persoon.";
+
+        if (numberOfGuests > MaxGuests)
+            return $"Dit verblijf is voor maximaal {MaxGuests} personen.";
+
+        return null;
+    }
+}

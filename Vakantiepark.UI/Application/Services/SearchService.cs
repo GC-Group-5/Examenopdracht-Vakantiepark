@@ -1,5 +1,6 @@
 using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Accommodation;
+using Vakantiepark.UI.Application.Helpers;
 using Vakantiepark.UI.Application.Interfaces;
 
 namespace Vakantiepark.UI.Application.Services
@@ -21,23 +22,16 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<AccommodationSearchResponse>> SearchAsync(string? accommodationTypeSlug, string? category, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, bool wheelchairAccessible, Guid? zoneId)
         {
-            string url = "/AccommodationSearch"
-                + $"?arrivalDate={arrivalDate:yyyy-MM-dd}"
-                + $"&departureDate={departureDate:yyyy-MM-dd}"
-                + $"&numberOfGuests={numberOfGuests}"
-                + $"&numberOfPets={numberOfPets}";
-
-            if (!string.IsNullOrWhiteSpace(accommodationTypeSlug))
-                url += $"&accommodationTypeSlug={Uri.EscapeDataString(accommodationTypeSlug)}";
-
-            if (!string.IsNullOrWhiteSpace(category))
-                url += $"&category={Uri.EscapeDataString(category)}";
-
-            if (wheelchairAccessible)
-                url += "&wheelchairAccessible=true";
-
-            if (zoneId is not null)
-                url += $"&zoneId={zoneId}";
+            string url = new QueryString()
+                .Add("arrivalDate", arrivalDate)
+                .Add("departureDate", departureDate)
+                .Add("numberOfGuests", numberOfGuests)
+                .Add("numberOfPets", numberOfPets)
+                .Add("accommodationTypeSlug", accommodationTypeSlug)
+                .Add("category", category)
+                .Add("wheelchairAccessible", wheelchairAccessible)
+                .Add("zoneId", zoneId)
+                .ToUrl("/AccommodationSearch");
 
             return await HttpService.GetAsync<AccommodationSearchResponse>(url);
         }

@@ -14,7 +14,7 @@
         @if (quote is not null)
         {
             <p class="page-intro mt-3 mb-0">
-                @quote.AccommodationTypeName · @quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) · @PartyLabel
+                @quote.AccommodationTypeName · @quote.ArrivalDate.ToString(DateFormats.Date) t/m @quote.DepartureDate.ToString(DateFormats.Date) · @PartyLabel
             </p>
         }
     </div>
@@ -55,12 +55,12 @@
 
                         <dl class="row small mb-0">
                             <dt class="col-5">Aankomst</dt>
-                            <dd class="col-7">@quote.ArrivalDate.ToString(DateFormat)<br /><span class="text-muted-du">vanaf @quote.ArrivalTime.ToString(TimeFormat)</span></dd>
+                            <dd class="col-7">@quote.ArrivalDate.ToString(DateFormats.Date)<br /><span class="text-muted-du">vanaf @quote.ArrivalTime.ToString(DateFormats.Time)</span></dd>
                             <dt class="col-5">Vertrek</dt>
-                            <dd class="col-7">@quote.DepartureDate.ToString(DateFormat)<br /><span class="text-muted-du">vóór @quote.DepartureTime.ToString(TimeFormat)</span></dd>
+                            <dd class="col-7">@quote.DepartureDate.ToString(DateFormats.Date)<br /><span class="text-muted-du">vóór @quote.DepartureTime.ToString(DateFormats.Time)</span></dd>
                             <dt class="col-5">Gezelschap</dt>
                             <dd class="col-7">
-                                @PartyLabel@(request.NumberOfPets > 0 ? $", {request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}" : "")
+                                @PartyLabel@(request.NumberOfPets > 0 ? $", {StayLabels.Pets(request.NumberOfPets)}" : "")
                                 @if (request.WheelchairAccessible)
                                 {
                                     <br /><span class="text-muted-du">rolstoeltoegankelijk</span>
@@ -80,23 +80,8 @@
                         }
                         else
                         {
-                            <table class="table table-sm small mb-0">
-                                <tbody>
-                                    <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@quote.Price.AccommodationPrice.ToString("C")</td></tr>
-                                    <tr><td>Eindschoonmaak</td><td class="text-end">@quote.Price.CleaningFee.ToString("C")</td></tr>
-                                    @if (quote.Price.PetCleaningFee > 0m)
-                                    {
-                                        <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@quote.Price.PetCleaningFee.ToString("C")</td></tr>
-                                    }
-                                    <tr><td>Toeristenbelasting (@(quote.NumberOfGuests - quote.NumberOfChildrenUnder12) × @NumberOfNights, vanaf 12 jaar)</td><td class="text-end">@quote.Price.TouristTax.ToString("C")</td></tr>
-                                    <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@quote.Price.TotalPrice.ToString("C")</td></tr>
-                                    @if (quote.Price.SecurityDeposit > 0m)
-                                    {
-                                        <tr><td>Borg (retour bij vertrek)<br /><span class="text-muted">Betaalbaar bij aankomst op het park</span></td><td class="text-end">@quote.Price.SecurityDeposit.ToString("C")</td></tr>
-                                    }
-                                    <tr><td>Aanbetaling (@quote.DepositPercentage.ToString("0.##")%)</td><td class="text-end">@quote.Price.Deposit.ToString("C")</td></tr>
-                                </tbody>
-                            </table>
+                            <PriceSpecification Price="quote.Price" NumberOfNights="NumberOfNights" TaxedGuests="quote.NumberOfGuests - quote.NumberOfChildrenUnder12"
+                                                DepositPercentage="quote.DepositPercentage" Compact="true" />
                         }
                     </aside>
                 </div>
@@ -114,34 +99,29 @@
                                     <div class="form-text">Telt de hoofdboeker en alle reisgenoten.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" for="booking-children">Waarvan jonger dan 12</label>
-                                    <InputNumber id="booking-children" class="form-control" Value="request.NumberOfChildrenUnder12" TValue="int" ValueExpression="() => request.NumberOfChildrenUnder12" ValueChanged="OnChildrenChangedAsync" min="0" max="@(request.NumberOfGuests - 1)" step="1" />
-                                    <div class="form-text">@(request.NumberOfGuests - request.NumberOfChildrenUnder12) van 12 jaar en ouder. Over kinderen jonger dan 12 betaal je geen toeristenbelasting.</div>
-                                    <ValidationMessage For="() => request.NumberOfChildrenUnder12" />
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
+                                    <div class="form-label fw-semibold">Toegankelijkheid</div>
+                                    <label class="check-field" for="booking-wheelchair">
                                         <InputCheckbox id="booking-wheelchair" class="form-check-input" Value="request.WheelchairAccessible" ValueExpression="() => request.WheelchairAccessible" ValueChanged="OnWheelchairChangedAsync" />
-                                        <label class="form-check-label" for="booking-wheelchair">Ik heb een rolstoeltoegankelijke accommodatie nodig</label>
-                                    </div>
+                                        Rolstoeltoegankelijk verblijf nodig
+                                    </label>
                                 </div>
-
                                 <div class="col-md-6">
-                                    <div class="form-check">
+                                    <div class="form-label fw-semibold">Huisdieren</div>
+                                    <label class="check-field" for="booking-pets-checkbox">
                                         <InputCheckbox id="booking-pets-checkbox" class="form-check-input" Value="takesPets" ValueExpression="() => takesPets" ValueChanged="OnTakesPetsChangedAsync" disabled="@((quote?.MaxPets ?? 0) < 1)" />
-                                        <label class="form-check-label" for="booking-pets-checkbox">Ik neem huisdieren mee</label>
-                                    </div>
+                                        Ik neem huisdieren mee
+                                    </label>
                                 </div>
                                 @if (takesPets)
                                 {
                                     <div class="col-12 col-md-6">
                                         <label class="form-label fw-semibold" for="booking-pets">Aantal huisdieren</label>
                                         <InputNumber id="booking-pets" class="form-control" Value="request.NumberOfPets" TValue="int" ValueExpression="() => request.NumberOfPets" ValueChanged="OnPetsChangedAsync" min="1" max="@((quote?.MaxPets ?? 1))" step="1" />
-                                        <div class="form-text">Maximaal @(quote?.MaxPets ?? 0) @((quote?.MaxPets ?? 0) == 1 ? "huisdier" : "huisdieren").</div>
+                                        <div class="form-text">Maximaal @StayLabels.Pets(quote?.MaxPets ?? 0).</div>
                                     </div>
-                                    @* Keeps Naam on a new row, so it never ends up next to the pet count. *@
-                                    <div class="w-100 d-none d-md-block"></div>
                                 }
+                                @* Keeps Naam on a new row, so name, birth date, email and phone stay in pairs. *@
+                                <div class="w-100 d-none d-md-block"></div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-name">Naam</label>
                                     <InputText id="booking-name" class="form-control" @bind-Value="request.Name" placeholder="Voor- en achternaam" autocomplete="name" />
@@ -171,7 +151,7 @@
                             @if (request.CoTravellers.Count > 0)
                             {
                                 <h2 class="h5 mt-5 mb-1">Reisgenoten <span class="badge rounded-pill text-bg-light border fw-normal align-middle">Optioneel</span></h2>
-                                <p class="text-muted-du small mb-3">Deze velden zijn niet verplicht: je kunt ook zonder boeken. Wat je leeg laat, vult de receptie aan bij het inchecken.</p>
+                                <p class="text-muted-du small mb-3">Deze velden zijn niet verplicht: je kunt ook zonder boeken. Wat je leeg laat, vult de receptie aan bij het inchecken. Over kinderen jonger dan 12 betaal je geen toeristenbelasting. Dat volgt uit de geboortedatum; zonder geboortedatum telt een reisgenoot als 12 jaar of ouder.</p>
                                 @for (int index = 0; index < request.CoTravellers.Count; index++)
                                 {
                                     int number = index + 2;
@@ -183,7 +163,7 @@
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold" for="@($"traveller-birthdate-{number}")">Persoon @number: geboortedatum</label>
-                                            <InputDutchDate id="@($"traveller-birthdate-{number}")" class="form-control" MaxYear="@DateTime.Today.Year" @bind-Value="traveller.BirthDate" />
+                                            <InputDutchDate id="@($"traveller-birthdate-{number}")" class="form-control" MaxYear="@DateTime.Today.Year" @bind-Value="traveller.BirthDate" @bind-Value:after="OnTravellerBirthDateChangedAsync" />
                                         </div>
                                     </div>
                                 }
@@ -216,7 +196,7 @@
                                 <dd class="col-sm-8">@(quote.Zone ?? "Geen voorkeur")</dd>
 
                                 <dt class="col-sm-4">Huisdieren</dt>
-                                <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : $"{request.NumberOfPets} {(request.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
+                                <dd class="col-sm-8">@(request.NumberOfPets == 0 ? "Geen" : StayLabels.Pets(request.NumberOfPets))</dd>
                                 @if (quote.Price.PetCleaningFee > 0m)
                                 {
                                     <dt class="col-sm-4">Schoonmaakkosten huisdieren</dt>
@@ -230,10 +210,10 @@
                                 }
 
                                 <dt class="col-sm-4">Data</dt>
-                                <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormat) t/m @quote.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
+                                <dd class="col-sm-8">@quote.ArrivalDate.ToString(DateFormats.Date) t/m @quote.DepartureDate.ToString(DateFormats.Date) (@StayLabels.Nights(NumberOfNights))</dd>
 
                                 <dt class="col-sm-4">Aankomst en vertrek</dt>
-                                <dd class="col-sm-8">Aankomst vanaf @quote.ArrivalTime.ToString(TimeFormat), vertrek vóór @quote.DepartureTime.ToString(TimeFormat)</dd>
+                                <dd class="col-sm-8">Aankomst vanaf @quote.ArrivalTime.ToString(DateFormats.Time), vertrek vóór @quote.DepartureTime.ToString(DateFormats.Time)</dd>
 
                                 <dt class="col-sm-4">Reisgezelschap</dt>
                                 <dd class="col-sm-8">
@@ -282,8 +262,6 @@
 </section>
 
 @code {
-    private const string DateFormat = DateFormats.Date;
-    private const string TimeFormat = "HH:mm";
     private const string QuoteFailedMessage = "Dit verblijf kan nu niet worden geboekt.";
     private const int DefaultGuests = 2;
     private const int MaxGuests = 20;
@@ -328,17 +306,11 @@
 
     private bool HasDates => request.ArrivalDate != default && request.DepartureDate != default;
 
-    private int NumberOfNights => request.DepartureDate.DayNumber - request.ArrivalDate.DayNumber;
+    private int NumberOfNights => StayLabels.NumberOfNights(request.ArrivalDate, request.DepartureDate);
 
-    // e.g. "4 personen, waarvan 2 jonger dan 12"
-    private string PartyLabel
-    {
-        get
-        {
-            string persons = $"{request.NumberOfGuests} {(request.NumberOfGuests == 1 ? "persoon" : "personen")}";
-            return request.NumberOfChildrenUnder12 == 0 ? persons : $"{persons}, waarvan {request.NumberOfChildrenUnder12} jonger dan 12";
-        }
-    }
+    private int ChildrenUnder12 => request.CoTravellers.CountChildrenUnder12(request.ArrivalDate);
+
+    private string PartyLabel => TravellerAgeExtensions.PartyLabel(request.NumberOfGuests, ChildrenUnder12);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -356,7 +328,6 @@
         takesPets = request.NumberOfPets > 0;
         request.WheelchairAccessible = Wheelchair == true;
         request.PreferredZone = PreferredZone;
-        request.NumberOfChildrenUnder12 = 0;
         ResizeCoTravellers();
 
         // The server checks the stay first, so the guest hears about a full period
@@ -373,7 +344,7 @@
     private async Task<ApiResponse<BookingQuoteResponse>> RequestQuoteAsync() =>
         await BookingService.GetQuoteAsync(
             request.AccommodationTypeSlug, request.ArrivalDate, request.DepartureDate,
-            request.NumberOfGuests, request.NumberOfChildrenUnder12, request.NumberOfPets, request.WheelchairAccessible, request.PreferredZone);
+            request.NumberOfGuests, ChildrenUnder12, request.NumberOfPets, request.WheelchairAccessible, request.PreferredZone);
 
     // Refreshes the quote while the form stays on screen, so a party change does not
     // tear down the form; a rejected party size is shown inline and can be corrected.
@@ -400,11 +371,10 @@
         quoteErrorMessage = response.Message ?? QuoteFailedMessage;
     }
 
-    // The main booker is 18 or older, so fewer persons can mean fewer children.
+    // Fewer persons drop the last traveller rows, and with them maybe a child under 12.
     private async Task OnGuestsChangedAsync(int newGuests)
     {
         request.NumberOfGuests = newGuests;
-        request.NumberOfChildrenUnder12 = Math.Clamp(request.NumberOfChildrenUnder12, 0, Math.Max(newGuests - 1, 0));
         ResizeCoTravellers();
         await OnPartyChangedAsync();
     }
@@ -421,11 +391,11 @@
             .ToList();
     }
 
-    // Children under 12 pay no tourist tax, so the price is fetched again.
-    private async Task OnChildrenChangedAsync(int newChildren)
+    // A birth date can make someone under 12, who pays no tourist tax, so then the price is fetched again.
+    private async Task OnTravellerBirthDateChangedAsync()
     {
-        request.NumberOfChildrenUnder12 = newChildren;
-        await OnPartyChangedAsync();
+        if (quote is null || quote.NumberOfChildrenUnder12 != ChildrenUnder12)
+            await OnPartyChangedAsync();
     }
 
     // Pets decide which units may be picked, so the quote is checked again.
@@ -434,7 +404,7 @@
         if (quote is not null && newPets > quote.MaxPets)
         {
             request.NumberOfPets = newPets;
-            quoteErrorMessage = $"Dit verblijfstype staat maximaal {quote.MaxPets} {(quote.MaxPets == 1 ? "huisdier" : "huisdieren")} toe.";
+            quoteErrorMessage = $"Dit verblijfstype staat maximaal {StayLabels.Pets(quote.MaxPets)} toe.";
             return;
         }
 

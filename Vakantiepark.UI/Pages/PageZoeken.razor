@@ -74,10 +74,10 @@
                             </select>
                         </div>
                         <div class="col-12">
-                            <div class="form-check">
+                            <label class="check-field" for="search-wheelchair">
                                 <input id="search-wheelchair" class="form-check-input" type="checkbox" @bind="WheelchairAccessible" />
-                                <label class="form-check-label" for="search-wheelchair">Rolstoeltoegankelijk</label>
-                            </div>
+                                Rolstoeltoegankelijk
+                            </label>
                         </div>
                         <div class="col-12 zoek-submit">
                             <button type="button" class="btn btn-du w-100 py-3" @onclick="SearchAsync" disabled="@isSearching">
@@ -166,7 +166,7 @@
     [SupplyParameterFromQuery(Name = "type")]
     public string? TypeFromQuery { get; set; }
 
-    // The quick search on the homepage (US-42) sends these.
+    // The quick search on the homepage (US-42) and on the detail page of a type (US-45) sends these.
     [SupplyParameterFromQuery(Name = "aankomst")]
     public DateOnly? ArrivalFromQuery { get; set; }
 
@@ -315,27 +315,18 @@
 
     // Everything the guest searched on travels to the booking page (US-36).
     private static string BookingUrl(string slug, SearchCriteria criteria)
-    {
-        string url = $"/zoek-en-boek?type={Uri.EscapeDataString(slug)}"
-            + $"&aankomst={criteria.ArrivalDate:yyyy-MM-dd}"
-            + $"&vertrek={criteria.DepartureDate:yyyy-MM-dd}"
-            + $"&personen={criteria.NumberOfGuests}"
-            + $"&huisdieren={criteria.NumberOfPets}";
-
-        if (criteria.WheelchairAccessible)
-            url += "&rolstoel=true";
-
-        if (criteria.ZoneName is not null)
-            url += $"&zone={Uri.EscapeDataString(criteria.ZoneName)}";
-
-        return url;
-    }
+        => new QueryString()
+            .Add("type", slug)
+            .Add("aankomst", criteria.ArrivalDate)
+            .Add("vertrek", criteria.DepartureDate)
+            .Add("personen", criteria.NumberOfGuests)
+            .Add("huisdieren", criteria.NumberOfPets)
+            .Add("rolstoel", criteria.WheelchairAccessible)
+            .Add("zone", criteria.ZoneName)
+            .ToUrl("/zoek-en-boek");
 
     private static string NightsLabel(SearchCriteria criteria)
-    {
-        int nights = criteria.DepartureDate.DayNumber - criteria.ArrivalDate.DayNumber;
-        return $"{nights} {(nights == 1 ? "nacht" : "nachten")}";
-    }
+        => StayLabels.Nights(StayLabels.NumberOfNights(criteria.ArrivalDate, criteria.DepartureDate));
 
     private string TypeCategoryOf(string slug) =>
         TypeOptions.FirstOrDefault(type => type.Slug == slug)?.Category ?? "";

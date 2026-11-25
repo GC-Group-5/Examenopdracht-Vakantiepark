@@ -15,7 +15,7 @@
         <h1 class="page-title mt-2">@(reservation is null ? "Reservering" : $"Reservering {reservation.BookingNumber}")</h1>
         @if (reservation is not null)
         {
-            <p class="page-intro mt-3 mb-0">@reservation.Name · @reservation.AccommodationTypeName · @reservation.ArrivalDate.ToString(DateFormat) t/m @reservation.DepartureDate.ToString(DateFormat)</p>
+            <p class="page-intro mt-3 mb-0">@reservation.Name · @reservation.AccommodationTypeName · @reservation.ArrivalDate.ToString(DateFormats.Date) t/m @reservation.DepartureDate.ToString(DateFormats.Date)</p>
         }
         <button type="button" class="btn btn-du-light mt-3" @onclick="BackAsync">Terug naar de lijst</button>
     </div>
@@ -23,18 +23,7 @@
 
 <section class="section-pad">
     <div class="container">
-        @if (errorMessage is not null)
-        {
-            <div class="alert alert-danger" role="alert">@errorMessage</div>
-        }
-        else if (reservation is null)
-        {
-            <div class="text-center py-5" role="status">
-                <div class="spinner-border text-success"><span class="visually-hidden">Reservering wordt geladen…</span></div>
-            </div>
-        }
-        else
-        {
+        <LoadState TValue="ReservationDetailResponse" Value="reservation" ErrorMessage="@errorMessage" LoadingText="Reservering wordt geladen…" Context="reservation">
             <div class="row g-4">
                 <div class="col-12 col-lg-7">
                     <div class="detail-meta-card h-100">
@@ -43,70 +32,15 @@
                             <span class="badge rounded-pill @BookingStatusBadge.CssClass(reservation.Status) fs-6">@reservation.Status</span>
                         </div>
 
-                        <dl class="row mb-0">
-                            <dt class="col-sm-4">Boekingsnummer</dt>
-                            <dd class="col-sm-8">@reservation.BookingNumber</dd>
-
-                            <dt class="col-sm-4">Geboekt op</dt>
-                            <dd class="col-sm-8">@reservation.CreatedAt.ToLocalTime().ToString($"{DateFormat} {TimeFormat}")</dd>
-
-                            <dt class="col-sm-4">Verblijf</dt>
-                            <dd class="col-sm-8">@reservation.AccommodationTypeName · @reservation.UnitCode · zone @reservation.Zone</dd>
-
-                            <dt class="col-sm-4">Data</dt>
-                            <dd class="col-sm-8">@reservation.ArrivalDate.ToString(DateFormat) t/m @reservation.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
-
-                            <dt class="col-sm-4">Aankomst en vertrek</dt>
-                            <dd class="col-sm-8">Aankomst vanaf @reservation.ArrivalTime.ToString(TimeFormat), vertrek vóór @reservation.DepartureTime.ToString(TimeFormat)</dd>
-
-                            <dt class="col-sm-4">Reisgezelschap</dt>
-                            <dd class="col-sm-8">
-                                @TravellerAgeExtensions.PartyLabel(reservation.NumberOfGuests, reservation.NumberOfChildrenUnder12)
-                                <ul class="list-unstyled mb-0">
-                                    @foreach (GuestResponse guest in reservation.Guests)
-                                    {
-                                        <li>@TravellerAgeExtensions.TravellerLabel(guest.Name, guest.BirthDate, reservation.ArrivalDate, guest.IsMainBooker)</li>
-                                    }
-                                </ul>
-                                @if (TravellerAgeExtensions.MissingTravellersLabel(reservation.NumberOfGuests, reservation.Guests.Count) is string missing)
-                                {
-                                    <div class="text-muted-du small">@missing</div>
-                                }
-                            </dd>
-
-                            <dt class="col-sm-4">Huisdieren</dt>
-                            <dd class="col-sm-8">@(reservation.NumberOfPets == 0 ? "Geen" : $"{reservation.NumberOfPets} {(reservation.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
-
-                            <dt class="col-sm-4">Rolstoeltoegankelijk</dt>
-                            <dd class="col-sm-8">@(reservation.WheelchairAccessible ? "Ja" : "Nee")</dd>
-
-                            <dt class="col-sm-4">Contactgegevens</dt>
-                            <dd class="col-sm-8 mb-0">@reservation.Name<br /><a class="admin-link fw-normal" href="mailto:@reservation.Email">@reservation.Email</a><br /><a class="admin-link fw-normal" href="tel:@reservation.PhoneNumber">@reservation.PhoneNumber</a></dd>
-                        </dl>
+                        <BookingDetails Booking="reservation" BookedAt="reservation.CreatedAt" UnitCode="@reservation.UnitCode" ForStaff="true" />
                     </div>
                 </div>
 
                 <div class="col-12 col-lg-5">
                     <div class="detail-meta-card h-100">
                         <h2 class="h4 mb-3">Prijsspecificatie</h2>
-                        <table class="table mb-0">
-                            <tbody>
-                                <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@reservation.AccommodationPrice.ToString("C")</td></tr>
-                                <tr><td>Eindschoonmaak</td><td class="text-end">@reservation.CleaningFee.ToString("C")</td></tr>
-                                @if (reservation.PetCleaningFee > 0m)
-                                {
-                                    <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@reservation.PetCleaningFee.ToString("C")</td></tr>
-                                }
-                                <tr><td>Toeristenbelasting</td><td class="text-end">@reservation.TouristTax.ToString("C")</td></tr>
-                                <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@reservation.TotalPrice.ToString("C")</td></tr>
-                                <tr><td>Borg (retour bij vertrek)<div class="small text-muted-du">Innen bij aankomst, terugbetalen bij vertrek</div></td><td class="text-end">@reservation.SecurityDeposit.ToString("C")</td></tr>
-                                <tr><td>Aanbetaling</td><td class="text-end">@reservation.Deposit.ToString("C")</td></tr>
-                                @if (reservation.CancellationFee is not null)
-                                {
-                                    <tr class="fw-semibold"><td class="text-danger">Annuleringskosten</td><td class="text-end text-danger">@reservation.CancellationFee.Value.ToString("C")</td></tr>
-                                }
-                            </tbody>
-                        </table>
+                        <PriceSpecification Price="reservation.ToPriceSpecification()" NumberOfNights="StayLabels.NumberOfNights(reservation.ArrivalDate, reservation.DepartureDate)"
+                                            CancellationFee="reservation.CancellationFee" SecurityDepositNote="Innen bij aankomst, terugbetalen bij vertrek" />
                     </div>
                 </div>
             </div>
@@ -165,15 +99,11 @@
                             <label class="form-label fw-semibold" for="edit-departure">Vertrek</label>
                             <InputDutchDate id="edit-departure" class="form-control" MinYear="@Today.Year" @bind-Value="changeRequest.DepartureDate" RangeStart="@changeRequest.ArrivalDate" />
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold" for="edit-guests">Aantal personen</label>
                             <InputNumber id="edit-guests" class="form-control" @bind-Value="changeRequest.NumberOfGuests" min="1" step="1" />
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="edit-children">Waarvan jonger dan 12</label>
-                            <InputNumber id="edit-children" class="form-control" @bind-Value="changeRequest.NumberOfChildrenUnder12" min="0" max="@(changeRequest.NumberOfGuests - 1)" step="1" />
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold" for="edit-unit">Eenheid</label>
                             <InputSelect id="edit-unit" class="form-select" @bind-Value="changeRequest.AccommodationUnitCode">
                                 <option value="">Huidige houden (@reservation.UnitCode) als die vrij is</option>
@@ -223,7 +153,7 @@
                         @foreach (BookingChangeResponse change in reservation.Changes)
                         {
                             <li class="mb-2">
-                                <span class="fw-semibold">@change.ChangedAt.ToLocalTime().ToString($"{DateFormat} {TimeFormat}") · @change.StaffName</span><br />
+                                <span class="fw-semibold">@change.ChangedAt.ToLocalTime().ToString(DateFormats.DateAndTime) · @change.StaffName</span><br />
                                 @change.Description
                                 @if (change.Reason is not null)
                                 {
@@ -234,14 +164,11 @@
                     </ul>
                 }
             </div>
-        }
+        </LoadState>
     </div>
 </section>
 
 @code {
-    private const string DateFormat = DateFormats.Date;
-    private const string TimeFormat = DateFormats.Time;
-
     [Parameter]
     public Guid Id { get; set; }
 
@@ -257,8 +184,6 @@
     private bool isBusy;
     private string? actionError;
     private string? successMessage;
-
-    private int NumberOfNights => reservation is null ? 0 : reservation.DepartureDate.DayNumber - reservation.ArrivalDate.DayNumber;
 
     private bool IsCancelled => reservation?.Status == BookingStatuses.Geannuleerd;
 
@@ -310,7 +235,6 @@
             ArrivalDate = reservation.ArrivalDate,
             DepartureDate = reservation.DepartureDate,
             NumberOfGuests = reservation.NumberOfGuests,
-            NumberOfChildrenUnder12 = reservation.NumberOfChildrenUnder12,
             CoTravellers = reservation.Guests
                 .Where(guest => !guest.IsMainBooker)
                 .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })

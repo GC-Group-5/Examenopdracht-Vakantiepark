@@ -253,10 +253,10 @@
                                     <ValidationMessage For="() => season.EndDate" />
                                 </div>
                             </div>
-                            <div class="form-check mb-3">
+                            <label class="check-field mb-3" for="season-high">
                                 <InputCheckbox id="season-high" class="form-check-input" @bind-Value="season.IsHighSeason" />
-                                <label class="form-check-label" for="season-high">Hoogseizoen (minimum verblijf geldt)</label>
-                            </div>
+                                Hoogseizoen (minimum verblijf geldt)
+                            </label>
                             <button type="submit" class="btn btn-du" disabled="@isBusy">Seizoen opslaan</button>
                             @if (editingSeasonId is not null)
                             {

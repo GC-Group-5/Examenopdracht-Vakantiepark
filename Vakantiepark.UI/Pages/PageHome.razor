@@ -1,6 +1,5 @@
 ﻿@page "/"
 @inject IHttpService HttpService
-@inject NavigationManager Navigation
 
 <PageTitle>Vakantiepark D'r op Uut</PageTitle>
 
@@ -31,37 +30,7 @@
                     <div class="eyebrow">Zoek &amp; boek</div>
                     <h2 class="h4 mt-2">Wanneer kom je?</h2>
                     <p class="small text-muted-du">Kies je data en reisgezelschap en zie direct welke verblijven vrij zijn.</p>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1" for="home-arrival">Aankomst</label>
-                            <InputDutchDate id="home-arrival" class="form-control" @bind-Value="ArrivalDate" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@DepartureDate" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1" for="home-departure">Vertrek</label>
-                            <InputDutchDate id="home-departure" class="form-control" @bind-Value="DepartureDate" MinDate="@((ArrivalDate ?? Today).AddDays(1))" MinYear="@Today.Year" RangeStart="@ArrivalDate" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1" for="home-guests">Personen</label>
-                            <InputNumber id="home-guests" class="form-control" @bind-Value="NumberOfGuests" min="1" step="1" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1" for="home-category">Soort verblijf</label>
-                            <select id="home-category" class="form-select" @bind="Category">
-                                <option value="">Alles</option>
-                                <option value="@CategoryHolidayHomes">Vakantiewoningen</option>
-                                <option value="@CategoryCampingPitches">Kampeerplaatsen</option>
-                            </select>
-                        </div>
-                        @if (searchMessage is not null)
-                        {
-                            <div class="col-12">
-                                <div class="small text-danger" role="alert">@searchMessage</div>
-                            </div>
-                        }
-                        <div class="col-12 mt-3">
-                            <button type="button" class="btn btn-du w-100" @onclick="Search">Zoeken →</button>
-                        </div>
-                    </div>
+                    <QuickSearch IdPrefix="home" />
                 </div>
             </div>
         </div>
@@ -80,20 +49,7 @@
                 <a class="fw-bold text-decoration-none" href="accommodaties">Alle @types.Count verblijfstypes bekijken →</a>
             }
         </div>
-        @if (errorMessage is not null)
-        {
-            <div class="alert alert-danger" role="alert">@errorMessage</div>
-        }
-        else if (types is null)
-        {
-            <div class="text-center py-5">
-                <div class="spinner-border text-success" role="status">
-                    <span class="visually-hidden">Bezig met laden...</span>
-                </div>
-            </div>
-        }
-        else
-        {
+        <LoadState TValue="List<AccommodationTypeResponse>" Value="types" ErrorMessage="@errorMessage" LoadingText="Verblijven worden geladen…" Context="types">
             <div class="row g-4">
                 @foreach (AccommodationTypeResponse type in FeaturedTypes)
                 {
@@ -102,7 +58,7 @@
                     </div>
                 }
             </div>
-        }
+        </LoadState>
     </div>
 </section>
 
@@ -148,22 +104,10 @@
 </section>
 
 @code {
-    // The same values PageZoeken reads from ?soort=.
-    private const string CategoryHolidayHomes = "vakantiewoningen";
-    private const string CategoryCampingPitches = "kampeerplaatsen";
-
     // The same four types as the template's homepage.
     private static readonly string[] FeaturedSlugs = ["berk-4", "eik-luxe-6", "bosvilla-10", "tentplaats-comfort"];
     private string? errorMessage;
     private List<AccommodationTypeResponse>? types;
-
-    private DateOnly? ArrivalDate;
-    private DateOnly? DepartureDate;
-    private int NumberOfGuests = 2;
-    private string Category = "";
-    private string? searchMessage;
-
-    private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
     private List<AccommodationTypeResponse> FeaturedTypes
         => FeaturedSlugs
@@ -181,24 +125,5 @@
             types = response.Value;
         else
             errorMessage = response.Message ?? "De verblijven konden niet worden geladen. Probeer het later opnieuw.";
-    }
-
-    // The search page checks the dates and runs the search, so here only both dates are required.
-    private void Search()
-    {
-        if (ArrivalDate is null || DepartureDate is null)
-        {
-            searchMessage = "Kies je aankomst- en vertrekdatum.";
-            return;
-        }
-
-        string url = $"zoeken?aankomst={ArrivalDate.Value:yyyy-MM-dd}"
-            + $"&vertrek={DepartureDate.Value:yyyy-MM-dd}"
-            + $"&personen={NumberOfGuests}";
-
-        if (!string.IsNullOrWhiteSpace(Category))
-            url += $"&soort={Category}";
-
-        Navigation.NavigateTo(url);
     }
 }

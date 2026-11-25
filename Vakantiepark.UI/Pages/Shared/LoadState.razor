@@ -1,0 +1,46 @@
+@typeparam TValue where TValue : class
+@* Every page shows loading, failed and empty the same way (AGENTS.md §8); the content only renders
+   once there is a value, and gets it as its context, so it never has to check for null itself. *@
+@if (ErrorMessage is not null)
+{
+    <div class="alert alert-danger @Class" role="alert">@ErrorMessage</div>
+}
+else if (Value is null)
+{
+    <div class="text-center py-5" role="status">
+        <div class="spinner-border text-success"><span class="visually-hidden">@LoadingText</span></div>
+    </div>
+}
+else if (IsEmpty is not null && IsEmpty(Value))
+{
+    <div class="detail-meta-card p-4 @Class">@EmptyMessage</div>
+}
+else
+{
+    @ChildContent(Value)
+}
+
+@code {
+    // Null while loading.
+    [Parameter]
+    public TValue? Value { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public string LoadingText { get; set; } = "Bezig met laden…";
+
+    [Parameter]
+    public Func<TValue, bool>? IsEmpty { get; set; }
+
+    [Parameter]
+    public string? EmptyMessage { get; set; }
+
+    // Extra classes for the error and empty message, e.g. a margin below a filter form.
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment<TValue> ChildContent { get; set; } = null!;
+}

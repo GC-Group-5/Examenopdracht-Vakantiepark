@@ -1,0 +1,52 @@
+@using Vakantiepark.Shared.DTOs.Price
+@* The price lines of a stay, the same on the booking page, "Mijn boeking" and the reservation in the beheeromgeving. *@
+<table class="table mb-0 @(Compact ? "table-sm small" : "")">
+    <tbody>
+        <tr><td>Verblijf (@StayLabels.Nights(NumberOfNights))</td><td class="text-end">@Price.AccommodationPrice.ToString("C")</td></tr>
+        <tr><td>Eindschoonmaak</td><td class="text-end">@Price.CleaningFee.ToString("C")</td></tr>
+        @if (Price.PetCleaningFee > 0m)
+        {
+            <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@Price.PetCleaningFee.ToString("C")</td></tr>
+        }
+        <tr>
+            <td>Toeristenbelasting@(TaxedGuests is int taxed ? $" ({taxed} × {NumberOfNights}, vanaf {BookingRules.TouristTaxMinimumAge} jaar)" : "")</td>
+            <td class="text-end">@Price.TouristTax.ToString("C")</td>
+        </tr>
+        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@Price.TotalPrice.ToString("C")</td></tr>
+        @if (Price.SecurityDeposit > 0m)
+        {
+            <tr><td>Borg (retour bij vertrek)<div class="small text-muted-du">@SecurityDepositNote</div></td><td class="text-end">@Price.SecurityDeposit.ToString("C")</td></tr>
+        }
+        <tr><td>Aanbetaling@(DepositPercentage is decimal percentage ? $" ({percentage:0.##}%)" : "")</td><td class="text-end">@Price.Deposit.ToString("C")</td></tr>
+        @if (CancellationFee is decimal fee)
+        {
+            <tr class="fw-semibold text-danger"><td>Annuleringskosten</td><td class="text-end">@fee.ToString("C")</td></tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired]
+    public PriceSpecificationResponse Price { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public int NumberOfNights { get; set; }
+
+    // Persons of 12 and older; when given, the tourist tax line shows how it is calculated.
+    [Parameter]
+    public int? TaxedGuests { get; set; }
+
+    [Parameter]
+    public decimal? DepositPercentage { get; set; }
+
+    // Only for a cancelled booking.
+    [Parameter]
+    public decimal? CancellationFee { get; set; }
+
+    [Parameter]
+    public string SecurityDepositNote { get; set; } = "Betaalbaar bij aankomst op het park";
+
+    // Smaller text for the booking card next to the form.
+    [Parameter]
+    public bool Compact { get; set; }
+}
