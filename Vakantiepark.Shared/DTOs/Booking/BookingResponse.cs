@@ -18,6 +18,7 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public decimal CleaningFee { get; set; }
         public decimal PetCleaningFee { get; set; }
         public decimal TouristTax { get; set; }
+        public decimal SecurityDeposit { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }
     }

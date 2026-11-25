@@ -109,6 +109,8 @@ namespace Vakantiepark.Application.Services
                 PetCleaningFee = petCleaningFee,
                 TouristTax = touristTax,
                 TotalPrice = totalPrice,
+                // Every stay, camping pitches included (client review of 19 November).
+                SecurityDeposit = settings.SecurityDeposit,
                 Deposit = deposit,
             };
         }
