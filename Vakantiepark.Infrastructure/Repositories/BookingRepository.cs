@@ -42,22 +42,15 @@ namespace Vakantiepark.Infrastructure.Repositories
             }
         }
 
-        // Departure dates are exclusive: a guest may arrive on the day the previous guest leaves.
         public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate)
-            => await Set
-                .Where(x => x.DeletedAt == null)
-                .Where(x => unitIds.Contains(x.AccommodationUnitId))
-                .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate)
+            => await Overlapping(unitIds, arrivalDate, departureDate)
                 .Select(x => x.AccommodationUnitId)
                 .Distinct()
                 .ToListAsync();
 
         public async Task<List<Booking>> GetByUnitIdInPeriodAsync(Guid unitId, DateOnly startDate, DateOnly endDate)
-            => await Set
+            => await Overlapping([unitId], startDate, endDate)
                 .AsNoTracking()
-                .Where(x => x.DeletedAt == null)
-                .Where(x => x.AccommodationUnitId == unitId)
-                .Where(x => x.ArrivalDate < endDate && x.DepartureDate > startDate)
                 .OrderBy(x => x.ArrivalDate)
                 .ToListAsync();
 
@@ -80,11 +73,8 @@ namespace Vakantiepark.Infrastructure.Repositories
         }
 
         public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId)
-            => await Set
-                .Where(x => x.DeletedAt == null)
+            => await Overlapping(unitIds, arrivalDate, departureDate)
                 .Where(x => x.Id != excludedBookingId)
-                .Where(x => unitIds.Contains(x.AccommodationUnitId))
-                .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate)
                 .Select(x => x.AccommodationUnitId)
                 .Distinct()
                 .ToListAsync();
@@ -157,6 +147,12 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .ToPagedResultAsync(page, pageSize);
         }
 
+        // The night of the date: a guest who leaves that day no longer counts.
+        public async Task<List<Booking>> GetStayingOnDateAsync(List<Guid> unitIds, DateOnly date)
+            => await Overlapping(unitIds, date, date.AddDays(1))
+                .AsNoTracking()
+                .ToListAsync();
+
         public async Task<List<Booking>> GetArrivingOrDepartingOnAsync(DateOnly date)
             => await Set
                 .AsNoTracking()
@@ -168,6 +164,14 @@ namespace Vakantiepark.Infrastructure.Repositories
         // % and _ typed by a staff member are searched literally, not as wildcards.
         private static string EscapeLikePattern(string text)
             => text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
+        // Active bookings of these units with at least one night in the period. Departure dates are
+        // exclusive: a guest may arrive on the day the previous guest leaves.
+        private IQueryable<Booking> Overlapping(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate)
+            => Set
+                .Where(x => x.DeletedAt == null)
+                .Where(x => unitIds.Contains(x.AccommodationUnitId))
+                .Where(x => x.ArrivalDate < departureDate && x.DepartureDate > arrivalDate);
 
         private IQueryable<Booking> WithDetails()
             => Set

@@ -84,7 +84,7 @@
                             <div class="col-12 col-sm-6 col-xl-12">
                                 <label class="form-label fw-semibold" for="maintenance-reason">Reden</label>
                                 <select id="maintenance-reason" class="form-select" @bind="newReason" disabled="@hasPendingConfirmation">
-                                    @foreach (KeyValuePair<string, string> reason in ReasonLabels)
+                                    @foreach (KeyValuePair<string, string> reason in MaintenanceReasonLabels.All)
                                     {
                                         <option value="@reason.Key">@reason.Value</option>
                                     }
@@ -166,7 +166,7 @@
                                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                                     <div>
                                         <div class="fw-bold text-success">@PeriodDates(period.StartDate, period.EndDate)</div>
-                                        <div class="small text-muted-du">@ReasonLabel(period.Reason)@(string.IsNullOrWhiteSpace(period.Note) ? "" : $" · {period.Note}")</div>
+                                        <div class="small text-muted-du">@MaintenanceReasonLabels.Get(period.Reason)@(string.IsNullOrWhiteSpace(period.Note) ? "" : $" · {period.Note}")</div>
                                     </div>
                                     <span class="badge rounded-pill align-self-start @StatusBadgeClass(period)">@StatusLabel(period)</span>
                                 </div>
@@ -299,13 +299,6 @@
 }
 
 @code {
-    private static readonly Dictionary<string, string> ReasonLabels = new()
-    {
-        ["Maintenance"] = "Onderhoud",
-        ["TechnicalProblem"] = "Technisch probleem",
-        ["Other"] = "Overig",
-    };
-
     private static readonly Dictionary<string, string> PeriodFilters = new()
     {
         ["all"] = "Alle",
@@ -583,9 +576,6 @@
         "all" => true,
         _ => StatusKey(period) == filter,
     };
-
-    private static string ReasonLabel(string reason)
-        => ReasonLabels.TryGetValue(reason, out string? label) ? label : reason;
 
     private string StatusKey(MaintenancePeriodResponse period)
         => period.EndDate < Today ? "ended" : period.StartDate > Today ? "planned" : "active";
