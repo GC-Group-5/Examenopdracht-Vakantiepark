@@ -1,5 +1,6 @@
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Shared.DTOs.Booking;
+using Vakantiepark.Shared.DTOs.Reservations;
 
 namespace Vakantiepark.Application.Interfaces
 {
@@ -18,5 +19,10 @@ namespace Vakantiepark.Application.Interfaces
         Task<MyBookingResponse> CancelAsync(BookingAccessRequest access, Guid? guestBookingId);
         Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId);
         Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request, Guid? guestBookingId);
+
+        // US-14: the same by staff, without the guest's term; staffUserId goes into the change log.
+        Task ChangeByStaffAsync(Guid bookingId, StaffChangeBookingRequest request, Guid staffUserId);
+        Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId);
+        Task CancelByStaffAsync(Guid bookingId, StaffCancelBookingRequest request, Guid staffUserId);
     }
 }

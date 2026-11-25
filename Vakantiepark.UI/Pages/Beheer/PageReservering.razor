@@ -1,5 +1,6 @@
 @page "/beheer/reserveringen/{Id:guid}"
 @attribute [Authorize(Roles = Roles.Staff)]
+@using Vakantiepark.Shared.DTOs.Accommodation
 @using Vakantiepark.Shared.DTOs.Booking
 @using Vakantiepark.Shared.DTOs.Reservations
 @using Vakantiepark.UI.Application.Extensions
@@ -109,6 +110,130 @@
                     </div>
                 </div>
             </div>
+
+            @if (successMessage is not null)
+            {
+                <div class="alert alert-success mt-4" role="status">@successMessage</div>
+            }
+
+            @if (actionError is not null)
+            {
+                <div class="alert alert-danger mt-4" role="alert">@actionError</div>
+            }
+
+            @if (mode == Mode.View && !IsCancelled)
+            {
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <button type="button" class="btn btn-du" @onclick="StartChangeAsync" disabled="@isBusy">Wijzigen</button>
+                    <button type="button" class="btn btn-du-light text-danger" @onclick="StartCancelAsync" disabled="@isBusy">Annuleren</button>
+                </div>
+            }
+
+            @if (mode == Mode.Change)
+            {
+                <EditForm Model="changeRequest" OnValidSubmit="SaveChangeAsync" class="detail-meta-card mt-4">
+                    <DataAnnotationsValidator />
+                    <h2 class="h4 mb-1">Reservering wijzigen</h2>
+                    <p class="text-muted-du small">Dezelfde controles als bij boeken; de termijn voor gasten geldt hier niet. De prijs wordt opnieuw berekend.</p>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-name">Naam hoofdboeker</label>
+                            <InputText id="edit-name" class="form-control" @bind-Value="changeRequest.Name" />
+                            <ValidationMessage For="() => changeRequest.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-birthdate">Geboortedatum hoofdboeker</label>
+                            <InputDutchDate id="edit-birthdate" class="form-control" MaxYear="@Today.Year" @bind-Value="changeRequest.BirthDate" />
+                            <ValidationMessage For="() => changeRequest.BirthDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-email">E-mailadres</label>
+                            <InputText id="edit-email" type="email" class="form-control" @bind-Value="changeRequest.Email" />
+                            <ValidationMessage For="() => changeRequest.Email" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-phone">Telefoonnummer</label>
+                            <InputText id="edit-phone" type="tel" class="form-control" @bind-Value="changeRequest.PhoneNumber" />
+                            <ValidationMessage For="() => changeRequest.PhoneNumber" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-arrival">Aankomst</label>
+                            <InputDutchDate id="edit-arrival" class="form-control" MinYear="@Today.Year" @bind-Value="changeRequest.ArrivalDate" RangeEnd="@changeRequest.DepartureDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="edit-departure">Vertrek</label>
+                            <InputDutchDate id="edit-departure" class="form-control" MinYear="@Today.Year" @bind-Value="changeRequest.DepartureDate" RangeStart="@changeRequest.ArrivalDate" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="edit-guests">Aantal personen</label>
+                            <InputNumber id="edit-guests" class="form-control" @bind-Value="changeRequest.NumberOfGuests" min="1" step="1" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="edit-children">Waarvan jonger dan 12</label>
+                            <InputNumber id="edit-children" class="form-control" @bind-Value="changeRequest.NumberOfChildrenUnder12" min="0" max="@(changeRequest.NumberOfGuests - 1)" step="1" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="edit-unit">Eenheid</label>
+                            <InputSelect id="edit-unit" class="form-select" @bind-Value="changeRequest.AccommodationUnitCode">
+                                <option value="">Huidige houden (@reservation.UnitCode) als die vrij is</option>
+                                @foreach (AccommodationResponse unit in UnitsOfType)
+                                {
+                                    <option value="@unit.Code">@unit.Code · zone @unit.Zone</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <button type="submit" class="btn btn-du" disabled="@isBusy">@(isBusy ? "Bezig met opslaan…" : "Wijziging opslaan")</button>
+                        <button type="button" class="btn btn-du-light" @onclick="CloseAction" disabled="@isBusy">Terug</button>
+                    </div>
+                </EditForm>
+            }
+
+            @if (mode == Mode.Cancel && cancelQuote is not null)
+            {
+                <EditForm Model="cancelRequest" OnValidSubmit="ConfirmCancelAsync" class="detail-meta-card mt-4">
+                    <DataAnnotationsValidator />
+                    <h2 class="h4 mb-1">Reservering annuleren</h2>
+                    <p class="mb-1">Annuleringskosten: <strong>@cancelQuote.CancellationFee.ToString("C")</strong> van @cancelQuote.TotalPrice.ToString("C")</p>
+                    <p class="text-muted-du small">@cancelQuote.Explanation</p>
+
+                    <label class="form-label fw-semibold" for="cancel-reason">Reden van de annulering</label>
+                    <InputTextArea id="cancel-reason" class="form-control" rows="3" @bind-Value="cancelRequest.Reason" />
+                    <ValidationMessage For="() => cancelRequest.Reason" />
+
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <button type="submit" class="btn btn-du" disabled="@isBusy">@(isBusy ? "Bezig met annuleren…" : "Annulering bevestigen")</button>
+                        <button type="button" class="btn btn-du-light" @onclick="CloseAction" disabled="@isBusy">Terug</button>
+                    </div>
+                </EditForm>
+            }
+
+            <div class="detail-meta-card mt-4">
+                <h2 class="h4 mb-3">Wijzigingen</h2>
+                @if (reservation.Changes.Count == 0)
+                {
+                    <p class="text-muted-du mb-0">Nog niet gewijzigd door een medewerker.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (BookingChangeResponse change in reservation.Changes)
+                        {
+                            <li class="mb-2">
+                                <span class="fw-semibold">@change.ChangedAt.ToLocalTime().ToString($"{DateFormat} {TimeFormat}") · @change.StaffName</span><br />
+                                @change.Description
+                                @if (change.Reason is not null)
+                                {
+                                    <br /><span class="text-muted-du">Reden: @change.Reason</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
         }
     </div>
 </section>
@@ -120,10 +245,32 @@
     [Parameter]
     public Guid Id { get; set; }
 
+    private enum Mode { View, Change, Cancel }
+
     private ReservationDetailResponse? reservation;
     private string? errorMessage;
+    private Mode mode = Mode.View;
+    private StaffChangeBookingRequest changeRequest = new StaffChangeBookingRequest();
+    private StaffCancelBookingRequest cancelRequest = new StaffCancelBookingRequest();
+    private CancellationQuoteResponse? cancelQuote;
+    private List<AccommodationResponse> units = [];
+    private bool isBusy;
+    private string? actionError;
+    private string? successMessage;
 
     private int NumberOfNights => reservation is null ? 0 : reservation.DepartureDate.DayNumber - reservation.ArrivalDate.DayNumber;
+
+    private bool IsCancelled => reservation?.Status == BookingStatuses.Geannuleerd;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    // Staff may move a booking to another unit of the same type (US-14).
+    private List<AccommodationResponse> UnitsOfType => reservation is null
+        ? []
+        : units
+            .Where(unit => unit.TypeName == reservation.AccommodationTypeName)
+            .OrderBy(unit => unit.Code)
+            .ToList();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -140,4 +287,102 @@
     // Back in the browser history keeps the search and page the staff member came from.
     private async Task BackAsync()
         => await JSRuntime.InvokeVoidAsync("history.back");
+
+    // The form starts with the booking as it is now; fellow travellers already known are kept.
+    private async Task StartChangeAsync()
+    {
+        if (reservation is null)
+            return;
+
+        if (units.Count == 0)
+        {
+            ApiResponse<List<AccommodationResponse>> response = await ReservationService.GetUnitsAsync();
+            units = response.Succeeded && response.Value is not null ? response.Value : [];
+        }
+
+        GuestResponse? mainBooker = reservation.Guests.FirstOrDefault(guest => guest.IsMainBooker);
+        changeRequest = new StaffChangeBookingRequest()
+        {
+            Name = reservation.Name,
+            Email = reservation.Email,
+            PhoneNumber = reservation.PhoneNumber,
+            BirthDate = mainBooker?.BirthDate,
+            ArrivalDate = reservation.ArrivalDate,
+            DepartureDate = reservation.DepartureDate,
+            NumberOfGuests = reservation.NumberOfGuests,
+            NumberOfChildrenUnder12 = reservation.NumberOfChildrenUnder12,
+            CoTravellers = reservation.Guests
+                .Where(guest => !guest.IsMainBooker)
+                .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
+                .ToList(),
+        };
+        ClearMessages();
+        mode = Mode.Change;
+    }
+
+    // Fewer persons than known travellers: the last travellers are dropped, as the server allows no more.
+    private async Task SaveChangeAsync()
+    {
+        changeRequest.CoTravellers = changeRequest.CoTravellers
+            .Take(Math.Max(changeRequest.NumberOfGuests - 1, 0))
+            .ToList();
+
+        await SaveAsync(() => ReservationService.ChangeAsync(Id, changeRequest), "De reservering is gewijzigd. De gast krijgt een e-mail.");
+    }
+
+    // Staff first sees the same costs as the guest would (US-12).
+    private async Task StartCancelAsync()
+    {
+        ClearMessages();
+        cancelRequest = new StaffCancelBookingRequest();
+        isBusy = true;
+
+        ApiResponse<CancellationQuoteResponse> response = await ReservationService.GetCancellationQuoteAsync(Id);
+
+        isBusy = false;
+        if (!response.Succeeded || response.Value is null)
+        {
+            actionError = response.Message ?? "De annuleringskosten konden niet worden berekend.";
+            return;
+        }
+
+        cancelQuote = response.Value;
+        mode = Mode.Cancel;
+    }
+
+    private async Task ConfirmCancelAsync()
+        => await SaveAsync(() => ReservationService.CancelAsync(Id, cancelRequest), "De reservering is geannuleerd. De gast krijgt een e-mail.");
+
+    // Both actions return the reservation as it is now, so the details and the log update at once.
+    private async Task SaveAsync(Func<Task<ApiResponse<ReservationDetailResponse>>> save, string doneMessage)
+    {
+        isBusy = true;
+        actionError = null;
+
+        ApiResponse<ReservationDetailResponse> response = await save();
+
+        isBusy = false;
+        if (!response.Succeeded || response.Value is null)
+        {
+            actionError = response.Message ?? "Opslaan is niet gelukt. Probeer het opnieuw.";
+            return;
+        }
+
+        reservation = response.Value;
+        mode = Mode.View;
+        successMessage = doneMessage;
+    }
+
+    private void CloseAction()
+    {
+        mode = Mode.View;
+        actionError = null;
+    }
+
+    private void ClearMessages()
+    {
+        actionError = null;
+        successMessage = null;
+        cancelQuote = null;
+    }
 }
