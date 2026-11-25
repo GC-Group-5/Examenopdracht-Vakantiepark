@@ -14,5 +14,11 @@ namespace Vakantiepark.Application.Validations.Seasons
                 && season.EndDate >= existing.StartDate))
                 throw new ArgumentException("Dit seizoen overlapt een bestaand seizoen.");
         }
+
+        public static void ValidateUniqueName(this Season season, IEnumerable<Season> existingSeasons)
+        {
+            if (existingSeasons.Any(existing => existing.Id != season.Id && string.Equals(existing.Name, season.Name, StringComparison.OrdinalIgnoreCase)))
+                throw new ArgumentException("Er bestaat al een seizoen met deze naam.");
+        }
     }
 }

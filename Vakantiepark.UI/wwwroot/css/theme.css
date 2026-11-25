@@ -11,6 +11,7 @@
  *   --du-leaf         #70b943  light green hill in the logo                 (borders, markers)
  *   --du-aqua         #49a8aa  water in the logo                            (pool, secondary accent)
  *   --du-sand         #d7c396  sun / sand in the logo                       (soft accents)
+ *   --du-danger       #b42318  errors and destructive actions               (delete buttons, validation)
  */
 
 :root {
@@ -24,6 +25,7 @@
     --du-ink: #183129;
     --du-muted: #6e786f;
     --du-line: #dfe5dc;
+    --du-danger: #b42318;
 }
 
 html {
@@ -101,6 +103,22 @@ a {
 .btn-du-light:hover {
     border-color: var(--du-green);
     color: var(--du-green);
+}
+
+/* Same shape as .btn-du-light, in red, for delete and other destructive actions. */
+.btn-du-danger {
+    background: #fff;
+    color: var(--du-danger);
+    border: 1px solid var(--du-line);
+    border-radius: 999px;
+    font-weight: 700;
+    padding: .8rem 1.2rem;
+}
+
+.btn-du-danger:hover {
+    background: var(--du-danger);
+    border-color: var(--du-danger);
+    color: #fff;
 }
 
 .eyebrow {
@@ -652,7 +670,7 @@ a {
     color: #fff;
 }
 
-.btn-du:focus-visible, .btn-du-light:focus-visible, .nav-link:focus-visible {
+.btn-du:focus-visible, .btn-du-light:focus-visible, .btn-du-danger:focus-visible, .nav-link:focus-visible {
     outline: 3px solid var(--du-aqua);
     outline-offset: 2px;
 }
@@ -670,13 +688,13 @@ a {
 }
 
 .validation-message {
-    color: #b42318;
+    color: var(--du-danger);
     font-size: .85rem;
     margin-top: .3rem;
 }
 
 .form-control.invalid, .form-select.invalid {
-    border-color: #b42318;
+    border-color: var(--du-danger);
 }
 
 /* Lists in the beheeromgeving (US-13): a calm header, room at the edges and a whole row that is clickable. */
