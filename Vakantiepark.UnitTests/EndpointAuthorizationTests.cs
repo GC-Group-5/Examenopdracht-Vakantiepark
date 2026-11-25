@@ -75,6 +75,8 @@ namespace Vakantiepark.UnitTests
             AuthorizeAttribute? attribute = typeof(OccupancyController).GetCustomAttribute<AuthorizeAttribute>();
 
             Assert.Equal(Roles.Staff, attribute?.Roles);
+        }
+
         // US-18: a medewerker may not change prices or park rules, so this controller is for the beheerder only.
         [Fact]
         public void ParkSettings_OnlyForBeheerder()
