@@ -101,7 +101,7 @@ namespace Vakantiepark.Application.Services
             List<AccommodationTypePrice> prices = (await PriceRepository.GetAllAsync())
                 .Where(price => price.AccommodationTypeId == type.Id)
                 .ToList();
-            request.Validate(prices);
+            request.Validate(prices, await SeasonRepository.GetAllAsync());
 
             type.DefaultPricePerNight = request.DefaultPricePerNight!.Value;
             type.CleaningFee = request.CleaningFee!.Value;

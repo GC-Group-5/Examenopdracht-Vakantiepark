@@ -49,11 +49,13 @@ namespace Vakantiepark.UnitTests
             UpdateParkSettingsRequest request = _settings.ToRequest();
             request.HighSeasonMinimumNights = 5;
             request.PetCleaningFee = 40m;
+            request.SecurityDeposit = 300m;
 
             await _sut.UpdateAsync(request);
 
             Assert.Equal(5, _settings.HighSeasonMinimumNights);
             Assert.Equal(40m, _settings.PetCleaningFee);
+            Assert.Equal(300m, _settings.SecurityDeposit);
             _settingsRepository.Verify(x => x.UpdateAsync(_settings), Times.Once);
         }
 
@@ -152,6 +154,17 @@ namespace Vakantiepark.UnitTests
             await Assert.ThrowsAsync<ArgumentException>(() => _sut.UpdateTypePricesAsync(_type.Slug, request));
 
             _typeRepository.Verify(x => x.UpdateAsync(It.IsAny<AccommodationType>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateTypePricesAsync_UnknownSeason_ThrowsArgumentException()
+        {
+            UpdateTypePricesRequest request = new UpdateTypePricesRequest { DefaultPricePerNight = 90m, CleaningFee = 60m, SeasonPrices = [new SeasonPriceRequest { SeasonId = Guid.NewGuid(), PricePerNight = 100m }] };
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.UpdateTypePricesAsync(_type.Slug, request));
+
+            _typeRepository.Verify(x => x.UpdateAsync(It.IsAny<AccommodationType>()), Times.Never);
+            _priceRepository.Verify(x => x.AddAsync(It.IsAny<AccommodationTypePrice>()), Times.Never);
         }
 
         [Fact]

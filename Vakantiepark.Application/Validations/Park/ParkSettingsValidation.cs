@@ -21,8 +21,11 @@ namespace Vakantiepark.Application.Validations.Park
                 throw new ArgumentException("Er is al een tarief met deze ingangsdatum.");
         }
 
-        public static void Validate(this UpdateTypePricesRequest request, IEnumerable<AccommodationTypePrice> existingPrices)
+        public static void Validate(this UpdateTypePricesRequest request, IEnumerable<AccommodationTypePrice> existingPrices, IEnumerable<Season> seasons)
         {
+            if (request.SeasonPrices.Any(seasonPrice => !seasons.Any(season => season.Id == seasonPrice.SeasonId)))
+                throw new ArgumentException("Een van de seizoenen bestaat niet meer. Vernieuw de pagina en probeer het opnieuw.");
+
             // A price row can't be deleted (unique per type and season), so an existing price can only change.
             if (request.SeasonPrices.Any(seasonPrice => seasonPrice.PricePerNight is null && existingPrices.Any(price => price.SeasonId == seasonPrice.SeasonId)))
                 throw new ArgumentException("Een seizoensprijs kan niet leeg worden gemaakt. Vul een prijs in.");

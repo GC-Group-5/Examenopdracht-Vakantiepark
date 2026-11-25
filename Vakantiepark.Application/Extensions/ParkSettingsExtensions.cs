@@ -14,6 +14,7 @@ namespace Vakantiepark.Application.Extensions
             FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
             NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
             PetCleaningFee = settings.PetCleaningFee,
+            SecurityDeposit = settings.SecurityDeposit,
         };
 
         // Called after model validation, so every required value is filled in.
@@ -26,6 +27,7 @@ namespace Vakantiepark.Application.Extensions
             settings.FreeCancellationDaysBeforeArrival = request.FreeCancellationDaysBeforeArrival!.Value;
             settings.NoRefundDaysBeforeArrival = request.NoRefundDaysBeforeArrival!.Value;
             settings.PetCleaningFee = request.PetCleaningFee!.Value;
+            settings.SecurityDeposit = request.SecurityDeposit!.Value;
         }
 
         public static AddTouristTaxRateRequest ToRequest(this TouristTaxRate rate) => new()

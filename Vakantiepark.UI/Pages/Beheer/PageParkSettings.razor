@@ -95,9 +95,9 @@
                     <div class="col-12">
                         <fieldset class="p-4 border rounded-4 bg-white">
                             <legend class="h5 float-none">Betalen en annuleren</legend>
-                            <p class="small text-muted-du">De aanbetaling wordt bij de receptie voldaan. Tussen beide annuleringsgrenzen krijgt de gast een deel terug.</p>
+                            <p class="small text-muted-du">De aanbetaling en de borg worden bij de receptie voldaan; de borg krijgt de gast terug bij vertrek. Tussen beide annuleringsgrenzen krijgt de gast een deel terug.</p>
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-6 col-xl-3">
                                     <label class="form-label" for="deposit">Aanbetaling</label>
                                     <div class="input-group">
                                         <InputNumber id="deposit" class="form-control" step="0.01" @bind-Value="settings.Rules.DepositPercentage" />
@@ -105,7 +105,15 @@
                                     </div>
                                     <ValidationMessage For="() => settings.Rules.DepositPercentage" />
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6 col-xl-3">
+                                    <label class="form-label" for="security-deposit">Borg</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <InputNumber id="security-deposit" class="form-control" step="0.01" @bind-Value="settings.Rules.SecurityDeposit" />
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.SecurityDeposit" />
+                                </div>
+                                <div class="col-md-6 col-xl-3">
                                     <label class="form-label" for="free-cancellation">Gratis annuleren tot</label>
                                     <div class="input-group">
                                         <InputNumber id="free-cancellation" class="form-control" @bind-Value="settings.Rules.FreeCancellationDaysBeforeArrival" />
@@ -113,7 +121,7 @@
                                     </div>
                                     <ValidationMessage For="() => settings.Rules.FreeCancellationDaysBeforeArrival" />
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6 col-xl-3">
                                     <label class="form-label" for="no-refund">Geen terugbetaling binnen</label>
                                     <div class="input-group">
                                         <InputNumber id="no-refund" class="form-control" @bind-Value="settings.Rules.NoRefundDaysBeforeArrival" />
@@ -148,7 +156,7 @@
                                         @foreach (AddTouristTaxRateRequest rate in settings.TouristTaxRates.OrderByDescending(taxRate => taxRate.ValidFrom))
                                         {
                                             <tr>
-                                                <td>@rate.ValidFrom?.ToString("dd-MM-yyyy")</td>
+                                                <td>@rate.ValidFrom?.ToString(DateFormats.Date)</td>
                                                 <td>€ @rate.AmountPerPersonPerNight?.ToString("0.00")</td>
                                                 <td class="text-end"><span class="badge rounded-pill @RateStatusClass(rate)">@RateStatus(rate)</span></td>
                                             </tr>
@@ -210,7 +218,7 @@
                                                         <span class="badge rounded-pill text-bg-warning ms-1">Hoogseizoen</span>
                                                     }
                                                 </td>
-                                                <td class="text-nowrap">@existing.StartDate?.ToString("dd-MM-yyyy") t/m @existing.EndDate?.ToString("dd-MM-yyyy")</td>
+                                                <td class="text-nowrap">@existing.StartDate?.ToString(DateFormats.Date) t/m @existing.EndDate?.ToString(DateFormats.Date)</td>
                                                 <td class="text-end text-nowrap">
                                                     <button type="button" class="btn btn-du-light btn-sm" @onclick="() => EditSeason(existing)">Bewerken</button>
                                                     <button type="button" class="btn btn-du-danger btn-sm" @onclick="() => DeleteSeasonAsync(existing)" disabled="@isBusy">Verwijderen</button>

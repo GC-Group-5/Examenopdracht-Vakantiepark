@@ -30,5 +30,9 @@ namespace Vakantiepark.Shared.DTOs.Park
         [Required(ErrorMessage = "Vul de schoonmaakkosten voor huisdieren in.")]
         [Range(typeof(decimal), "0", "10000", ErrorMessage = "De schoonmaakkosten voor huisdieren mogen niet negatief zijn.")]
         public decimal? PetCleaningFee { get; set; }
+
+        [Required(ErrorMessage = "Vul het bedrag van de borg in.")]
+        [Range(typeof(decimal), "0", "10000", ErrorMessage = "De borg mag niet negatief zijn.")]
+        public decimal? SecurityDeposit { get; set; }
     }
 }
