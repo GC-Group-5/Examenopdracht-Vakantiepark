@@ -33,7 +33,7 @@ namespace Vakantiepark.Infrastructure.Repositories
         public async Task<List<Accommodation>> GetForOccupancyAsync(DateOnly date, string? accommodationTypeSlug, Guid? zoneId, AccommodationCategory? category)
             => await Set
                 .AsNoTracking()
-                .Where(x => x.DeletedAt == null)
+                .Where(x => x.DeletedAt == null && x.Type.DeletedAt == null)
                 .Where(x => string.IsNullOrEmpty(accommodationTypeSlug) || x.Type.Slug == accommodationTypeSlug)
                 .Where(x => zoneId == null || x.ZoneId == zoneId)
                 .Where(x => category == null || x.Type.Category == category)

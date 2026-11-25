@@ -28,7 +28,7 @@
                 </div>
                 <div class="col-12 col-md-6 col-lg-3">
                     <label class="form-label fw-semibold" for="occupancy-category">Soort verblijf</label>
-                    <select id="occupancy-category" class="form-select" @bind="category">
+                    <select id="occupancy-category" class="form-select" @bind="category" @bind:after="ClearTypeOutsideCategory">
                         <option value="">Alle soorten</option>
                         <option value="HolidayHome">Vakantiewoningen</option>
                         <option value="CampingPitch">Kampeerplaatsen</option>
@@ -38,7 +38,7 @@
                     <label class="form-label fw-semibold" for="occupancy-type">Verblijfstype</label>
                     <select id="occupancy-type" class="form-select" @bind="typeSlug">
                         <option value="">Alle types</option>
-                        @foreach (AccommodationTypeResponse type in types)
+                        @foreach (AccommodationTypeResponse type in TypesInCategory)
                         {
                             <option value="@type.Slug">@type.Name</option>
                         }
@@ -80,44 +80,51 @@
                 <span class="badge rounded-pill fs-6 @StatusClass(OccupancyStatuses.NietVerhuurbaar)">@result.OutOfServiceCount @OccupancyStatuses.NietVerhuurbaar</span>
             </div>
 
-            <div class="detail-meta-card p-0 overflow-hidden">
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0 admin-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Accommodatie</th>
-                                <th scope="col">Type</th>
-                                <th scope="col">Zone</th>
-                                <th scope="col">Status</th>
-                                <th scope="col">Toelichting</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (OccupancyUnitResponse unit in result.Units.Items)
-                            {
+            @if (result.Units.TotalCount == 0)
+            {
+                <div class="detail-meta-card p-4">Geen accommodaties gevonden die bij deze filters passen. Kies minder filters of een andere zone.</div>
+            }
+            else
+            {
+                <div class="detail-meta-card p-0 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 admin-table">
+                            <thead>
                                 <tr>
-                                    <td>@unit.Code</td>
-                                    <td>@unit.TypeName</td>
-                                    <td>@unit.ZoneName</td>
-                                    <td><span class="badge rounded-pill @StatusClass(unit.Status)">@unit.Status</span></td>
-                                    <td>
-                                        @if (unit.MaintenanceReason is not null)
-                                        {
-                                            <div>@MaintenanceReasonLabels.Get(unit.MaintenanceReason)@(unit.MaintenanceNote is null ? "" : $": {unit.MaintenanceNote}")</div>
-                                        }
-                                        @if (unit.BookingId is Guid bookingId)
-                                        {
-                                            <a class="admin-link" href="beheer/reserveringen/@bookingId">@unit.BookingNumber · @unit.GuestName</a>
-                                        }
-                                    </td>
+                                    <th scope="col">Accommodatie</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Zone</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Toelichting</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (OccupancyUnitResponse unit in result.Units.Items)
+                                {
+                                    <tr>
+                                        <td>@unit.Code</td>
+                                        <td>@unit.TypeName</td>
+                                        <td>@unit.ZoneName</td>
+                                        <td><span class="badge rounded-pill @StatusClass(unit.Status)">@unit.Status</span></td>
+                                        <td>
+                                            @if (unit.MaintenanceReason is not null)
+                                            {
+                                                <div>@MaintenanceReasonLabels.Get(unit.MaintenanceReason)@(unit.MaintenanceNote is null ? "" : $": {unit.MaintenanceNote}")</div>
+                                            }
+                                            @if (unit.BookingId is Guid bookingId)
+                                            {
+                                                <a class="admin-link" href="beheer/reserveringen/@bookingId">@unit.BookingNumber · @unit.GuestName</a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <Pagination Page="result.Units.Page" TotalPages="result.Units.TotalPages" PageUrl="PageUrl" Label="Pagina's met accommodaties" />
+                <Pagination Page="result.Units.Page" TotalPages="result.Units.TotalPages" PageUrl="PageUrl" Label="Pagina's met accommodaties" />
+            }
         }
     </div>
 </section>
@@ -148,6 +155,9 @@
     private string category = string.Empty;
     private string typeSlug = string.Empty;
     private string zoneId = string.Empty;
+
+    private IEnumerable<AccommodationTypeResponse> TypesInCategory
+        => types.Where(type => string.IsNullOrEmpty(category) || type.Category == category);
 
     protected override async Task OnInitializedAsync()
     {
@@ -186,6 +196,13 @@
             ["zone"] = string.IsNullOrEmpty(zoneId) ? null : zoneId,
             ["pagina"] = null,
         }));
+
+    // A type of the other category would always give an empty list, so it is cleared with the category change.
+    private void ClearTypeOutsideCategory()
+    {
+        if (!TypesInCategory.Any(type => type.Slug == typeSlug))
+            typeSlug = string.Empty;
+    }
 
     private string PageUrl(int pageNumber)
         => NavigationManager.GetUriWithQueryParameter("pagina", pageNumber);
