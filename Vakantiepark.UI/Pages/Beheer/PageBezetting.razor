@@ -1,0 +1,217 @@
+@page "/beheer/bezetting"
+@attribute [Authorize(Roles = Roles.Staff)]
+@using System.Globalization
+@using Vakantiepark.Shared.DTOs.Occupancy
+@inject IOccupancyService OccupancyService
+@inject IReservationService ReservationService
+@inject ISearchService SearchService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Bezetting | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Beheeromgeving</div>
+        <h1 class="page-title mt-2">Bezetting</h1>
+        <p class="page-intro mt-4">Zie per datum welke accommodaties beschikbaar, bezet of niet verhuurbaar zijn.</p>
+        <a class="btn btn-du-light mt-3" href="beheer">Terug naar beheer</a>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        <form class="detail-meta-card p-3" @onsubmit="SubmitFilters" @onsubmit:preventDefault>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="occupancy-date">Datum</label>
+                    <InputDutchDate id="occupancy-date" class="form-control" @bind-Value="selectedDate" />
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="occupancy-category">Soort verblijf</label>
+                    <select id="occupancy-category" class="form-select" @bind="category" @bind:after="ClearTypeOutsideCategory">
+                        <option value="">Alle soorten</option>
+                        <option value="HolidayHome">Vakantiewoningen</option>
+                        <option value="CampingPitch">Kampeerplaatsen</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="occupancy-type">Verblijfstype</label>
+                    <select id="occupancy-type" class="form-select" @bind="typeSlug">
+                        <option value="">Alle types</option>
+                        @foreach (AccommodationTypeResponse type in TypesInCategory)
+                        {
+                            <option value="@type.Slug">@type.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label class="form-label fw-semibold" for="occupancy-zone">Zone</label>
+                    <select id="occupancy-zone" class="form-select" @bind="zoneId">
+                        <option value="">Alle zones</option>
+                        @foreach (ZoneOptionResponse zone in zones)
+                        {
+                            <option value="@zone.Id">@zone.Name (@FormatCategory.Format(zone.Category).ToLowerInvariant())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-du">Tonen</button>
+                </div>
+            </div>
+        </form>
+
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
+        }
+        else if (result is null)
+        {
+            <div class="text-center py-5" role="status">
+                <div class="spinner-border text-success"><span class="visually-hidden">Bezetting wordt geladen…</span></div>
+            </div>
+        }
+        else
+        {
+            <h2 class="h4 mt-5">@result.Date.ToString("dddd") @result.Date.ToString(DateFormats.Date)</h2>
+
+            <div class="d-flex flex-wrap gap-3 my-3">
+                <span class="badge rounded-pill fs-6 @StatusClass(OccupancyStatuses.Beschikbaar)">@result.AvailableCount @OccupancyStatuses.Beschikbaar</span>
+                <span class="badge rounded-pill fs-6 @StatusClass(OccupancyStatuses.Bezet)">@result.OccupiedCount @OccupancyStatuses.Bezet</span>
+                <span class="badge rounded-pill fs-6 @StatusClass(OccupancyStatuses.NietVerhuurbaar)">@result.OutOfServiceCount @OccupancyStatuses.NietVerhuurbaar</span>
+            </div>
+
+            @if (result.Units.TotalCount == 0)
+            {
+                <div class="detail-meta-card p-4">Geen accommodaties gevonden die bij deze filters passen. Kies minder filters of een andere zone.</div>
+            }
+            else
+            {
+                <div class="detail-meta-card p-0 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 admin-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Accommodatie</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Zone</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Toelichting</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (OccupancyUnitResponse unit in result.Units.Items)
+                                {
+                                    <tr>
+                                        <td>@unit.Code</td>
+                                        <td>@unit.TypeName</td>
+                                        <td>@unit.ZoneName</td>
+                                        <td><span class="badge rounded-pill @StatusClass(unit.Status)">@unit.Status</span></td>
+                                        <td>
+                                            @if (unit.MaintenanceReason is not null)
+                                            {
+                                                <div>@MaintenanceReasonLabels.Get(unit.MaintenanceReason)@(unit.MaintenanceNote is null ? "" : $": {unit.MaintenanceNote}")</div>
+                                            }
+                                            @if (unit.BookingId is Guid bookingId)
+                                            {
+                                                <a class="admin-link" href="beheer/reserveringen/@bookingId">@unit.BookingNumber · @unit.GuestName</a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <Pagination Page="result.Units.Page" TotalPages="result.Units.TotalPages" PageUrl="PageUrl" Label="Pagina's met accommodaties" />
+            }
+        }
+    </div>
+</section>
+
+@code {
+    // The filters live in the address, so the back button from a reservation returns to the same list.
+    [SupplyParameterFromQuery(Name = "datum")]
+    public string? Date { get; set; }
+
+    [SupplyParameterFromQuery(Name = "soort")]
+    public string? Category { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? Type { get; set; }
+
+    [SupplyParameterFromQuery(Name = "zone")]
+    public Guid? Zone { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pagina")]
+    public int? PageNumber { get; set; }
+
+    private List<AccommodationTypeResponse> types = [];
+    private List<ZoneOptionResponse> zones = [];
+    private OccupancyResponse? result;
+    private string? errorMessage;
+
+    private DateOnly? selectedDate;
+    private string category = string.Empty;
+    private string typeSlug = string.Empty;
+    private string zoneId = string.Empty;
+
+    private IEnumerable<AccommodationTypeResponse> TypesInCategory
+        => types.Where(type => string.IsNullOrEmpty(category) || type.Category == category);
+
+    protected override async Task OnInitializedAsync()
+    {
+        types = (await ReservationService.GetTypesAsync()).Value ?? [];
+        zones = (await SearchService.GetZoneOptionsAsync()).Value ?? [];
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        selectedDate = DateOnly.TryParse(Date, CultureInfo.InvariantCulture, out DateOnly date) ? date : null;
+        category = Category ?? string.Empty;
+        typeSlug = Type ?? string.Empty;
+        zoneId = Zone?.ToString() ?? string.Empty;
+        result = null;
+
+        ApiResponse<OccupancyResponse> response = await OccupancyService.GetAsync(new OccupancyRequest()
+        {
+            Date = selectedDate,
+            Category = category,
+            AccommodationTypeSlug = typeSlug,
+            ZoneId = Zone,
+            Page = Math.Max(PageNumber ?? 1, 1),
+        });
+
+        result = response.Value;
+        errorMessage = response.Succeeded ? null : response.Message ?? "De bezetting kon niet worden geladen. Probeer het later opnieuw.";
+        selectedDate = result?.Date;
+    }
+
+    private void SubmitFilters()
+        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>()
+        {
+            ["datum"] = selectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["soort"] = string.IsNullOrEmpty(category) ? null : category,
+            ["type"] = string.IsNullOrEmpty(typeSlug) ? null : typeSlug,
+            ["zone"] = string.IsNullOrEmpty(zoneId) ? null : zoneId,
+            ["pagina"] = null,
+        }));
+
+    // A type of the other category would always give an empty list, so it is cleared with the category change.
+    private void ClearTypeOutsideCategory()
+    {
+        if (!TypesInCategory.Any(type => type.Slug == typeSlug))
+            typeSlug = string.Empty;
+    }
+
+    private string PageUrl(int pageNumber)
+        => NavigationManager.GetUriWithQueryParameter("pagina", pageNumber);
+
+    // The badge always shows the text too, so the status never depends on colour alone.
+    private static string StatusClass(string status) => status switch
+    {
+        OccupancyStatuses.Bezet => "text-bg-warning",
+        OccupancyStatuses.NietVerhuurbaar => "text-bg-secondary",
+        _ => "text-bg-success",
+    };
+}

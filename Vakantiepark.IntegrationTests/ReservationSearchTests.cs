@@ -24,10 +24,10 @@ namespace Vakantiepark.IntegrationTests
         public async Task SearchAsync_SearchText_MatchesBookingNumberNameAndEmailIgnoringCase()
         {
             TestUnit unit = await CreateUnitAsync();
-            Booking byName = NewBooking(unit, Today.AddDays(1), Today.AddDays(3), booking => booking.Name = $"Jan Jansen {unit.Token}");
-            Booking byEmail = NewBooking(unit, Today.AddDays(5), Today.AddDays(7), booking => booking.Email = $"els.{unit.Token}@example.nl");
-            Booking byNumber = NewBooking(unit, Today.AddDays(9), Today.AddDays(11), booking => booking.BookingNumber = $"N{unit.Token}".ToUpperInvariant());
-            Booking other = NewBooking(unit, Today.AddDays(13), Today.AddDays(15));
+            Booking byName = TestData.CreateBooking(unit.Id, Today.AddDays(1), Today.AddDays(3), booking => booking.Name = $"Jan Jansen {unit.Token}");
+            Booking byEmail = TestData.CreateBooking(unit.Id, Today.AddDays(5), Today.AddDays(7), booking => booking.Email = $"els.{unit.Token}@example.nl");
+            Booking byNumber = TestData.CreateBooking(unit.Id, Today.AddDays(9), Today.AddDays(11), booking => booking.BookingNumber = $"N{unit.Token}".ToUpperInvariant());
+            Booking other = TestData.CreateBooking(unit.Id, Today.AddDays(13), Today.AddDays(15));
             await SaveAsync(byName, byEmail, byNumber, other);
 
             PagedResult<Booking> result = await SearchAsync(new BookingSearchFilter() { Search = unit.Token.ToUpperInvariant() });
@@ -40,9 +40,9 @@ namespace Vakantiepark.IntegrationTests
         public async Task SearchAsync_Status_SplitsConfirmedCompletedAndCancelled()
         {
             TestUnit unit = await CreateUnitAsync();
-            Booking confirmed = NewBooking(unit, Today.AddDays(2), Today.AddDays(4));
-            Booking completed = NewBooking(unit, Today.AddDays(-6), Today.AddDays(-2));
-            Booking cancelled = NewBooking(unit, Today.AddDays(10), Today.AddDays(12), booking => booking.DeletedAt = DateTime.UtcNow);
+            Booking confirmed = TestData.CreateBooking(unit.Id, Today.AddDays(2), Today.AddDays(4));
+            Booking completed = TestData.CreateBooking(unit.Id, Today.AddDays(-6), Today.AddDays(-2));
+            Booking cancelled = TestData.CreateBooking(unit.Id, Today.AddDays(10), Today.AddDays(12), booking => booking.DeletedAt = DateTime.UtcNow);
             await SaveAsync(confirmed, completed, cancelled);
 
             Assert.Equal(confirmed.Id, Assert.Single((await SearchAsync(unit, BookingState.Confirmed)).Items).Id);
@@ -55,9 +55,9 @@ namespace Vakantiepark.IntegrationTests
         public async Task SearchAsync_Period_IncludesBookingsThatTouchItOnlyOnTheDepartureDay()
         {
             TestUnit unit = await CreateUnitAsync();
-            Booking leavesOnFirstDay = NewBooking(unit, new DateOnly(2027, 7, 3), new DateOnly(2027, 7, 10));
-            Booking inside = NewBooking(unit, new DateOnly(2027, 7, 12), new DateOnly(2027, 7, 14));
-            Booking afterwards = NewBooking(unit, new DateOnly(2027, 7, 21), new DateOnly(2027, 7, 24));
+            Booking leavesOnFirstDay = TestData.CreateBooking(unit.Id, new DateOnly(2027, 7, 3), new DateOnly(2027, 7, 10));
+            Booking inside = TestData.CreateBooking(unit.Id, new DateOnly(2027, 7, 12), new DateOnly(2027, 7, 14));
+            Booking afterwards = TestData.CreateBooking(unit.Id, new DateOnly(2027, 7, 21), new DateOnly(2027, 7, 24));
             await SaveAsync(leavesOnFirstDay, inside, afterwards);
 
             PagedResult<Booking> result = await SearchAsync(new BookingSearchFilter()
@@ -76,7 +76,7 @@ namespace Vakantiepark.IntegrationTests
         {
             TestUnit unit = await CreateUnitAsync();
             List<Booking> bookings = Enumerable.Range(0, 5)
-                .Select(index => NewBooking(unit, Today.AddDays(index * 3), Today.AddDays(index * 3 + 2)))
+                .Select(index => TestData.CreateBooking(unit.Id, Today.AddDays(index * 3), Today.AddDays(index * 3 + 2)))
                 .ToList();
             await SaveAsync(bookings.ToArray());
 
@@ -91,7 +91,7 @@ namespace Vakantiepark.IntegrationTests
         public async Task SearchAsync_PercentSign_IsSearchedLiterally()
         {
             TestUnit unit = await CreateUnitAsync();
-            await SaveAsync(NewBooking(unit, Today.AddDays(1), Today.AddDays(2), booking => booking.Name = $"Gast {unit.Token}"));
+            await SaveAsync(TestData.CreateBooking(unit.Id, Today.AddDays(1), Today.AddDays(2), booking => booking.Name = $"Gast {unit.Token}"));
 
             PagedResult<Booking> result = await SearchAsync(new BookingSearchFilter() { Search = $"{unit.Token}%" });
 
@@ -102,11 +102,11 @@ namespace Vakantiepark.IntegrationTests
         public async Task GetArrivingOrDepartingOnAsync_ReturnsArrivalsAndDeparturesOfTheDayOnly()
         {
             TestUnit unit = await CreateUnitAsync();
-            Booking departing = NewBooking(unit, Today.AddDays(-4), Today);
-            Booking arriving = NewBooking(unit, Today, Today.AddDays(3));
-            Booking cancelledArrival = NewBooking(unit, Today, Today.AddDays(2), booking => booking.DeletedAt = DateTime.UtcNow);
-            Booking dayBefore = NewBooking(unit, Today.AddDays(-6), Today.AddDays(-4));
-            Booking dayAfter = NewBooking(unit, Today.AddDays(3), Today.AddDays(5));
+            Booking departing = TestData.CreateBooking(unit.Id, Today.AddDays(-4), Today);
+            Booking arriving = TestData.CreateBooking(unit.Id, Today, Today.AddDays(3));
+            Booking cancelledArrival = TestData.CreateBooking(unit.Id, Today, Today.AddDays(2), booking => booking.DeletedAt = DateTime.UtcNow);
+            Booking dayBefore = TestData.CreateBooking(unit.Id, Today.AddDays(-6), Today.AddDays(-4));
+            Booking dayAfter = TestData.CreateBooking(unit.Id, Today.AddDays(3), Today.AddDays(5));
             await SaveAsync(departing, arriving, cancelledArrival, dayBefore, dayAfter);
 
             await using ApplicationDBContext context = Database.CreateContext();
@@ -115,7 +115,7 @@ namespace Vakantiepark.IntegrationTests
                 .ToList();
 
             Assert.Equal(new List<Guid>() { departing.Id, arriving.Id }.Order(), bookings.Select(booking => booking.Id).Order());
-            Assert.All(bookings, booking => Assert.Equal($"Z{unit.Token}", booking.AccommodationUnit.Zone.Name));
+            Assert.All(bookings, booking => Assert.Equal(unit.ZoneName, booking.AccommodationUnit.Zone.Name));
         }
 
         private async Task<PagedResult<Booking>> SearchAsync(TestUnit unit, BookingState? state)
@@ -134,45 +134,16 @@ namespace Vakantiepark.IntegrationTests
             await context.SaveChangesAsync();
         }
 
+        // Token is unique text of this test's unit, used to find only this test's bookings.
         private async Task<TestUnit> CreateUnitAsync()
         {
             await using ApplicationDBContext context = Database.CreateContext();
-            Guid id = Guid.NewGuid();
-            string token = id.ToString("N")[..8];
-            AccommodationType type = new AccommodationType { Id = Guid.NewGuid(), Slug = $"t-{token}", Name = $"Type {token}", Category = AccommodationCategory.HolidayHome };
-            context.Accommodations.Add(new Accommodation
-            {
-                Id = id,
-                Code = $"T-{token}",
-                Name = $"Test {token}",
-                MaxPersons = 4,
-                Type = type,
-                Zone = new Zone { Id = Guid.NewGuid(), Name = $"Z{token}", Category = AccommodationCategory.HolidayHome },
-            });
+            Accommodation unit = TestData.CreateUnit();
+            context.Accommodations.Add(unit);
             await context.SaveChangesAsync();
-            return new TestUnit(id, token, type.Slug, type.Name);
+            return new TestUnit(unit.Id, unit.Code, unit.Type.Slug, unit.Type.Name, unit.Zone.Name);
         }
 
-        private static Booking NewBooking(TestUnit unit, DateOnly arrival, DateOnly departure, Action<Booking>? configure = null)
-        {
-            Booking booking = new Booking
-            {
-                Id = Guid.NewGuid(),
-                BookingNumber = Guid.NewGuid().ToString("N")[..12],
-                AccessToken = Guid.NewGuid().ToString("N"),
-                Name = "Test Gast",
-                Email = "test@example.com",
-                PhoneNumber = "0612345678",
-                ArrivalDate = arrival,
-                DepartureDate = departure,
-                NumberOfGuests = 2,
-                AccommodationUnitId = unit.Id,
-                CreatedAt = DateTime.UtcNow,
-            };
-            configure?.Invoke(booking);
-            return booking;
-        }
-
-        private record TestUnit(Guid Id, string Token, string TypeSlug, string TypeName);
+        private record TestUnit(Guid Id, string Token, string TypeSlug, string TypeName, string ZoneName);
     }
 }

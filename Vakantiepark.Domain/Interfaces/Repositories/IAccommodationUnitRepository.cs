@@ -1,4 +1,5 @@
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Domain.Interfaces.Repositories
 {
@@ -16,5 +17,9 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
         Task<List<Accommodation>> GetAllWithDetailsAsync();
 
         Task<Accommodation?> GetByCodeWithDetailsAsync(string code);
+
+        // US-16: the units that match the filters (empty = all), with type, zone and only the
+        // maintenance period that covers the date.
+        Task<List<Accommodation>> GetForOccupancyAsync(DateOnly date, string? accommodationTypeSlug, Guid? zoneId, AccommodationCategory? category);
     }
 }
