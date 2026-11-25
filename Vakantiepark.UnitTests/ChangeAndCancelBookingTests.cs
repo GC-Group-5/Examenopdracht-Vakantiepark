@@ -424,6 +424,19 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CancelByStaffAsync_StayAlreadyEnded_IsRefusedAndNothingIsSaved()
+        {
+            SetArrival(-7);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Te laat" }, StaffUserId));
+
+            Assert.Equal(BookingService.StayEndedMessage, exception.Message);
+            _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+            Assert.Empty(_booking.Changes);
+        }
+
+        [Fact]
         public async Task CancelByStaffAsync_AlreadyCancelled_SaysSo()
         {
             _booking.DeletedAt = DateTime.UtcNow;

@@ -156,6 +156,7 @@ namespace Vakantiepark.UnitTests
             Assert.Equal("Gast ziek", detail.Changes[0].Reason);
         }
 
+        [Fact]
         public async Task GetDayOverview_SplitsArrivalsAndDeparturesOfTheDay()
         {
             Booking arriving = CreateBooking(Today, Today.AddDays(4));

@@ -81,7 +81,7 @@ namespace Vakantiepark.API.Controllers
             }
         }
 
-        [HttpGet("{id:guid}/cancel/quote")]
+        [HttpGet("{id:guid}/Cancel/Quote")]
         public async Task<IActionResult> GetCancellationQuoteAsync(Guid id)
         {
             try
@@ -99,7 +99,7 @@ namespace Vakantiepark.API.Controllers
             }
         }
 
-        [HttpPost("{id:guid}/cancel")]
+        [HttpPost("{id:guid}/Cancel")]
         public async Task<IActionResult> CancelAsync(Guid id, StaffCancelBookingRequest request)
         {
             try

@@ -32,7 +32,7 @@ namespace Vakantiepark.Application.Services
         public const string ChosenUnitNotFreeMessage = "De gekozen eenheid is in deze periode niet vrij of past niet bij het gezelschap.";
         public const string ReservationNotFoundMessage = "Deze reservering bestaat niet.";
         public const string ReasonRequiredMessage = "Vul een reden voor de annulering in.";
-
+        public const string StayEndedMessage = "Een afgelopen verblijf kan niet meer geannuleerd worden.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -284,7 +284,7 @@ namespace Vakantiepark.Application.Services
 
         public async Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId)
         {
-            Booking booking = await FindReservationAsync(bookingId);
+            Booking booking = await FindCancellableByStaffAsync(bookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
             return CancellationQuote(booking, settings);
@@ -296,7 +296,7 @@ namespace Vakantiepark.Application.Services
             if (string.IsNullOrWhiteSpace(request.Reason))
                 throw new ArgumentException(ReasonRequiredMessage);
 
-            Booking booking = await FindReservationAsync(bookingId);
+            Booking booking = await FindCancellableByStaffAsync(bookingId);
             ParkSettings settings = await GetParkSettingsAsync();
             decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
 
@@ -339,8 +339,20 @@ namespace Vakantiepark.Application.Services
             return booking;
         }
 
+        // Staff may cancel on or after the arrival day, but not once the guest has left.
+        private async Task<Booking> FindCancellableByStaffAsync(Guid bookingId)
+        {
+            Booking booking = await FindReservationAsync(bookingId);
+
+            if (booking.DepartureDate <= Today())
+                throw new ArgumentException(StayEndedMessage);
+
+            return booking;
+        }
+
         private sealed record ChangePlan(Booking Booking, ParkSettings Settings, AccommodationType Type, Accommodation Unit, bool OtherUnit);
 
+        // The guest's change (US-12): own booking and in time; the other rules are in PlanChangeAsync.
         private async Task<ChangePlan> PrepareChangeAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             Booking booking = await FindOwnBookingAsync(request.Token, guestBookingId);
@@ -352,6 +364,8 @@ namespace Vakantiepark.Application.Services
             return await PlanChangeAsync(booking, settings, request, chosenUnitCode: null);
         }
 
+        // The rules a guest and staff share: valid stay and party, high season, and a free unit of
+        // the same type (the chosen one, else the current one when it is still free, else another).
         private async Task<ChangePlan> PlanChangeAsync(Booking booking, ParkSettings settings, ChangeBookingRequest request, string? chosenUnitCode)
         {
             AccommodationType type = booking.AccommodationUnit.Type;

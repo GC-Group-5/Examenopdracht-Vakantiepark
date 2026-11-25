@@ -51,9 +51,9 @@ namespace Vakantiepark.UI.Application.Services
             => await HttpService.PutAsync<ReservationDetailResponse, StaffChangeBookingRequest>($"/Reservations/{id}", request);
 
         public async Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(Guid id)
-            => await HttpService.GetAsync<CancellationQuoteResponse>($"/Reservations/{id}/cancel/quote");
+            => await HttpService.GetAsync<CancellationQuoteResponse>($"/Reservations/{id}/Cancel/Quote");
 
         public async Task<ApiResponse<ReservationDetailResponse>> CancelAsync(Guid id, StaffCancelBookingRequest request)
-            => await HttpService.PostAsync<ReservationDetailResponse, StaffCancelBookingRequest>($"/Reservations/{id}/cancel", request);
+            => await HttpService.PostAsync<ReservationDetailResponse, StaffCancelBookingRequest>($"/Reservations/{id}/Cancel", request);
     }
 }
