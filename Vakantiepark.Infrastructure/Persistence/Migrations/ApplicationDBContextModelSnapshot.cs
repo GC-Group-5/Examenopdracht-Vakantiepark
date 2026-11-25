@@ -375,6 +375,48 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("bookings", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_changes");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_changes_booking_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_booking_changes_user_id");
+
+                    b.ToTable("booking_changes", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingGuest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -969,6 +1011,27 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Navigation("AccommodationUnit");
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingChange", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Booking", "Booking")
+                        .WithMany("Changes")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_changes_bookings_booking_id");
+
+                    b.HasOne("Vakantiepark.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_changes_users_user_id");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.BookingGuest", b =>
                 {
                     b.HasOne("Vakantiepark.Domain.Entities.Booking", "Booking")
@@ -1021,6 +1084,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Booking", b =>
                 {
+                    b.Navigation("Changes");
+
                     b.Navigation("Guests");
                 });
 

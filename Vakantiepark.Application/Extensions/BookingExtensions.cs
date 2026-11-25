@@ -143,5 +143,15 @@ namespace Vakantiepark.Application.Extensions
                 NumberOfGuests = booking.NumberOfGuests,
                 Status = status,
             };
+
+        // Needs User loaded, so the log shows the staff member's name.
+        public static BookingChangeResponse ToResponse(this BookingChange change)
+            => new BookingChangeResponse()
+            {
+                ChangedAt = change.ChangedAt,
+                StaffName = change.User.FullName,
+                Description = change.Description,
+                Reason = change.Reason,
+            };
     }
 }

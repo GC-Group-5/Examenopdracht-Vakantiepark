@@ -139,6 +139,24 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task GetById_ShowsChangesNewestFirstWithStaffName()
+        {
+            User staff = TestData.CreateUser();
+            Booking booking = CreateBooking(Today.AddDays(5), Today.AddDays(10), configure: booking => booking.Changes =
+            [
+                new BookingChange() { ChangedAt = new DateTime(2027, 3, 1, 9, 0, 0, DateTimeKind.Utc), Description = "Gewijzigd", User = staff },
+                new BookingChange() { ChangedAt = new DateTime(2027, 3, 2, 9, 0, 0, DateTimeKind.Utc), Description = "Geannuleerd", Reason = "Gast ziek", User = staff },
+            ]);
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(booking.Id)).ReturnsAsync(booking);
+
+            ReservationDetailResponse detail = await _sut.GetByIdAsync(booking.Id);
+
+            Assert.Equal(new[] { "Geannuleerd", "Gewijzigd" }, detail.Changes.Select(change => change.Description));
+            Assert.Equal("Mila Medewerker", detail.Changes[0].StaffName);
+            Assert.Equal("Gast ziek", detail.Changes[0].Reason);
+        }
+
+        [Fact]
         public async Task GetDayOverview_SplitsArrivalsAndDeparturesOfTheDay()
         {
             Booking arriving = CreateBooking(Today, Today.AddDays(4));

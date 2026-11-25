@@ -10,6 +10,7 @@ using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Extensions;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
+using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Constants;
@@ -28,6 +29,10 @@ namespace Vakantiepark.Application.Services
         public const string NoUnitForChangeMessage = "Er is in de nieuwe periode geen vrij verblijf van dit type. Je boeking is niet gewijzigd.";
         public const string CannotCancelMessage = "Deze boeking kan niet meer geannuleerd worden. Annuleren kan tot de dag van aankomst.";
         public const string AlreadyCancelledMessage = "Deze boeking is al geannuleerd.";
+        public const string ChosenUnitNotFreeMessage = "De gekozen eenheid is in deze periode niet vrij of past niet bij het gezelschap.";
+        public const string ReservationNotFoundMessage = "Deze reservering bestaat niet.";
+        public const string ReasonRequiredMessage = "Vul een reden voor de annulering in.";
+        public const string StayEndedMessage = "Een afgelopen verblijf kan niet meer geannuleerd worden.";
 
         private readonly IBookingRepository BookingRepository;
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
@@ -169,6 +174,12 @@ namespace Vakantiepark.Application.Services
             if (!CancellationPolicy.CanCancel(booking, Today()))
                 throw new ArgumentException(CannotCancelMessage);
 
+            return CancellationQuote(booking, settings);
+        }
+
+        // The same costs for a guest and staff (US-12, US-14).
+        private CancellationQuoteResponse CancellationQuote(Booking booking, ParkSettings settings)
+        {
             decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
 
             return new CancellationQuoteResponse()
@@ -214,6 +225,13 @@ namespace Vakantiepark.Application.Services
         public async Task<MyBookingResponse> ChangeAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
+            Booking saved = await ApplyChangeAsync(plan, request);
+            return ToMine(saved, plan.Settings);
+        }
+
+        // Prices the new stay, saves it and tells the guest; shared by the guest and staff.
+        private async Task<Booking> ApplyChangeAsync(ChangePlan plan, ChangeBookingRequest request)
+        {
             Booking booking = plan.Booking;
             PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, booking.NumberOfPets);
             decimal oldTotalPrice = booking.TotalPrice;
@@ -238,22 +256,119 @@ namespace Vakantiepark.Application.Services
             await SendChangeAsync(booking, plan.Type, oldTotalPrice);
 
             // Loaded again, so a new unit (and its zone) is on the booking that is returned.
-            Booking saved = await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
-            return ToMine(saved, plan.Settings);
+            return await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
+        }
+
+        // US-14: the same rules as a guest (availability, price), but without the term. Staff may
+        // also edit the main booker and pick the unit; every change is logged with who and when.
+        public async Task ChangeByStaffAsync(Guid bookingId, StaffChangeBookingRequest request, Guid staffUserId)
+        {
+            Booking booking = await FindReservationAsync(bookingId);
+
+            // First the new details, so the age check below uses the new birth date.
+            UpdateMainBooker(booking, request);
+
+            ParkSettings settings = await GetParkSettingsAsync();
+            ChangePlan plan = await PlanChangeAsync(booking, settings, request, request.AccommodationUnitCode);
+
+            // No Id: EF then sees a new row; a set Id on a tracked booking makes it try an UPDATE.
+            booking.Changes.Add(new BookingChange()
+            {
+                ChangedAt = DateTime.UtcNow,
+                Description = $"Gewijzigd: {request.ArrivalDate:dd-MM-yyyy} t/m {request.DepartureDate:dd-MM-yyyy}, {request.NumberOfGuests} personen, eenheid {plan.Unit.Code}",
+                UserId = staffUserId,
+            });
+
+            await ApplyChangeAsync(plan, request);
+        }
+
+        public async Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId)
+        {
+            Booking booking = await FindCancellableByStaffAsync(bookingId);
+            ParkSettings settings = await GetParkSettingsAsync();
+
+            return CancellationQuote(booking, settings);
+        }
+
+        // Unlike a guest, staff may also cancel on or after the arrival day; the fee follows US-12.
+        public async Task CancelByStaffAsync(Guid bookingId, StaffCancelBookingRequest request, Guid staffUserId)
+        {
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                throw new ArgumentException(ReasonRequiredMessage);
+
+            Booking booking = await FindCancellableByStaffAsync(bookingId);
+            ParkSettings settings = await GetParkSettingsAsync();
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+
+            // No Id: EF then sees a new row; a set Id on a tracked booking makes it try an UPDATE.
+            booking.Changes.Add(new BookingChange()
+            {
+                ChangedAt = DateTime.UtcNow,
+                Description = "Geannuleerd",
+                Reason = request.Reason.Trim(),
+                UserId = staffUserId,
+            });
+
+            await BookingRepository.CancelAsync(booking, fee);
+            await SendCancellationAsync(booking, settings, fee);
+        }
+
+        private static void UpdateMainBooker(Booking booking, StaffChangeBookingRequest request)
+        {
+            booking.Name = request.Name.Trim();
+            booking.Email = request.Email.Trim();
+            booking.PhoneNumber = request.PhoneNumber.Trim();
+
+            BookingGuest? mainBooker = booking.Guests.FirstOrDefault(guest => guest.IsMainBooker);
+            if (mainBooker is null)
+                return;
+
+            mainBooker.Name = booking.Name;
+            mainBooker.BirthDate = request.BirthDate;
+        }
+
+        // Staff may open any booking, but never change one that is already cancelled.
+        private async Task<Booking> FindReservationAsync(Guid bookingId)
+        {
+            Booking booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId)
+                ?? throw new KeyNotFoundException(ReservationNotFoundMessage);
+
+            if (booking.DeletedAt is not null)
+                throw new ArgumentException(AlreadyCancelledMessage);
+
+            return booking;
+        }
+
+        // Staff may cancel on or after the arrival day, but not once the guest has left.
+        private async Task<Booking> FindCancellableByStaffAsync(Guid bookingId)
+        {
+            Booking booking = await FindReservationAsync(bookingId);
+
+            if (booking.DepartureDate <= Today())
+                throw new ArgumentException(StayEndedMessage);
+
+            return booking;
         }
 
         private sealed record ChangePlan(Booking Booking, ParkSettings Settings, AccommodationType Type, Accommodation Unit, bool OtherUnit);
 
-        // All rules for a change (US-12): own booking, in time, valid stay and party, high season,
-        // and a free unit of the same type (the current one when it is still free).
+        // The guest's change (US-12): own booking and in time; the other rules are in PlanChangeAsync.
         private async Task<ChangePlan> PrepareChangeAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             Booking booking = await FindOwnBookingAsync(request.Token, guestBookingId);
             ParkSettings settings = await GetParkSettingsAsync();
-            AccommodationType type = booking.AccommodationUnit.Type;
 
             if (!CancellationPolicy.CanChange(booking, settings, Today()))
                 throw new ArgumentException(CannotChangeMessage);
+
+            return await PlanChangeAsync(booking, settings, request, chosenUnitCode: null);
+        }
+
+        // The rules a guest and staff share: valid stay and party, high season, and a free unit of
+        // the same type (the chosen one, else the current one when it is still free, else another).
+        private async Task<ChangePlan> PlanChangeAsync(Booking booking, ParkSettings settings, ChangeBookingRequest request, string? chosenUnitCode)
+        {
+            AccommodationType type = booking.AccommodationUnit.Type;
 
             CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, Today());
 
@@ -278,6 +393,14 @@ namespace Vakantiepark.Application.Services
                 units.Select(unit => unit.Id).ToList(), request.ArrivalDate, request.DepartureDate, booking.Id);
             List<Accommodation> freeUnits = units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
 
+            if (!string.IsNullOrWhiteSpace(chosenUnitCode))
+            {
+                Accommodation chosenUnit = freeUnits.FirstOrDefault(unit => unit.Code.Equals(chosenUnitCode.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ?? throw new ArgumentException(ChosenUnitNotFreeMessage);
+
+                return new ChangePlan(booking, settings, type, chosenUnit, OtherUnit: chosenUnit.Id != booking.AccommodationUnitId);
+            }
+
             Accommodation? currentUnit = freeUnits.FirstOrDefault(unit => unit.Id == booking.AccommodationUnitId);
             if (currentUnit is not null)
                 return new ChangePlan(booking, settings, type, currentUnit, OtherUnit: false);
@@ -287,7 +410,6 @@ namespace Vakantiepark.Application.Services
 
             return new ChangePlan(booking, settings, type, otherUnit, OtherUnit: true);
         }
-
 
         // The same two ways in as "Mijn boeking": the code from the email link, or the booking id
         // from the guest login token (/Auth/Guest). Never an id from the request itself.

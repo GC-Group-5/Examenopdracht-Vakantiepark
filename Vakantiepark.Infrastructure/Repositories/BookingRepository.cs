@@ -177,6 +177,7 @@ namespace Vakantiepark.Infrastructure.Repositories
             => Set
                 .Include(x => x.Guests)
                 .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)
-                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone);
+                .Include(x => x.AccommodationUnit).ThenInclude(x => x.Zone)
+                .Include(x => x.Changes).ThenInclude(x => x.User);
     }
 }

@@ -53,6 +53,10 @@ namespace Vakantiepark.Application.Services
             response.UnitCode = booking.AccommodationUnit.Code;
             response.CreatedAt = booking.CreatedAt;
             response.CancellationFee = booking.CancellationFee;
+            response.Changes = booking.Changes
+                .OrderByDescending(change => change.ChangedAt)
+                .Select(change => change.ToResponse())
+                .ToList();
             return response;
         }
 

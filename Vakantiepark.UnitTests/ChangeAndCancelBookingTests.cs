@@ -8,14 +8,16 @@ using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Booking;
+using Vakantiepark.Shared.DTOs.Reservations;
 using Xunit;
 
 namespace Vakantiepark.UnitTests
 {
-    // US-12: cancelling and changing the guest's own booking.
+    // US-12: cancelling and changing the guest's own booking; US-14: the same by staff, without the term.
     public class ChangeAndCancelBookingTests
     {
         private const string Token = "a3f1c2d4e5b6a7980112233445566778899aabbccddeeff00112233445566778";
+        private static readonly Guid StaffUserId = Guid.NewGuid();
         private static readonly DateOnly Today = new DateOnly(2027, 3, 1);
 
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
@@ -36,6 +38,7 @@ namespace Vakantiepark.UnitTests
             _booking = CreateBooking(daysBeforeArrival: 60);
 
             _bookingRepository.Setup(x => x.GetByAccessTokenAsync(Token)).ReturnsAsync(() => _booking);
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(_booking.Id)).ReturnsAsync(() => _booking);
             _bookingRepository
                 .Setup(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>()))
                 .ReturnsAsync(new List<Guid>());
@@ -333,6 +336,117 @@ namespace Vakantiepark.UnitTests
                 guests.Count == 1 && guests[0].Name == "Els Jansen")), Times.Once);
         }
 
+        [Fact]
+        public async Task ChangeByStaffAsync_AfterTheGuestTerm_IsSavedAndLogged()
+        {
+            SetArrival(10);
+
+            await _sut.ChangeByStaffAsync(_booking.Id, StaffChangeRequest(shiftDays: 2), StaffUserId);
+
+            _bookingRepository.Verify(x => x.TryUpdateAsync(_booking, It.IsAny<List<BookingGuest>>()), Times.Once);
+            BookingChange change = Assert.Single(_booking.Changes);
+            Assert.Equal(StaffUserId, change.UserId);
+            Assert.StartsWith("Gewijzigd:", change.Description);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_ChosenUnit_MovesTheBooking()
+        {
+            await _sut.ChangeByStaffAsync(_booking.Id, StaffChangeRequest(shiftDays: 2, unitCode: "EL6-002"), StaffUserId);
+
+            Assert.Equal(_otherUnit.Id, _booking.AccommodationUnitId);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_ChosenUnitTaken_IsRefusedAndNothingIsSaved()
+        {
+            UnitsTaken(_otherUnit.Id);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.ChangeByStaffAsync(_booking.Id, StaffChangeRequest(shiftDays: 2, unitCode: "EL6-002"), StaffUserId));
+
+            Assert.Equal(BookingService.ChosenUnitNotFreeMessage, exception.Message);
+            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_NewEmailAddress_IsUsedForTheChangeEmail()
+        {
+            StaffChangeBookingRequest request = StaffChangeRequest(shiftDays: 2);
+            request.Email = "nieuw@example.nl";
+
+            await _sut.ChangeByStaffAsync(_booking.Id, request, StaffUserId);
+
+            Assert.Equal("nieuw@example.nl", _booking.Email);
+            _emailSender.Verify(x => x.SendAsync("nieuw@example.nl", It.Is<string>(subject => subject.Contains("Wijziging")), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_UnknownBooking_ThrowsKeyNotFoundException()
+        {
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => _sut.ChangeByStaffAsync(Guid.NewGuid(), StaffChangeRequest(shiftDays: 2), StaffUserId));
+        }
+
+        [Fact]
+        public async Task GetCancellationQuoteForStaffAsync_ShowsTheSameFeeAsForTheGuest()
+        {
+            SetArrival(20);
+
+            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteForStaffAsync(_booking.Id);
+
+            Assert.Equal(120m, quote.CancellationFee);
+        }
+
+        [Fact]
+        public async Task CancelByStaffAsync_OnTheArrivalDay_CancelsLogsTheReasonAndEmails()
+        {
+            SetArrival(0);
+
+            await _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Gast ziek" }, StaffUserId);
+
+            _bookingRepository.Verify(x => x.CancelAsync(_booking, 590m), Times.Once);
+            BookingChange change = Assert.Single(_booking.Changes);
+            Assert.Equal("Gast ziek", change.Reason);
+            Assert.Equal(StaffUserId, change.UserId);
+            _emailSender.Verify(x => x.SendAsync("jan@example.nl", It.Is<string>(subject => subject.Contains("Annulering")), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task CancelByStaffAsync_WithoutReason_IsRefusedAndNothingIsSaved(string reason)
+        {
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = reason }, StaffUserId));
+
+            Assert.Equal(BookingService.ReasonRequiredMessage, exception.Message);
+            _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CancelByStaffAsync_StayAlreadyEnded_IsRefusedAndNothingIsSaved()
+        {
+            SetArrival(-7);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Te laat" }, StaffUserId));
+
+            Assert.Equal(BookingService.StayEndedMessage, exception.Message);
+            _bookingRepository.Verify(x => x.CancelAsync(It.IsAny<Booking>(), It.IsAny<decimal>()), Times.Never);
+            Assert.Empty(_booking.Changes);
+        }
+
+        [Fact]
+        public async Task CancelByStaffAsync_AlreadyCancelled_SaysSo()
+        {
+            _booking.DeletedAt = DateTime.UtcNow;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Dubbel geboekt" }, StaffUserId));
+
+            Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
+        }
+
         // ---------- Helpers ----------
 
         private static BookingAccessRequest Access() => new BookingAccessRequest() { Token = Token };
@@ -358,6 +472,21 @@ namespace Vakantiepark.UnitTests
                 NumberOfGuests = 2,
                 NumberOfChildrenUnder12 = 0,
                 CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) }],
+            };
+
+        // The same party and main booker, the stay shifted; optionally a unit picked by staff.
+        private StaffChangeBookingRequest StaffChangeRequest(int shiftDays, string? unitCode = null)
+            => new StaffChangeBookingRequest()
+            {
+                Name = "Jan Jansen",
+                Email = "jan@example.nl",
+                PhoneNumber = "0612345678",
+                BirthDate = new DateOnly(1985, 5, 1),
+                ArrivalDate = _booking.ArrivalDate.AddDays(shiftDays),
+                DepartureDate = _booking.DepartureDate.AddDays(shiftDays),
+                NumberOfGuests = 2,
+                NumberOfChildrenUnder12 = 0,
+                AccommodationUnitCode = unitCode,
             };
 
         // Total 600: stay 480 + cleaning 110 + tourist tax 10; deposit 120 (20%).
