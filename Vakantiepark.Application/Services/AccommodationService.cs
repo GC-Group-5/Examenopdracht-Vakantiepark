@@ -1,6 +1,7 @@
 ﻿using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Extensions;
+using Vakantiepark.Application.Helpers;
 using Vakantiepark.Shared.DTOs.Accommodation;
 using Vakantiepark.Domain.Entities;
 
@@ -8,15 +9,29 @@ namespace Vakantiepark.Application.Services
 {
     public class AccommodationService : IAccommodationService
     {
+        private const int AveragePriceMonths = 12;
+
         private readonly IAccommodationUnitRepository AccommodationUnitRepository;
         private readonly IFeatureRepository FeatureRepository;
         private readonly IRepository<Zone> ZoneRepository;
+        private readonly IRepository<Season> SeasonRepository;
+        private readonly IRepository<AccommodationTypePrice> PriceRepository;
+        private readonly TimeProvider TimeProvider;
 
-        public AccommodationService(IAccommodationUnitRepository accommodationUnitRepository, IFeatureRepository featureRepository, IRepository<Zone> zoneRepository)
+        public AccommodationService(
+            IAccommodationUnitRepository accommodationUnitRepository,
+            IFeatureRepository featureRepository,
+            IRepository<Zone> zoneRepository,
+            IRepository<Season> seasonRepository,
+            IRepository<AccommodationTypePrice> priceRepository,
+            TimeProvider timeProvider)
         {
             AccommodationUnitRepository = accommodationUnitRepository;
             FeatureRepository = featureRepository;
             ZoneRepository = zoneRepository;
+            SeasonRepository = seasonRepository;
+            PriceRepository = priceRepository;
+            TimeProvider = timeProvider;
         }
 
         public async Task<List<AccommodationResponse>> GetAllAsync()
@@ -43,12 +58,14 @@ namespace Vakantiepark.Application.Services
         {
             // Holiday homes first, then from small to large (by default price), like the template.
             List<Accommodation> accommodations = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            Func<AccommodationType, decimal> averagePricePerNight = await LoadAveragePricePerNightAsync();
+
             return accommodations
                 .GroupBy(accommodation => accommodation.Type.Slug)
                 .OrderBy(units => units.First().Type.Category)
                 .ThenBy(units => units.First().Type.DefaultPricePerNight)
                 .ThenBy(units => units.First().Type.Name)
-                .Select(units => units.ToTypeResponse())
+                .Select(units => units.ToTypeResponse(averagePricePerNight(units.First().Type)))
                 .ToList();
         }
 
@@ -63,7 +80,8 @@ namespace Vakantiepark.Application.Services
             if (units is null)
                 throw new KeyNotFoundException("Verblijfstype niet gevonden.");
 
-            return units.ToTypeResponse();
+            Func<AccommodationType, decimal> averagePricePerNight = await LoadAveragePricePerNightAsync();
+            return units.ToTypeResponse(averagePricePerNight(units.First().Type));
         }
 
         public async Task<List<ZoneOptionResponse>> GetZoneOptionsAsync()
@@ -80,6 +98,18 @@ namespace Vakantiepark.Application.Services
                     Category = zone.Category.ToString(),
                 })
                 .ToList();
+        }
+
+        // Seasons and prices are loaded once and shared by every type; a night is priced
+        // with the same season rules as a booking (NightPriceCalculator).
+        private async Task<Func<AccommodationType, decimal>> LoadAveragePricePerNightAsync()
+        {
+            List<Season> seasons = (await SeasonRepository.GetAllAsync()).ToList();
+            List<AccommodationTypePrice> prices = (await PriceRepository.GetAllAsync()).ToList();
+            DateOnly today = DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
+            DateOnly lastDay = today.AddMonths(AveragePriceMonths);
+
+            return type => new NightPriceCalculator(type, seasons, prices).AveragePerNight(today, lastDay);
         }
     }
 }

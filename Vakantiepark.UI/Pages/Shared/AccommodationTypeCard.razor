@@ -11,6 +11,7 @@
                 <span class="count-pill text-nowrap">@Type.MaxPersons pers.</span>
             </div>
             <p class="text-muted-du mt-3">@Type.Description</p>
+            <p class="fw-semibold">@FormatPrice.AveragePerNight(Type.AveragePricePerNight)</p>
             <div class="d-flex flex-wrap gap-2">
                 @foreach (string highlight in Type.Highlights.Take(3))
                 {

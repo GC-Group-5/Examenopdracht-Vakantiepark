@@ -44,7 +44,7 @@ namespace Vakantiepark.Application.Extensions
                     .ToList(),
             };
 
-        public static AccommodationTypeResponse ToTypeResponse(this IGrouping<string, Accommodation> units)
+        public static AccommodationTypeResponse ToTypeResponse(this IGrouping<string, Accommodation> units, decimal averagePricePerNight)
         {
             List<Accommodation> unitList = units.ToList();
             AccommodationType type = unitList.First().Type;
@@ -57,6 +57,7 @@ namespace Vakantiepark.Application.Extensions
                 Description = type.Description,
                 MaxPersons = unitList.Max(unit => unit.MaxPersons),
                 UnitCount = unitList.Count,
+                AveragePricePerNight = averagePricePerNight,
                 Zones = unitList
                     .Select(unit => unit.Zone.Name)
                     .Distinct()

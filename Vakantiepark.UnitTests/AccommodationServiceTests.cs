@@ -13,8 +13,31 @@ namespace Vakantiepark.UnitTests
         private readonly Mock<IAccommodationUnitRepository> _accommodationRepository = new Mock<IAccommodationUnitRepository>();
         private readonly Mock<IFeatureRepository> _featureRepository = new Mock<IFeatureRepository>();
         private readonly Mock<IRepository<Zone>> _zoneRepository = new Mock<IRepository<Zone>>();
+        private readonly Mock<IRepository<Season>> _seasonRepository = new Mock<IRepository<Season>>();
+        private readonly Mock<IRepository<AccommodationTypePrice>> _priceRepository = new Mock<IRepository<AccommodationTypePrice>>();
 
-        private AccommodationService CreateService() => new AccommodationService(_accommodationRepository.Object, _featureRepository.Object, _zoneRepository.Object);
+        // The coming 12 months then run from 1 January 2027 up to 1 January 2028: 365 nights.
+        private static readonly DateOnly Today = new DateOnly(2027, 1, 1);
+
+        private AccommodationService CreateService() => new AccommodationService(
+            _accommodationRepository.Object,
+            _featureRepository.Object,
+            _zoneRepository.Object,
+            _seasonRepository.Object,
+            _priceRepository.Object,
+            new FixedTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero)));
+
+        // One Berk 4 with a default price of 100 euro per night and no seasons yet.
+        private AccommodationType SetUpBerkFour()
+        {
+            AccommodationType type = TestData.CreateAccommodationType(berkFour => berkFour.DefaultPricePerNight = 100m);
+            _accommodationRepository
+                .Setup(x => x.GetAllWithDetailsAsync())
+                .ReturnsAsync([TestData.CreateAccommodation("B4-001", configure: unit => unit.Type = type)]);
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            _priceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([]);
+            return type;
+        }
 
         private static Accommodation CreatePitch()
         {
@@ -94,6 +117,54 @@ namespace Vakantiepark.UnitTests
             List<FeatureResponse> features = await CreateService().GetFeaturesAsync();
 
             Assert.Equal(new[] { "none", "high" }, features.Single().Options.Select(option => option.Value));
+        }
+
+        [Fact]
+        public async Task GetTypeBySlugAsync_NoSeasons_AveragePriceIsTheDefaultPrice()
+        {
+            SetUpBerkFour();
+
+            AccommodationTypeResponse type = await CreateService().GetTypeBySlugAsync("berk-4");
+
+            Assert.Equal(100m, type.AveragePricePerNight);
+        }
+
+        [Fact]
+        public async Task GetTypeBySlugAsync_SummerSeason_AveragesTheNightsOfTheComingYear()
+        {
+            AccommodationType berkFour = SetUpBerkFour();
+            Season summer = TestData.CreateSeason(season => { season.StartDate = new DateOnly(2027, 7, 1); season.EndDate = new DateOnly(2027, 7, 31); });
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([summer]);
+            _priceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([TestData.CreateAccommodationTypePrice(berkFour, summer, 200m)]);
+
+            AccommodationTypeResponse type = await CreateService().GetTypeBySlugAsync("berk-4");
+
+            // 334 nights × 100 + 31 summer nights × 200 = 39600 euro over 365 nights.
+            Assert.Equal(108.49m, type.AveragePricePerNight);
+        }
+
+        [Fact]
+        public async Task GetTypeBySlugAsync_SeasonPriceOfAnotherType_IsIgnored()
+        {
+            SetUpBerkFour();
+            AccommodationType otherType = TestData.CreateAccommodationType(beukEight => beukEight.Slug = "beuk-8");
+            Season summer = TestData.CreateSeason(season => { season.StartDate = new DateOnly(2027, 7, 1); season.EndDate = new DateOnly(2027, 7, 31); });
+            _seasonRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([summer]);
+            _priceRepository.Setup(x => x.GetAllAsync()).ReturnsAsync([TestData.CreateAccommodationTypePrice(otherType, summer, 500m)]);
+
+            AccommodationTypeResponse type = await CreateService().GetTypeBySlugAsync("berk-4");
+
+            Assert.Equal(100m, type.AveragePricePerNight);
+        }
+
+        [Fact]
+        public async Task GetTypesAsync_EveryType_GetsAnAveragePrice()
+        {
+            SetUpBerkFour();
+
+            List<AccommodationTypeResponse> types = await CreateService().GetTypesAsync();
+
+            Assert.Equal(100m, types.Single().AveragePricePerNight);
         }
     }
 }

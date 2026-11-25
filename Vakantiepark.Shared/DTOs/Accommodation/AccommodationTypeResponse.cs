@@ -11,6 +11,9 @@
         public int MaxPersons { get; set; }
         public int UnitCount { get; set; }
 
+        // Average of the night prices over the coming 12 months, so types can be compared.
+        public decimal AveragePricePerNight { get; set; }
+
         // Zones where units of this type are, alphabetical.
         public List<string> Zones { get; set; } = [];
 
