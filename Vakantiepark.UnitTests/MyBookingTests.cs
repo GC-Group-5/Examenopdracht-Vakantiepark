@@ -18,6 +18,7 @@ namespace Vakantiepark.UnitTests
         private static readonly DateOnly Today = new DateOnly(2027, 4, 1);
 
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
+        private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Booking _booking;
         private readonly BookingService _sut;
 
@@ -36,7 +37,7 @@ namespace Vakantiepark.UnitTests
                 _bookingRepository.Object,
                 new Mock<IAccommodationUnitRepository>().Object,
                 new Mock<IAccommodationTypeRepository>().Object,
-                new Mock<IPriceService>().Object,
+                _priceService.Object,
                 new Mock<IBookingNumberGenerator>().Object,
                 new Mock<IRepository<Season>>().Object,
                 CreateParkSettingsRepository(),
@@ -58,6 +59,19 @@ namespace Vakantiepark.UnitTests
             Assert.Equal("Bevestigd", response.Status);
             Assert.Equal(new[] { "Jan Jansen", "Els Jansen" }, response.Guests.Select(guest => guest.Name));
             Assert.True(response.Guests[0].IsMainBooker);
+        }
+
+        [Fact]
+        public async Task GetMineByToken_PricesRaisedAfterBooking_ShowsTheStoredPrice()
+        {
+            _priceService
+                .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(TestData.CreatePriceSpecification(price => price.TotalPrice = 999m));
+
+            MyBookingResponse response = await _sut.GetMineByTokenAsync(Token);
+
+            Assert.Equal(600m, response.TotalPrice);
+            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

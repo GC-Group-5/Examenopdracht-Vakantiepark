@@ -11,6 +11,7 @@ namespace Vakantiepark.Domain.Entities
         public TimeOnly DepartureTime { get; set; }
         public int HighSeasonMinimumNights { get; set; }
         public decimal PetCleaningFee { get; set; }
+        public decimal SecurityDeposit { get; set; }
 
         // Part of the total paid at booking, e.g. 20 (%).
         public decimal DepositPercentage { get; set; }

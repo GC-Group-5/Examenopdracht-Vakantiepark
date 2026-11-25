@@ -13,6 +13,8 @@ PRIJS
 Oude prijs:   {{OldTotalPrice}}
 Nieuwe prijs: {{NewTotalPrice}}
 Aanbetaling:  {{Deposit}}
+Borg (retour bij vertrek): {{SecurityDeposit}}
+De borg wordt betaald bij aankomst op het park en bij vertrek terugbetaald.
 
 Je bekijkt je boeking altijd in Mijn boeking:
 {{MyBookingUrl}}

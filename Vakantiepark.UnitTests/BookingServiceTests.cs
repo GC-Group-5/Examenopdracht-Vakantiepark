@@ -142,6 +142,15 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task CreateAsync_ValidRequest_StoresSecurityDepositFromParkSettings()
+        {
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal(250m, response.SecurityDeposit);
+            Assert.Equal(250m, _savedBooking!.SecurityDeposit);
+        }
+
+        [Fact]
         public async Task CreateAsync_FirstUnitBooked_AssignsFreeUnit()
         {
             _bookingRepository

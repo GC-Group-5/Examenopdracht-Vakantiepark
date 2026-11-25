@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Domain.Entities;
@@ -63,17 +64,13 @@ namespace Vakantiepark.Application.Services
             if (type is null)
                 throw new ArgumentException($"Onbekende verblijfstype '{accommodationTypeSlug}'.", nameof(accommodationTypeSlug));
 
-            List<Season> seasons = (await SeasonRepository.GetAllAsync()).ToList();
+            NightPriceCalculator nightPrices = new NightPriceCalculator(
+                type, await SeasonRepository.GetAllAsync(), await PriceRepository.GetAllAsync());
             List<TouristTaxRate> taxRates = (await TouristTaxRateRepository.GetAllAsync())
                 .OrderBy(rate => rate.ValidFrom)
                 .ToList();
             if (taxRates.Count == 0)
                 throw new InvalidOperationException("Er is nog geen toeristenbelastingtarief ingesteld.");
-
-            Dictionary<Guid, decimal> rateBySeasonId = (await PriceRepository.GetAllAsync())
-                .Where(price => price.AccommodationTypeId == type.Id)
-                .GroupBy(price => price.SeasonId)
-                .ToDictionary(group => group.Key, group => group.First().PricePerNight);
 
             decimal accommodationPrice = 0m;
             decimal touristTax = 0m;
@@ -81,15 +78,9 @@ namespace Vakantiepark.Application.Services
 
             for (int i = 0; i < nights; i++)
             {
-                Season? season = seasons.FirstOrDefault(s => night >= s.StartDate && night <= s.EndDate);
-
                 // Acceptance criterion: a night that falls in no season
                 // is priced with the type's default night price.
-                accommodationPrice += season is null
-                    ? type.DefaultPricePerNight
-                    : rateBySeasonId.TryGetValue(season.Id, out decimal seasonRate)
-                        ? seasonRate
-                        : type.DefaultPricePerNight;
+                accommodationPrice += nightPrices.PriceOf(night);
 
                 // The valid tax rate of a night is the rate with the newest
                 // ValidFrom on or before that night.
@@ -118,6 +109,8 @@ namespace Vakantiepark.Application.Services
                 PetCleaningFee = petCleaningFee,
                 TouristTax = touristTax,
                 TotalPrice = totalPrice,
+                // Every stay, camping pitches included (client review of 19 November).
+                SecurityDeposit = settings.SecurityDeposit,
                 Deposit = deposit,
             };
         }
