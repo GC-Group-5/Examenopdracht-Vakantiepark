@@ -313,14 +313,16 @@ namespace Vakantiepark.Application.Services
         private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee)
         {
             CultureInfo dutch = new CultureInfo("nl-NL");
+            int freeCancellationDays = CancellationPolicy.FreeCancellationDays(booking, settings);
+            int noRefundDays = CancellationPolicy.NoRefundDays(booking, settings);
 
             if (fee == 0m)
-                return $"Je annuleert meer dan {settings.FreeCancellationDaysBeforeArrival} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
+                return $"Je annuleert meer dan {freeCancellationDays} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
 
             if (fee == booking.Deposit)
-                return $"Je annuleert {settings.FreeCancellationDaysBeforeArrival} tot {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. De aanbetaling van {settings.DepositPercentage.ToString("0.##", dutch)}% ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+                return $"Je annuleert {freeCancellationDays} tot {noRefundDays} dagen voor aankomst. De aanbetaling ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
 
-            return $"Je annuleert minder dan {settings.NoRefundDaysBeforeArrival} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
+            return $"Je annuleert minder dan {noRefundDays} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
         }
 
         // "Mijn boeking" plus what the page may offer (US-12) and the costs of a cancelled booking.

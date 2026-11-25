@@ -36,12 +36,25 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public void CalculateFee_UsesTheLimitsFromTheParkSettings()
+        public void CalculateFee_BookingWithoutStoredLimits_UsesTheParkSettings()
         {
             ParkSettings settings = TestData.CreateParkSettings(s => { s.FreeCancellationDaysBeforeArrival = 60; s.NoRefundDaysBeforeArrival = 14; });
 
             Assert.Equal(120m, CancellationPolicy.CalculateFee(CreateBooking(45), settings, Today));
             Assert.Equal(590m, CancellationPolicy.CalculateFee(CreateBooking(10), settings, Today));
+        }
+
+        // US-18: the beheerder changing the limits must not change what an existing booking agreed to.
+        [Fact]
+        public void CalculateFee_SettingsChangedAfterBooking_UsesTheLimitsStoredOnTheBooking()
+        {
+            ParkSettings changedSettings = TestData.CreateParkSettings(s => { s.FreeCancellationDaysBeforeArrival = 60; s.NoRefundDaysBeforeArrival = 14; });
+            Booking booking = CreateBooking(45);
+            booking.FreeCancellationDaysBeforeArrival = 30;
+            booking.NoRefundDaysBeforeArrival = 7;
+
+            Assert.Equal(0m, CancellationPolicy.CalculateFee(booking, changedSettings, Today));
+            Assert.True(CancellationPolicy.CanChange(booking, changedSettings, Today));
         }
 
         [Theory]

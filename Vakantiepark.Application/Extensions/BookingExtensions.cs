@@ -21,6 +21,8 @@ namespace Vakantiepark.Application.Extensions
                 DepartureDate = request.DepartureDate,
                 ArrivalTime = settings.ArrivalTime,
                 DepartureTime = settings.DepartureTime,
+                FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
+                NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
                 NumberOfGuests = request.NumberOfGuests,
                 NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12,
                 NumberOfPets = request.NumberOfPets,

@@ -13,19 +13,26 @@ namespace Vakantiepark.Application.Helpers
 
         public static bool CanChange(Booking booking, ParkSettings settings, DateOnly today)
             => booking.DeletedAt is null
-                && DaysBeforeArrival(booking.ArrivalDate, today) >= settings.FreeCancellationDaysBeforeArrival;
+                && DaysBeforeArrival(booking.ArrivalDate, today) >= FreeCancellationDays(booking, settings);
 
         public static decimal CalculateFee(Booking booking, ParkSettings settings, DateOnly today)
         {
             int days = DaysBeforeArrival(booking.ArrivalDate, today);
 
-            if (days > settings.FreeCancellationDaysBeforeArrival)
+            if (days > FreeCancellationDays(booking, settings))
                 return 0m;
 
-            if (days >= settings.NoRefundDaysBeforeArrival)
+            if (days >= NoRefundDays(booking, settings))
                 return booking.Deposit;
 
             return booking.TotalPrice - booking.TouristTax;
         }
+
+        // The limits agreed when booking (US-18); older bookings without them follow the current settings.
+        public static int FreeCancellationDays(Booking booking, ParkSettings settings)
+            => booking.FreeCancellationDaysBeforeArrival ?? settings.FreeCancellationDaysBeforeArrival;
+
+        public static int NoRefundDays(Booking booking, ParkSettings settings)
+            => booking.NoRefundDaysBeforeArrival ?? settings.NoRefundDaysBeforeArrival;
     }
 }
