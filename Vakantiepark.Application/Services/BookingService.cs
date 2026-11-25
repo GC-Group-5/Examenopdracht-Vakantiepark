@@ -449,6 +449,7 @@ namespace Vakantiepark.Application.Services
                     ["PetCleaningFee"] = booking.PetCleaningFee.ToString("C", dutch),
                     ["TouristTax"] = booking.TouristTax.ToString("C", dutch),
                     ["TotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["SecurityDeposit"] = booking.SecurityDeposit.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
                     ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
@@ -513,6 +514,7 @@ namespace Vakantiepark.Application.Services
                     ["Party"] = party,
                     ["OldTotalPrice"] = oldTotalPrice.ToString("C", dutch),
                     ["NewTotalPrice"] = booking.TotalPrice.ToString("C", dutch),
+                    ["SecurityDeposit"] = booking.SecurityDeposit.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
                 });

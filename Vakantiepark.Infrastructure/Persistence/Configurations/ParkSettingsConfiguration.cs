@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
 using Vakantiepark.Domain.Entities;
 
 namespace Vakantiepark.Infrastructure.Persistence.Configurations
@@ -9,6 +10,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
         {
             builder.Property(settings => settings.DepositPercentage).HasPrecision(5, 2);
             builder.Property(settings => settings.PetCleaningFee).HasPrecision(18, 2);
+            builder.Property(settings => settings.SecurityDeposit).HasPrecision(18, 2);
         }
     }
 }

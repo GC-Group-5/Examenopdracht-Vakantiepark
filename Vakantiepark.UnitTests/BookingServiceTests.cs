@@ -149,6 +149,12 @@ namespace Vakantiepark.UnitTests
             _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking =>
                 booking.FreeCancellationDaysBeforeArrival == 30
                 && booking.NoRefundDaysBeforeArrival == 7)), Times.Once);
+        public async Task CreateAsync_ValidRequest_StoresSecurityDepositFromParkSettings()
+        {
+            BookingResponse response = await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+
+            Assert.Equal(250m, response.SecurityDeposit);
+            Assert.Equal(250m, _savedBooking!.SecurityDeposit);
         }
 
         [Fact]

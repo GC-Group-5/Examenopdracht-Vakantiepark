@@ -81,6 +81,7 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(new TimeOnly(10, 0), settings.DepartureTime);
             Assert.Equal(7, settings.HighSeasonMinimumNights);
             Assert.Equal(25m, settings.PetCleaningFee);
+            Assert.Equal(250m, settings.SecurityDeposit);
             Assert.Equal(20m, settings.DepositPercentage);
             Assert.Equal(30, settings.FreeCancellationDaysBeforeArrival);
             Assert.Equal(7, settings.NoRefundDaysBeforeArrival);

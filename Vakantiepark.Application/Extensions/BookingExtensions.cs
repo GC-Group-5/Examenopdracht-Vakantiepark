@@ -32,6 +32,7 @@ namespace Vakantiepark.Application.Extensions
                 PetCleaningFee = price.PetCleaningFee,
                 TouristTax = price.TouristTax,
                 TotalPrice = price.TotalPrice,
+                SecurityDeposit = price.SecurityDeposit,
                 Deposit = price.Deposit,
                 AccommodationUnitId = accommodationUnitId,
                 Guests =
@@ -72,6 +73,7 @@ namespace Vakantiepark.Application.Extensions
                 PetCleaningFee = booking.PetCleaningFee,
                 TouristTax = booking.TouristTax,
                 TotalPrice = booking.TotalPrice,
+                SecurityDeposit = booking.SecurityDeposit,
                 Deposit = booking.Deposit,
             };
 
@@ -98,6 +100,33 @@ namespace Vakantiepark.Application.Extensions
 
             return response;
         }
+
+        // Needs AccommodationUnit with Type and Zone loaded. Reception walks the park zone by zone,
+        // so both lists come sorted by zone and then unit.
+        public static DayOverviewResponse ToDayOverview(this List<Booking> bookings, DateOnly date)
+            => new DayOverviewResponse()
+            {
+                Date = date,
+                Arrivals = bookings.Where(booking => booking.ArrivalDate == date).ToDayOverviewItems(),
+                Departures = bookings.Where(booking => booking.DepartureDate == date).ToDayOverviewItems(),
+            };
+
+        private static List<DayOverviewItemResponse> ToDayOverviewItems(this IEnumerable<Booking> bookings)
+            => bookings
+                .OrderBy(booking => booking.AccommodationUnit.Zone.Name)
+                .ThenBy(booking => booking.AccommodationUnit.Code)
+                .Select(booking => new DayOverviewItemResponse()
+                {
+                    Id = booking.Id,
+                    BookingNumber = booking.BookingNumber,
+                    Name = booking.Name,
+                    AccommodationTypeName = booking.AccommodationUnit.Type.Name,
+                    UnitCode = booking.AccommodationUnit.Code,
+                    Zone = booking.AccommodationUnit.Zone.Name,
+                    NumberOfGuests = booking.NumberOfGuests,
+                    NumberOfPets = booking.NumberOfPets,
+                })
+                .ToList();
 
         // Needs AccommodationUnit with Type loaded.
         public static ReservationListItemResponse ToReservationListItem(this Booking booking, string status)

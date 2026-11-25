@@ -26,6 +26,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(x => x.TouristTax).HasPrecision(18, 2);
             builder.Property(x => x.TotalPrice).HasPrecision(18, 2);
             builder.Property(x => x.Deposit).HasPrecision(18, 2);
+            builder.Property(x => x.SecurityDeposit).HasPrecision(18, 2);
             builder.Property(x => x.CancellationFee).HasPrecision(18, 2);
 
             builder.HasOne(x => x.AccommodationUnit)
