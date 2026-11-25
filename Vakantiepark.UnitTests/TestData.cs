@@ -93,6 +93,15 @@ namespace Vakantiepark.UnitTests
             return season;
         }
 
+        public static AccommodationTypePrice CreateAccommodationTypePrice(AccommodationType type, Season season, decimal pricePerNight)
+            => new AccommodationTypePrice()
+            {
+                Id = Guid.NewGuid(),
+                AccommodationTypeId = type.Id,
+                SeasonId = season.Id,
+                PricePerNight = pricePerNight,
+            };
+
         public static AccommodationType CreateAccommodationType(Action<AccommodationType>? configure = null)
         {
             AccommodationType type = new()

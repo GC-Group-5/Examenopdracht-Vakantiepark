@@ -21,6 +21,9 @@ namespace Vakantiepark.Domain.Entities
         // Copied from the park settings at booking time, so a later change does not alter this booking.
         public TimeOnly ArrivalTime { get; set; }
         public TimeOnly DepartureTime { get; set; }
+        // Empty for bookings made before US-18 stored them; those follow the current park settings.
+        public int? FreeCancellationDaysBeforeArrival { get; set; }
+        public int? NoRefundDaysBeforeArrival { get; set; }
 
         public int NumberOfGuests { get; set; }
         public int NumberOfChildrenUnder12 { get; set; }
