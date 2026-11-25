@@ -5,7 +5,7 @@ namespace Vakantiepark.Application.Validations.AccommodationSearch
 {
     public static class AccommodationSearchValidation
     {
-        public static void ValidateSearchPeriod(this DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets)
+        public static void ValidateSearchPeriod(this DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfPets, DateOnly today)
         {
             if (numberOfGuests < 1)
                 throw new ArgumentException("Kies minimaal één persoon.");
@@ -13,7 +13,6 @@ namespace Vakantiepark.Application.Validations.AccommodationSearch
             if (numberOfPets < 0)
                 throw new ArgumentException("Het aantal huisdieren kan niet negatief zijn.");
 
-            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
             if (arrivalDate < today)
                 throw new ArgumentException("De aankomstdatum ligt in het verleden. Kies een latere aankomstdatum.");
 

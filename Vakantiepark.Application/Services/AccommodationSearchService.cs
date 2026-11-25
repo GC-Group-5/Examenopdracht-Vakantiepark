@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Extensions;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.AccommodationSearch;
 using Vakantiepark.Domain.Entities;
@@ -21,6 +22,7 @@ namespace Vakantiepark.Application.Services
         private readonly IRepository<Zone> ZoneRepository;
         private readonly IRepository<MaintenancePeriod> MaintenanceRepository;
         private readonly IPriceService PriceService;
+        private readonly TimeProvider TimeProvider;
 
         public AccommodationSearchService(
             IAccommodationUnitRepository unitRepository,
@@ -30,7 +32,8 @@ namespace Vakantiepark.Application.Services
             IRepository<ParkSettings> parkSettingsRepository,
             IRepository<Zone> zoneRepository,
             IRepository<MaintenancePeriod> maintenanceRepository,
-            IPriceService priceService)
+            IPriceService priceService,
+            TimeProvider timeProvider)
         {
             UnitRepository = unitRepository;
             TypeRepository = typeRepository;
@@ -40,11 +43,12 @@ namespace Vakantiepark.Application.Services
             ZoneRepository = zoneRepository;
             MaintenanceRepository = maintenanceRepository;
             PriceService = priceService;
+            TimeProvider = timeProvider;
         }
 
         public async Task<AccommodationSearchResponse> SearchAsync(string? accommodationTypeSlug, string? category, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, Guid? zoneId)
         {
-            arrivalDate.ValidateSearchPeriod(departureDate, filter.NumberOfGuests, filter.NumberOfPets);
+            arrivalDate.ValidateSearchPeriod(departureDate, filter.NumberOfGuests, filter.NumberOfPets, TimeProvider.GetToday());
             AccommodationCategory? searchedCategory = AccommodationSearchValidation.ParseCategory(category);
 
             List<Season> seasons = (await SeasonRepository.GetAllAsync()).ToList();

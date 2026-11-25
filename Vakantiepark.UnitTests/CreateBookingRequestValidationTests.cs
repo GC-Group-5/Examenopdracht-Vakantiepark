@@ -85,7 +85,6 @@ namespace Vakantiepark.UnitTests
             CreateBookingRequest request = Request(r =>
             {
                 r.NumberOfGuests = 2;
-                r.NumberOfChildrenUnder12 = 0;
                 r.CoTravellers = [new TravellerRequest() { Name = "Els" }, new TravellerRequest() { Name = "Piet" }];
             });
 
@@ -96,28 +95,6 @@ namespace Vakantiepark.UnitTests
         public void Validate_NoBirthDate_Throws()
         {
             Assert.Throws<ArgumentException>(() => Request(r => r.BirthDate = null).Validate(Today));
-        }
-
-        [Fact]
-        public void Validate_EveryoneButTheMainBookerUnder12_DoesNotThrow()
-        {
-            Request(r => r.NumberOfChildrenUnder12 = 3).Validate(Today);
-        }
-
-        [Fact]
-        public void Validate_AsManyChildrenAsPersons_ThrowsDutchMessage()
-        {
-            CreateBookingRequest request = Request(r => r.NumberOfChildrenUnder12 = 4);
-
-            ArgumentException exception = Assert.Throws<ArgumentException>(() => request.Validate(Today));
-
-            Assert.Equal("Met 4 personen zijn er hoogstens 3 kinderen jonger dan 12: de hoofdboeker is 18 jaar of ouder.", exception.Message);
-        }
-
-        [Fact]
-        public void Validate_NegativeNumberOfChildren_Throws()
-        {
-            Assert.Throws<ArgumentException>(() => Request(r => r.NumberOfChildrenUnder12 = -1).Validate(Today));
         }
 
         [Fact]
@@ -133,9 +110,9 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public void Validate_OnePersonWithoutChildren_DoesNotThrow()
+        public void Validate_OnePerson_DoesNotThrow()
         {
-            Request(r => { r.NumberOfGuests = 1; r.NumberOfChildrenUnder12 = 0; }).Validate(Today);
+            Request(r => r.NumberOfGuests = 1).Validate(Today);
         }
 
         [Theory]

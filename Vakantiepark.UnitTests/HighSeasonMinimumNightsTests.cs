@@ -44,7 +44,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { TestData.CreateAccommodation("BK4-001") });
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid>());
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))

@@ -1,13 +1,11 @@
 using Vakantiepark.Application.Interfaces;
-using Vakantiepark.Shared.DTOs.Accommodation;
-using Vakantiepark.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Vakantiepark.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AccommodationController : ControllerBase
+    public class AccommodationController : ApiControllerBase
     {
         private readonly IAccommodationService AccommodationService;
 
@@ -18,30 +16,14 @@ namespace Vakantiepark.API.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetAllAsync()
-        {
-            List<AccommodationResponse> accommodations = await AccommodationService.GetAllAsync();
-            return Ok(ApiResponse<List<AccommodationResponse>>.Ok(accommodations));
-        }
+            => await RunAsync(() => AccommodationService.GetAllAsync());
 
         [HttpGet("zones")]
         public async Task<IActionResult> GetZoneOptionsAsync()
-        {
-            List<ZoneOptionResponse> zones = await AccommodationService.GetZoneOptionsAsync();
-            return Ok(ApiResponse<List<ZoneOptionResponse>>.Ok(zones));
-        }
+            => await RunAsync(() => AccommodationService.GetZoneOptionsAsync());
 
         [HttpGet("{code}")]
         public async Task<IActionResult> GetByCodeAsync(string code)
-        {
-            try
-            {
-                AccommodationResponse accommodation = await AccommodationService.GetByCodeAsync(code);
-                return Ok(ApiResponse<AccommodationResponse>.Ok(accommodation));
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return NotFound(ApiResponse<AccommodationResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => AccommodationService.GetByCodeAsync(code));
     }
 }

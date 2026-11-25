@@ -1,14 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Domain.Filters;
-using Vakantiepark.Shared.DTOs;
-using Vakantiepark.Shared.DTOs.Accommodation;
 
 namespace Vakantiepark.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AccommodationSearchController : ControllerBase
+    public class AccommodationSearchController : ApiControllerBase
     {
         private readonly IAccommodationSearchService SearchService;
 
@@ -28,23 +26,14 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] string? category = null,
             [FromQuery] bool wheelchairAccessible = false)
         {
-            try
+            AccommodationUnitFilter filter = new AccommodationUnitFilter()
             {
-                AccommodationUnitFilter filter = new AccommodationUnitFilter()
-                {
-                    NumberOfGuests = numberOfGuests,
-                    NumberOfPets = numberOfPets,
-                    WheelchairAccessible = wheelchairAccessible,
-                };
-                AccommodationSearchResponse result = await SearchService.SearchAsync(
-                    accommodationTypeSlug, category, arrivalDate, departureDate, filter, zoneId);
-
-                return Ok(ApiResponse<AccommodationSearchResponse>.Ok(result));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<AccommodationSearchResponse>.Fail(exception.Message));
-            }
+                NumberOfGuests = numberOfGuests,
+                NumberOfPets = numberOfPets,
+                WheelchairAccessible = wheelchairAccessible,
+            };
+            return await RunAsync(() => SearchService.SearchAsync(
+                accommodationTypeSlug, category, arrivalDate, departureDate, filter, zoneId));
         }
     }
 }

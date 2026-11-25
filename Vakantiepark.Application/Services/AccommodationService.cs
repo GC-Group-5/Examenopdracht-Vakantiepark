@@ -106,7 +106,7 @@ namespace Vakantiepark.Application.Services
         {
             List<Season> seasons = (await SeasonRepository.GetAllAsync()).ToList();
             List<AccommodationTypePrice> prices = (await PriceRepository.GetAllAsync()).ToList();
-            DateOnly today = DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
+            DateOnly today = TimeProvider.GetToday();
             DateOnly lastDay = today.AddMonths(AveragePriceMonths);
 
             return type => new NightPriceCalculator(type, seasons, prices).AveragePerNight(today, lastDay);

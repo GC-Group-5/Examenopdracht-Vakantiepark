@@ -11,7 +11,7 @@ namespace Vakantiepark.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthController : ApiControllerBase
     {
         private readonly IAuthService AuthService;
 
@@ -23,32 +23,12 @@ namespace Vakantiepark.API.Controllers
         [HttpPost("Login")]
         [EnableRateLimiting(RateLimitPolicies.Login)]
         public async Task<IActionResult> LoginAsync(LoginRequest request)
-        {
-            try
-            {
-                TokenResponse token = await AuthService.LoginAsync(request);
-                return Ok(ApiResponse<TokenResponse>.Ok(token));
-            }
-            catch (UnauthorizedAccessException exception)
-            {
-                return Unauthorized(ApiResponse<TokenResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => AuthService.LoginAsync(request));
 
         [HttpPost("Guest")]
         [EnableRateLimiting(RateLimitPolicies.Login)]
         public async Task<IActionResult> GuestLoginAsync(GuestLoginRequest request)
-        {
-            try
-            {
-                TokenResponse token = await AuthService.GuestLoginAsync(request);
-                return Ok(ApiResponse<TokenResponse>.Ok(token));
-            }
-            catch (UnauthorizedAccessException exception)
-            {
-                return Unauthorized(ApiResponse<TokenResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => AuthService.GuestLoginAsync(request));
 
         [HttpGet("Me")]
         [Authorize]

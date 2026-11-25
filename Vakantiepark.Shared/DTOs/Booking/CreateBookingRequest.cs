@@ -13,10 +13,6 @@ namespace Vakantiepark.Shared.DTOs.Booking
         [Range(1, 20, ErrorMessage = "Kies tussen 1 en 20 personen.")]
         public int NumberOfGuests { get; set; }
 
-        // Counted separately for the tourist tax, also when no birth dates are filled in (US-38).
-        [Range(0, 19, ErrorMessage = "Kies tussen 0 en 19 kinderen.")]
-        public int NumberOfChildrenUnder12 { get; set; }
-
         [Range(0, 10, ErrorMessage = "Kies maximaal 10 huisdieren.")]
         public int NumberOfPets { get; set; }
 
@@ -43,7 +39,8 @@ namespace Vakantiepark.Shared.DTOs.Booking
         [Required(ErrorMessage = "Vul je geboortedatum in.")]
         public DateOnly? BirthDate { get; set; }
 
-        // Optional: whatever the guest leaves open, reception fills in at check-in.
+        // Optional: whatever the guest leaves open, reception fills in at check-in. The birth dates
+        // decide who is under 12 for the tourist tax; without one a traveller counts as 12 or older.
         public List<TravellerRequest> CoTravellers { get; set; } = [];
     }
 

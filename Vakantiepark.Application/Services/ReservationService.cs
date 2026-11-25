@@ -37,7 +37,7 @@ namespace Vakantiepark.Application.Services
                 AccommodationTypeSlug = request.AccommodationTypeSlug,
             };
 
-            DateOnly today = Today();
+            DateOnly today = TimeProvider.GetToday();
             PagedResult<Booking> result = await BookingRepository.SearchAsync(filter, today, request.Page, request.PageSize);
 
             return result.ToPagedResponse(request, booking => booking.ToReservationListItem(BookingStatus.Get(booking, today)));
@@ -48,7 +48,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await BookingRepository.GetByIdWithDetailsAsync(id)
                 ?? throw new KeyNotFoundException(NotFoundMessage);
 
-            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, Today()));
+            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, TimeProvider.GetToday()));
             response.Id = booking.Id;
             response.UnitCode = booking.AccommodationUnit.Code;
             response.CreatedAt = booking.CreatedAt;
@@ -65,8 +65,5 @@ namespace Vakantiepark.Application.Services
             List<Booking> bookings = await BookingRepository.GetArrivingOrDepartingOnAsync(date);
             return bookings.ToDayOverview(date);
         }
-
-        private DateOnly Today()
-            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
     }
 }

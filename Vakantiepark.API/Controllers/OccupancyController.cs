@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Shared.Constants;
-using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Occupancy;
 
 namespace Vakantiepark.API.Controllers
@@ -11,7 +10,7 @@ namespace Vakantiepark.API.Controllers
     [ApiController]
     [Authorize(Roles = Roles.Staff)]
     [Route("[controller]")]
-    public class OccupancyController : ControllerBase
+    public class OccupancyController : ApiControllerBase
     {
         private readonly IOccupancyService OccupancyService;
 
@@ -22,16 +21,6 @@ namespace Vakantiepark.API.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetAsync([FromQuery] OccupancyRequest request)
-        {
-            try
-            {
-                OccupancyResponse occupancy = await OccupancyService.GetAsync(request);
-                return Ok(ApiResponse<OccupancyResponse>.Ok(occupancy));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<OccupancyResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => OccupancyService.GetAsync(request));
     }
 }

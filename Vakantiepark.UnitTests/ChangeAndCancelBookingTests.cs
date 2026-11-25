@@ -40,7 +40,7 @@ namespace Vakantiepark.UnitTests
             _bookingRepository.Setup(x => x.GetByAccessTokenAsync(Token)).ReturnsAsync(() => _booking);
             _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(_booking.Id)).ReturnsAsync(() => _booking);
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid>());
             _bookingRepository.Setup(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>())).ReturnsAsync(true);
             _unitRepository
@@ -170,7 +170,7 @@ namespace Vakantiepark.UnitTests
         {
             await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null);
 
-            _bookingRepository.Verify(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(
+            _bookingRepository.Verify(x => x.GetUnitIdsWithOverlappingBookingAsync(
                 It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), _booking.Id), Times.Once);
         }
 
@@ -297,21 +297,16 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task Change_TooManyChildren_IsRefused()
-        {
-            ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
-            request.NumberOfGuests = 3;
-            request.NumberOfChildrenUnder12 = 3;
-
-            await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(request, null));
-        }
-
-        [Fact]
-        public async Task Change_SavesTheNewNumberOfChildren()
+        public async Task Change_CountsTheChildrenUnder12FromTheBirthDates()
         {
             ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
             request.NumberOfGuests = 4;
-            request.NumberOfChildrenUnder12 = 2;
+            request.CoTravellers =
+            [
+                new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                new TravellerRequest() { Name = "Tim Jansen", BirthDate = request.ArrivalDate.AddYears(-8) },
+                new TravellerRequest() { Name = "Sanne Jansen", BirthDate = request.ArrivalDate.AddYears(-5) },
+            ];
 
             await _sut.ChangeAsync(request, null);
 
@@ -459,7 +454,7 @@ namespace Vakantiepark.UnitTests
 
         private void UnitsTaken(params Guid[] unitIds)
             => _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingExcludingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(unitIds.ToList());
 
         // The same party, the stay shifted by a number of days.
@@ -470,7 +465,6 @@ namespace Vakantiepark.UnitTests
                 ArrivalDate = _booking.ArrivalDate.AddDays(shiftDays),
                 DepartureDate = _booking.DepartureDate.AddDays(shiftDays),
                 NumberOfGuests = 2,
-                NumberOfChildrenUnder12 = 0,
                 CoTravellers = [new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) }],
             };
 
@@ -485,7 +479,6 @@ namespace Vakantiepark.UnitTests
                 ArrivalDate = _booking.ArrivalDate.AddDays(shiftDays),
                 DepartureDate = _booking.DepartureDate.AddDays(shiftDays),
                 NumberOfGuests = 2,
-                NumberOfChildrenUnder12 = 0,
                 AccommodationUnitCode = unitCode,
             };
 

@@ -11,7 +11,7 @@ namespace Vakantiepark.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class BookingController : ControllerBase
+    public class BookingController : ApiControllerBase
     {
         private readonly IBookingService BookingService;
 
@@ -32,50 +32,23 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] int numberOfPets = 0,
             [FromQuery] bool wheelchairAccessible = false)
         {
-            try
+            AccommodationUnitFilter filter = new AccommodationUnitFilter()
             {
-                AccommodationUnitFilter filter = new AccommodationUnitFilter()
-                {
-                    NumberOfGuests = numberOfGuests,
-                    NumberOfPets = numberOfPets,
-                    WheelchairAccessible = wheelchairAccessible,
-                };
-                BookingQuoteResponse quote = await BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, filter, numberOfChildrenUnder12, preferredZone);
-                return Ok(ApiResponse<BookingQuoteResponse>.Ok(quote));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<BookingQuoteResponse>.Fail(exception.Message));
-            }
+                NumberOfGuests = numberOfGuests,
+                NumberOfPets = numberOfPets,
+                WheelchairAccessible = wheelchairAccessible,
+            };
+
+            return await RunAsync(() => BookingService.GetQuoteAsync(accommodationTypeSlug, arrivalDate, departureDate, filter, numberOfChildrenUnder12, preferredZone));
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateBookingRequest request)
-        {
-            try
-            {
-                BookingResponse booking = await BookingService.CreateAsync(request);
-                return Ok(ApiResponse<BookingResponse>.Ok(booking));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<BookingResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.CreateAsync(request));
 
         [HttpGet("mine/{token}")]
         public async Task<IActionResult> GetMineByTokenAsync(string token)
-        {
-            try
-            {
-                MyBookingResponse booking = await BookingService.GetMineByTokenAsync(token);
-                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.GetMineByTokenAsync(token));
 
         // The guest logs in with booking number and email via /Auth/Guest; the booking id comes from
         // that token, so a guest can never ask for someone else's booking.
@@ -86,72 +59,24 @@ namespace Vakantiepark.API.Controllers
             if (!Guid.TryParse(User.FindFirstValue(ClaimNames.BookingId), out Guid bookingId))
                 return Unauthorized(ApiResponse<MyBookingResponse>.Fail());
 
-            try
-            {
-                MyBookingResponse booking = await BookingService.GetMineAsync(bookingId);
-                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
-            }
-            catch (ArgumentException exception)
-            {
-                return NotFound(ApiResponse<MyBookingResponse>.Fail(exception.Message));
-            }
+            return await RunAsync(() => BookingService.GetMineAsync(bookingId));
         }
 
         [HttpPost("mine/cancel")]
         public async Task<IActionResult> CancelAsync(BookingAccessRequest request)
-        {
-            try
-            {
-                MyBookingResponse booking = await BookingService.CancelAsync(request, GuestBookingId());
-                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.CancelAsync(request, GuestBookingId()));
 
         [HttpPost("mine/cancel/quote")]
         public async Task<IActionResult> GetCancellationQuoteAsync(BookingAccessRequest request)
-        {
-            try
-            {
-                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteAsync(request, GuestBookingId());
-                return Ok(ApiResponse<CancellationQuoteResponse>.Ok(quote));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<CancellationQuoteResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.GetCancellationQuoteAsync(request, GuestBookingId()));
 
         [HttpPost("mine/change")]
         public async Task<IActionResult> ChangeAsync(ChangeBookingRequest request)
-        {
-            try
-            {
-                MyBookingResponse booking = await BookingService.ChangeAsync(request, GuestBookingId());
-                return Ok(ApiResponse<MyBookingResponse>.Ok(booking));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<MyBookingResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.ChangeAsync(request, GuestBookingId()));
 
         [HttpPost("mine/change/quote")]
         public async Task<IActionResult> GetChangeQuoteAsync(ChangeBookingRequest request)
-        {
-            try
-            {
-                ChangeQuoteResponse quote = await BookingService.GetChangeQuoteAsync(request, GuestBookingId());
-                return Ok(ApiResponse<ChangeQuoteResponse>.Ok(quote));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<ChangeQuoteResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.GetChangeQuoteAsync(request, GuestBookingId()));
 
         // US-12: a guest logged in via /Auth/Guest changes or cancels the booking in his token;
         // otherwise the request must carry the code from the email link.

@@ -7,9 +7,7 @@
 
         public int NumberOfGuests { get; set; }
 
-        public int NumberOfChildrenUnder12 { get; set; }
-
-        // Optional, as when booking.
+        // Optional, as when booking; the birth dates decide who is under 12.
         public List<TravellerRequest> CoTravellers { get; set; } = [];
     }
 }

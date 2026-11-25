@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Shared.Constants;
-using Vakantiepark.Shared.DTOs;
-using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Reservations;
 
 namespace Vakantiepark.API.Controllers
@@ -14,7 +12,7 @@ namespace Vakantiepark.API.Controllers
     [ApiController]
     [Authorize(Roles = Roles.Staff)]
     [Route("[controller]")]
-    public class ReservationsController : ControllerBase
+    public class ReservationsController : ApiControllerBase
     {
         private readonly IReservationService ReservationService;
         private readonly IBookingService BookingService;
@@ -27,96 +25,37 @@ namespace Vakantiepark.API.Controllers
 
         [HttpGet]
         public async Task<IActionResult> SearchAsync([FromQuery] ReservationSearchRequest request)
-        {
-            try
-            {
-                PagedResponse<ReservationListItemResponse> page = await ReservationService.SearchAsync(request);
-                return Ok(ApiResponse<PagedResponse<ReservationListItemResponse>>.Ok(page));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<PagedResponse<ReservationListItemResponse>>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => ReservationService.SearchAsync(request));
 
         // US-15: who arrives and departs on this day.
         [HttpGet("Day")]
         public async Task<IActionResult> GetDayOverviewAsync([FromQuery, BindRequired] DateOnly date)
-        {
-            DayOverviewResponse overview = await ReservationService.GetDayOverviewAsync(date);
-            return Ok(ApiResponse<DayOverviewResponse>.Ok(overview));
-        }
+            => await RunAsync(() => ReservationService.GetDayOverviewAsync(date));
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetByIdAsync(Guid id)
-        {
-            try
-            {
-                ReservationDetailResponse reservation = await ReservationService.GetByIdAsync(id);
-                return Ok(ApiResponse<ReservationDetailResponse>.Ok(reservation));
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return NotFound(ApiResponse<ReservationDetailResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => ReservationService.GetByIdAsync(id));
 
         // US-14: the same rules as for a guest, without the term; returns the updated reservation.
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> ChangeAsync(Guid id, StaffChangeBookingRequest request)
-        {
-            try
+            => await RunAsync(async () =>
             {
                 await BookingService.ChangeByStaffAsync(id, request, StaffUserId());
-                ReservationDetailResponse reservation = await ReservationService.GetByIdAsync(id);
-                return Ok(ApiResponse<ReservationDetailResponse>.Ok(reservation));
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return NotFound(ApiResponse<ReservationDetailResponse>.Fail(exception.Message));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<ReservationDetailResponse>.Fail(exception.Message));
-            }
-        }
+                return await ReservationService.GetByIdAsync(id);
+            });
 
         [HttpGet("{id:guid}/Cancel/Quote")]
         public async Task<IActionResult> GetCancellationQuoteAsync(Guid id)
-        {
-            try
-            {
-                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteForStaffAsync(id);
-                return Ok(ApiResponse<CancellationQuoteResponse>.Ok(quote));
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return NotFound(ApiResponse<CancellationQuoteResponse>.Fail(exception.Message));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<CancellationQuoteResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => BookingService.GetCancellationQuoteForStaffAsync(id));
 
         [HttpPost("{id:guid}/Cancel")]
         public async Task<IActionResult> CancelAsync(Guid id, StaffCancelBookingRequest request)
-        {
-            try
+            => await RunAsync(async () =>
             {
                 await BookingService.CancelByStaffAsync(id, request, StaffUserId());
-                ReservationDetailResponse reservation = await ReservationService.GetByIdAsync(id);
-                return Ok(ApiResponse<ReservationDetailResponse>.Ok(reservation));
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return NotFound(ApiResponse<ReservationDetailResponse>.Fail(exception.Message));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<ReservationDetailResponse>.Fail(exception.Message));
-            }
-        }
+                return await ReservationService.GetByIdAsync(id);
+            });
 
         // The staff token always carries the user id (TokenService); the log needs who did it.
         private Guid StaffUserId()

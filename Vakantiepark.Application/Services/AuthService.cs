@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Extensions;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Application.Interfaces;
@@ -68,7 +69,7 @@ namespace Vakantiepark.Application.Services
             if (booking is null || !string.Equals(booking.Email.Trim(), request.Email.Trim(), StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException(InvalidGuestLogin);
 
-            if (booking.DepartureDate < Today())
+            if (booking.DepartureDate < TimeProvider.GetToday())
                 throw new UnauthorizedAccessException(StayEnded);
 
             return TokenService.CreateGuestToken(booking);
@@ -83,7 +84,7 @@ namespace Vakantiepark.Application.Services
         public async Task<bool> IsActiveBookingAsync(Guid bookingId)
         {
             Booking? booking = await BookingRepository.GetByIdAsync(bookingId);
-            return booking is not null && booking.DepartureDate >= Today();
+            return booking is not null && booking.DepartureDate >= TimeProvider.GetToday();
         }
 
         private async Task<bool> RegisterFailedAttemptAsync(User user, DateTime now)
@@ -100,8 +101,5 @@ namespace Vakantiepark.Application.Services
             await UserRepository.UpdateAsync(user);
             return lockedOut;
         }
-
-        private DateOnly Today()
-            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
     }
 }

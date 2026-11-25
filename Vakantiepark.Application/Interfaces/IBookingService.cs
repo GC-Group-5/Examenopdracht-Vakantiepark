@@ -6,7 +6,8 @@ namespace Vakantiepark.Application.Interfaces
 {
     public interface IBookingService
     {
-        // Checks the stay and returns what the summary shows, without saving anything.
+        // Checks the stay and returns what the summary shows, without saving anything. The page counts the
+        // children under 12 from the birth dates filled in so far; CreateAsync counts them again itself.
         Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, int numberOfChildrenUnder12, string? preferredZone);
 
         Task<BookingResponse> CreateAsync(CreateBookingRequest request);

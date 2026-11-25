@@ -74,7 +74,7 @@ namespace Vakantiepark.Application.Services
 
         public async Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, int numberOfChildrenUnder12, string? preferredZone)
         {
-            CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, filter.NumberOfGuests, filter.NumberOfPets, Today());
+            CreateBookingRequestValidation.ValidateStay(accommodationTypeSlug, arrivalDate, departureDate, filter.NumberOfGuests, filter.NumberOfPets, TimeProvider.GetToday());
 
             AccommodationType type = await GetTypeAsync(accommodationTypeSlug);
             ParkSettings settings = await GetParkSettingsAsync();
@@ -105,7 +105,7 @@ namespace Vakantiepark.Application.Services
 
         public async Task<BookingResponse> CreateAsync(CreateBookingRequest request)
         {
-            request.Validate(Today());
+            request.Validate(TimeProvider.GetToday());
 
             AccommodationType type = await GetTypeAsync(request.AccommodationTypeSlug);
             ParkSettings settings = await GetParkSettingsAsync();
@@ -122,7 +122,8 @@ namespace Vakantiepark.Application.Services
             List<Accommodation> candidates = await GetCandidateUnitsAsync(type, request.ArrivalDate, request.DepartureDate, filter, request.PreferredZone);
 
             // The server always calculates the price itself; a price from the browser is never used.
-            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, request.NumberOfPets);
+            int childrenUnder12 = request.CoTravellers.CountChildrenUnder12(request.ArrivalDate);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, childrenUnder12, request.NumberOfPets);
             string bookingNumber = await GenerateUniqueBookingNumberAsync();
 
             // Another guest may book the same unit between the availability check and saving.
@@ -149,7 +150,7 @@ namespace Vakantiepark.Application.Services
             if (booking is null)
                 throw new ArgumentException(InvalidLinkMessage);
 
-            if (booking.DepartureDate < Today())
+            if (booking.DepartureDate < TimeProvider.GetToday())
                 throw new ArgumentException(ExpiredLinkMessage);
 
             return ToMine(booking, await GetParkSettingsAsync());
@@ -161,7 +162,7 @@ namespace Vakantiepark.Application.Services
             Booking? booking = await BookingRepository.GetByIdWithDetailsAsync(bookingId);
 
             if (booking is null)
-                throw new ArgumentException(NotFoundMessage);
+                throw new KeyNotFoundException(NotFoundMessage);
 
             return ToMine(booking, await GetParkSettingsAsync());
         }
@@ -171,7 +172,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await FindOwnBookingAsync(access.Token, guestBookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
-            if (!CancellationPolicy.CanCancel(booking, Today()))
+            if (!CancellationPolicy.CanCancel(booking, TimeProvider.GetToday()))
                 throw new ArgumentException(CannotCancelMessage);
 
             return CancellationQuote(booking, settings);
@@ -180,11 +181,11 @@ namespace Vakantiepark.Application.Services
         // The same costs for a guest and staff (US-12, US-14).
         private CancellationQuoteResponse CancellationQuote(Booking booking, ParkSettings settings)
         {
-            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
 
             return new CancellationQuoteResponse()
             {
-                DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, Today()),
+                DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, TimeProvider.GetToday()),
                 TotalPrice = booking.TotalPrice,
                 CancellationFee = fee,
                 Explanation = ExplainFee(booking, settings, fee),
@@ -197,10 +198,10 @@ namespace Vakantiepark.Application.Services
             Booking booking = await FindOwnBookingAsync(access.Token, guestBookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
-            if (!CancellationPolicy.CanCancel(booking, Today()))
+            if (!CancellationPolicy.CanCancel(booking, TimeProvider.GetToday()))
                 throw new ArgumentException(CannotCancelMessage);
 
-            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
             await BookingRepository.CancelAsync(booking, fee);
             await SendCancellationAsync(booking, settings, fee);
 
@@ -211,7 +212,8 @@ namespace Vakantiepark.Application.Services
         public async Task<ChangeQuoteResponse> GetChangeQuoteAsync(ChangeBookingRequest request, Guid? guestBookingId)
         {
             ChangePlan plan = await PrepareChangeAsync(request, guestBookingId);
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, plan.Booking.NumberOfPets);
+            int childrenUnder12 = request.CoTravellers.CountChildrenUnder12(request.ArrivalDate);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, childrenUnder12, plan.Booking.NumberOfPets);
 
             return new ChangeQuoteResponse()
             {
@@ -233,13 +235,14 @@ namespace Vakantiepark.Application.Services
         private async Task<Booking> ApplyChangeAsync(ChangePlan plan, ChangeBookingRequest request)
         {
             Booking booking = plan.Booking;
-            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, request.NumberOfChildrenUnder12, booking.NumberOfPets);
+            int childrenUnder12 = request.CoTravellers.CountChildrenUnder12(request.ArrivalDate);
+            PriceSpecificationResponse newPrice = await PriceService.CalculateAsync(plan.Type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, childrenUnder12, booking.NumberOfPets);
             decimal oldTotalPrice = booking.TotalPrice;
 
             booking.ArrivalDate = request.ArrivalDate;
             booking.DepartureDate = request.DepartureDate;
             booking.NumberOfGuests = request.NumberOfGuests;
-            booking.NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12;
+            booking.NumberOfChildrenUnder12 = childrenUnder12;
             // Only the key: the unit itself was loaded without tracking and must not be saved again.
             booking.AccommodationUnitId = plan.Unit.Id;
             booking.AccommodationPrice = newPrice.AccommodationPrice;
@@ -298,7 +301,7 @@ namespace Vakantiepark.Application.Services
 
             Booking booking = await FindCancellableByStaffAsync(bookingId);
             ParkSettings settings = await GetParkSettingsAsync();
-            decimal fee = CancellationPolicy.CalculateFee(booking, settings, Today());
+            decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
 
             // No Id: EF then sees a new row; a set Id on a tracked booking makes it try an UPDATE.
             booking.Changes.Add(new BookingChange()
@@ -344,7 +347,7 @@ namespace Vakantiepark.Application.Services
         {
             Booking booking = await FindReservationAsync(bookingId);
 
-            if (booking.DepartureDate <= Today())
+            if (booking.DepartureDate <= TimeProvider.GetToday())
                 throw new ArgumentException(StayEndedMessage);
 
             return booking;
@@ -358,7 +361,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await FindOwnBookingAsync(request.Token, guestBookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
-            if (!CancellationPolicy.CanChange(booking, settings, Today()))
+            if (!CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday()))
                 throw new ArgumentException(CannotChangeMessage);
 
             return await PlanChangeAsync(booking, settings, request, chosenUnitCode: null);
@@ -370,14 +373,13 @@ namespace Vakantiepark.Application.Services
         {
             AccommodationType type = booking.AccommodationUnit.Type;
 
-            CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, Today());
+            CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, TimeProvider.GetToday());
 
             BookingGuest? mainBooker = booking.Guests.FirstOrDefault(guest => guest.IsMainBooker);
             if (mainBooker?.BirthDate is DateOnly mainBirthDate && CreateBookingRequestValidation.AgeOn(mainBirthDate, request.ArrivalDate) < CreateBookingRequestValidation.MinimumMainBookerAge)
                 throw new ArgumentException($"De hoofdboeker moet op de aankomstdatum minimaal {CreateBookingRequestValidation.MinimumMainBookerAge} jaar zijn.");
 
-            CreateBookingRequestValidation.ValidateChildrenUnder12(request.NumberOfGuests, request.NumberOfChildrenUnder12);
-            CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, Today());
+            CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, TimeProvider.GetToday());
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
             AccommodationUnitFilter filter = new AccommodationUnitFilter()
@@ -389,7 +391,7 @@ namespace Vakantiepark.Application.Services
             List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, request.ArrivalDate, request.DepartureDate))
                 .Where(filter.Matches)
                 .ToList();
-            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingExcludingAsync(
+            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(
                 units.Select(unit => unit.Id).ToList(), request.ArrivalDate, request.DepartureDate, booking.Id);
             List<Accommodation> freeUnits = units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
 
@@ -451,14 +453,14 @@ namespace Vakantiepark.Application.Services
         private MyBookingResponse ToMine(Booking booking, ParkSettings settings)
         {
             MyBookingResponse response = booking.ToMyBookingResponse(GetStatus(booking));
-            response.CanCancel = CancellationPolicy.CanCancel(booking, Today());
-            response.CanChange = CancellationPolicy.CanChange(booking, settings, Today());
+            response.CanCancel = CancellationPolicy.CanCancel(booking, TimeProvider.GetToday());
+            response.CanChange = CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday());
             response.CancellationFee = booking.CancellationFee;
             return response;
         }
 
         private string GetStatus(Booking booking)
-            => BookingStatus.Get(booking, Today());
+            => BookingStatus.Get(booking, TimeProvider.GetToday());
 
 
         // Free units of the type that fit the party (the same filter as the search), in the
@@ -534,9 +536,6 @@ namespace Vakantiepark.Application.Services
 
             return (int)maximum;
         }
-
-        private DateOnly Today()
-            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
 
         // US-09: everything is inside the try, so a mail server that is down is logged
         // but never undoes the booking or hides the booking number from the guest.
