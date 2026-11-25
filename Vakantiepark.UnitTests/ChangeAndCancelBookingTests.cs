@@ -392,9 +392,36 @@ namespace Vakantiepark.UnitTests
         {
             SetArrival(20);
 
-            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteForStaffAsync(_booking.Id);
+            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteForStaffAsync(_booking.Id, isBeheerder: false);
 
             Assert.Equal(120m, quote.CancellationFee);
+        }
+
+        [Fact]
+        public async Task GetCancellationQuoteForStaffAsync_Beheerder_UsesBookerWordingForFreeCancellation()
+        {
+            SetArrival(60);
+
+            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteForStaffAsync(_booking.Id, isBeheerder: true);
+
+            Assert.Equal(
+                "Je annuleert een boeking van meer dan 30 dagen voor aankomst. De boeker krijgt alles terug, inclusief de aanbetaling.",
+                quote.Explanation);
+        }
+
+        [Fact]
+        public async Task GetCancellationQuote_NoRefundPeriod_UsesRoleSpecificWordingAndKeepsTouristTaxRefund()
+        {
+            SetArrival(6);
+
+            CancellationQuoteResponse guestQuote = await _sut.GetCancellationQuoteAsync(Access(), null);
+            CancellationQuoteResponse beheerderQuote = await _sut.GetCancellationQuoteForStaffAsync(_booking.Id, isBeheerder: true);
+
+            Assert.Equal(590m, guestQuote.CancellationFee);
+            Assert.Contains("Je betaalt het volledige verblijf", guestQuote.Explanation);
+            Assert.Contains("toeristenbelasting", guestQuote.Explanation);
+            Assert.Contains("De boeker betaalt het volledige verblijf", beheerderQuote.Explanation);
+            Assert.Contains("wordt terugbetaald", beheerderQuote.Explanation);
         }
 
         [Fact]
