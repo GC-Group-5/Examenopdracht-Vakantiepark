@@ -36,8 +36,9 @@ Business rules that apply everywhere (details are in the GitHub issues US-01 …
 - A pool reservation always belongs to an active booking, falls within the stay, and never exceeds
   the slot's capacity, including under concurrent requests.
 - Collect as little personal data as possible: only the main booker's name, birth date (must be 18+),
-  email and phone. Fellow travellers are only counted (12+ and under 12); reception records them at
-  check-in. A guest only ever sees their own data.
+  email and phone. Names and birth dates of fellow travellers are optional; reception completes them at
+  check-in. Children under 12 (no tourist tax) are counted from the birth dates that are filled in; a
+  traveller without one counts as 12 or older. A guest only ever sees their own data.
 
 UI text, validation messages and exception messages shown to users are in **Dutch**. Code, comments,
 commit messages and these docs are in English.
@@ -134,6 +135,7 @@ Vakantiepark.slnx
 |--------------|-----------------------------------|
 | Controllers  | `Controllers/{Feature}Controller.cs` |
 | Middleware   | `Middlewares/`                    |
+| Base controller (exceptions → status codes) | `Controllers/ApiControllerBase.cs` (see §5) |
 | JSON converters | `Converters/`                  |
 | DI registration | `Dependencies.cs`              |
 
@@ -151,7 +153,7 @@ Vakantiepark.slnx
 | API client interfaces              | `Application/Interfaces/I{Feature}Service.cs`    |
 | API client implementations         | `Application/Services/{Feature}Service.cs`       |
 | UI-only DTOs                       | `Application/DTOs/`                              |
-| UI helpers                         | `Application/Extensions/`                        |
+| UI helpers                         | `Application/Extensions/`, `Application/Helpers/`|
 | Auth (JWT state, token handler)    | `Authentication/`                                |
 | Global CSS / JS                    | `wwwroot/css/`, `wwwroot/js/`                    |
 | DI registration                    | `Dependencies.cs`                                |
@@ -179,6 +181,9 @@ Vakantiepark.slnx
 
 ### Timestamps
 - Always `DateTime.UtcNow`. Never `DateTime.Now`.
+- A service that needs today's date injects `TimeProvider` and calls `TimeProvider.GetToday()`
+  (`Application/Extensions/TimeProviderExtensions.cs`), so tests can fix the date with
+  `FixedTimeProvider`. Validations get `today` as a parameter instead of reading the clock.
 - `CreatedAt` / `UpdatedAt` / `DeletedAt` are set by the generic `Repository<T>`, not by services.
 - The API serialises all dates as UTC (`UtcDateTimeJsonConverter`). The UI converts to local time
   for display.
@@ -209,7 +214,7 @@ Vakantiepark.slnx
    anything.
 
 ### Exceptions as the error contract
-| Situation                              | Throw                        | Controller returns |
+| Situation                              | Throw                        | API returns        |
 |----------------------------------------|------------------------------|--------------------|
 | Business rule broken / bad input       | `ArgumentException(message)` | `400 BadRequest`   |
 | Requested item does not exist          | `KeyNotFoundException(message)` | `404 NotFound`  |
@@ -218,6 +223,10 @@ Vakantiepark.slnx
 
 - The exception **message is shown to the end user**, so it must be a complete, friendly sentence in
   the app's UI language (Dutch). Do not put stack details or IDs in it.
+- Controllers do not catch these themselves. Every controller inherits `ApiControllerBase` and runs its
+  service call through `RunAsync`, which turns them into the status code above with
+  `ApiResponse<T>.Fail(message)`. They are caught in our own code, so the Visual Studio debugger does not
+  stop on them; any other exception still does, and still ends up at `/error`.
 - Never catch `Exception` in services or controllers. Unexpected errors go to the global handler.
 
 ### Authentication and authorisation
@@ -298,13 +307,13 @@ The goal is code that reads like it was written by one careful person. Match the
 ## 5. API conventions
 
 ### Controllers are thin
-A controller action only: reads claims, calls **one** service method, maps exceptions to status
-codes, wraps the result. No business logic, no repository access.
+A controller action only: reads claims and calls **one** service method through `RunAsync`, which wraps
+the result and maps the exceptions (§3). No business logic, no repository access, no try/catch.
 
 ```csharp
 [ApiController]
 [Route("[controller]")]
-public class UserController : ControllerBase
+public class UserController : ApiControllerBase
 {
     private readonly IUserService UserService;
 
@@ -316,17 +325,13 @@ public class UserController : ControllerBase
     [HttpGet("{id:guid}")]
     [Authorize(Roles = "Beheerder")]
     public async Task<IActionResult> GetByIdAsync(Guid id)
-    {
-        try
-        {
-            UserResponse user = await UserService.GetByIdAsync(id);
-            return Ok(ApiResponse<UserResponse>.Ok(user));
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(ApiResponse<UserResponse>.Fail(exception.Message));
-        }
-    }
+        => await RunAsync(() => UserService.GetByIdAsync(id));
+
+    // Without a value to return; the message is shown on the page.
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Beheerder")]
+    public async Task<IActionResult> DeleteAsync(Guid id)
+        => await RunAsync(() => UserService.DeleteAsync(id), "De gebruiker is verwijderd.");
 }
 ```
 
@@ -435,7 +440,8 @@ Every list that can grow (reservations, and later day overviews, occupancy, user
   ```
 - `IHttpService` never throws; it always returns an `ApiResponse<T>`. Pages check
   `response.Succeeded` and show `response.Message` via the notifications component.
-- Every page handles three states: loading (spinner), failed (message), empty (message).
+- Every page handles three states: loading (spinner), failed (message), empty (message). Use
+  `<LoadState>` for this (see below).
 - Page routes are lowercase and in the UI language (`/zoek-en-boek`, `/beheer/reserveringen`).
 - Protected pages use `@attribute [Authorize]` / `[Authorize(Roles = "Beheerder")]`. The API still
   enforces auth; UI checks are for UX only.
@@ -443,6 +449,20 @@ Every list that can grow (reservations, and later day overviews, occupancy, user
   Use the existing CSS variables/theme; don't hardcode new colours.
 - `@code` block order: fields → computed properties → lifecycle methods → event handlers → helpers.
 - Culture is set once in `Program.cs` (e.g. `nl-NL`).
+
+### Shared building blocks (US-45)
+Use these instead of writing the same thing again on a page:
+
+| Need | Use |
+|------|-----|
+| A date or time on screen | `DateFormats.Date` (dd-MM-yyyy), `Time`, `DateAndTime`, `DayAndDate`; `DateFormats.Query` (yyyy-MM-dd) only in addresses and API calls |
+| "1 nacht / 7 nachten", "1 huisdier / 2 huisdieren" | `StayLabels.Nights`, `StayLabels.NumberOfNights`, `StayLabels.Pets` |
+| A query string for an API call or a page link | `new QueryString().Add(...).ToUrl(path)`: skips empty values, escapes the rest; paged lists start from `request.ToPagingQuery()` |
+| The price lines of a stay | `<PriceSpecification />`; a saved booking via `booking.ToPriceSpecification()` |
+| The details of a booking | `<BookingDetails />`; staff pass `BookedAt`, `UnitCode` and `ForStaff` |
+| Dates and party, then search | `<QuickSearch />`; on a type's page with `AccommodationTypeSlug` and `MaxGuests` |
+| Loading, failed and empty | `<LoadState TValue="..." Value="..." ErrorMessage="..." Context="...">` |
+| A checkbox | `<label class="check-field">` around the `form-check-input` and its text: the same box as a text field |
 
 ---
 
