@@ -56,6 +56,12 @@ namespace Vakantiepark.Application.Services
             return response;
         }
 
+        public async Task<DayOverviewResponse> GetDayOverviewAsync(DateOnly date)
+        {
+            List<Booking> bookings = await BookingRepository.GetArrivingOrDepartingOnAsync(date);
+            return bookings.ToDayOverview(date);
+        }
+
         private DateOnly Today()
             => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
     }

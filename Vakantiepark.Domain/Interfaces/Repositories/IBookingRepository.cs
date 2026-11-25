@@ -26,5 +26,8 @@ namespace Vakantiepark.Domain.Interfaces.Repositories
 
         // US-16: the active bookings of these units whose stay includes the night of this date.
         Task<List<Booking>> GetStayingOnDateAsync(List<Guid> unitIds, DateOnly date);
+
+        // US-15: the bookings that arrive or depart on this day, with unit, type and zone. Cancelled ones are left out.
+        Task<List<Booking>> GetArrivingOrDepartingOnAsync(DateOnly date);
     }
 }
