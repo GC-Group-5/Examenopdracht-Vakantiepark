@@ -86,7 +86,7 @@ namespace Vakantiepark.API.Controllers
         {
             try
             {
-                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteForStaffAsync(id, User.IsInRole(Roles.Beheerder));
+                CancellationQuoteResponse quote = await BookingService.GetCancellationQuoteForStaffAsync(id);
                 return Ok(ApiResponse<CancellationQuoteResponse>.Ok(quote));
             }
             catch (KeyNotFoundException exception)

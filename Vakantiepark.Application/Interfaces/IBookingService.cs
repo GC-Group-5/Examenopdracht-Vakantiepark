@@ -22,7 +22,8 @@ namespace Vakantiepark.Application.Interfaces
 
         // US-14: the same by staff, without the guest's term; staffUserId goes into the change log.
         Task ChangeByStaffAsync(Guid bookingId, StaffChangeBookingRequest request, Guid staffUserId);
-        Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId, bool isBeheerder);
+        // Explained to the employee ("de boeker krijgt..."), for a medewerker and a beheerder alike.
+        Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId);
         Task CancelByStaffAsync(Guid bookingId, StaffCancelBookingRequest request, Guid staffUserId);
     }
 }
