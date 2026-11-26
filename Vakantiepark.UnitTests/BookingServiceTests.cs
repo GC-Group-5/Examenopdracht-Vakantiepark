@@ -335,6 +335,7 @@ namespace Vakantiepark.UnitTests
             Assert.Equal("Eik Luxe 6", quote.AccommodationTypeName);
             Assert.Equal("Waterkant", quote.Zone);
             Assert.Equal(new TimeOnly(15, 0), quote.ArrivalTime);
+            Assert.Equal(6, quote.MaxPersons);
             Assert.Equal(817m, quote.Price.TotalPrice);
             Assert.Equal(163.40m, quote.Price.Deposit);
             Assert.Equal(30, quote.FreeCancellationDaysBeforeArrival);

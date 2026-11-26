@@ -51,6 +51,7 @@
                              onerror="this.onerror=null; this.src='img/placeholder-image.svg'" />
                         <div class="eyebrow">Jouw verblijf</div>
                         <h2 class="h3 mt-2 mb-1">@quote.AccommodationTypeName</h2>
+                        <span class="count-pill text-nowrap">tot @quote.MaxPersons pers.</span>
                         <p class="small text-muted-du mb-3">@(quote.Zone is null ? "Geen voorkeurszone" : $"Zone {quote.Zone}")</p>
 
                         <dl class="row small mb-0">
@@ -95,8 +96,8 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-guests">Aantal personen</label>
-                                    <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" step="1" />
-                                    <div class="form-text">Telt de hoofdboeker en alle reisgenoten.</div>
+                                    <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" max="@Math.Min(MaxGuests, quote.MaxPersons)" step="1" />
+                                    <div class="form-text">Telt de hoofdboeker en alle reisgenoten. Maximaal @quote.MaxPersons personen.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-label fw-semibold">Toegankelijkheid</div>
@@ -374,7 +375,13 @@
     // Fewer persons drop the last traveller rows, and with them maybe a child under 12.
     private async Task OnGuestsChangedAsync(int newGuests)
     {
-        request.NumberOfGuests = newGuests;
+        int maxGuests = quote?.MaxPersons is > 0 ? Math.Min(MaxGuests, quote.MaxPersons) : MaxGuests;
+        int clampedGuests = Math.Clamp(newGuests, 1, maxGuests);
+        if (clampedGuests == request.NumberOfGuests)
+            return;
+
+        request.NumberOfGuests = clampedGuests;
+        request.NumberOfChildrenUnder12 = Math.Clamp(request.NumberOfChildrenUnder12, 0, Math.Max(clampedGuests - 1, 0));
         ResizeCoTravellers();
         await OnPartyChangedAsync();
     }
@@ -404,11 +411,9 @@
         if (quote is not null && newPets > quote.MaxPets)
         {
             request.NumberOfPets = newPets;
-            quoteErrorMessage = $"Dit verblijfstype staat maximaal {StayLabels.Pets(quote.MaxPets)} toe.";
+            quoteErrorMessage = $"Dit verblijfstype staat maximaal {quote.MaxPets} {(quote.MaxPets == 1 ? "huisdier" : "huisdieren")} toe.";
             return;
-        }
 
-        request.NumberOfPets = newPets;
         await OnPartyChangedAsync();
     }
 
