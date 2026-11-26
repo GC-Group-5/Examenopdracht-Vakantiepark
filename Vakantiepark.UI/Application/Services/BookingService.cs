@@ -1,3 +1,4 @@
+using Vakantiepark.UI.Application.Helpers;
 using Vakantiepark.UI.Application.Interfaces;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs;
@@ -15,17 +16,16 @@ namespace Vakantiepark.UI.Application.Services
 
         public async Task<ApiResponse<BookingQuoteResponse>> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests, int numberOfChildrenUnder12, int numberOfPets, bool wheelchairAccessible, string? preferredZone)
         {
-            string url = "/Booking/quote"
-                + $"?accommodationTypeSlug={Uri.EscapeDataString(accommodationTypeSlug)}"
-                + $"&arrivalDate={arrivalDate:yyyy-MM-dd}"
-                + $"&departureDate={departureDate:yyyy-MM-dd}"
-                + $"&numberOfGuests={numberOfGuests}"
-                + $"&numberOfChildrenUnder12={numberOfChildrenUnder12}"
-                + $"&numberOfPets={numberOfPets}";
-            if (wheelchairAccessible)
-                url += "&wheelchairAccessible=true";
-            if (!string.IsNullOrWhiteSpace(preferredZone))
-                url += $"&preferredZone={Uri.EscapeDataString(preferredZone)}";
+            string url = new QueryString()
+                .Add("accommodationTypeSlug", accommodationTypeSlug)
+                .Add("arrivalDate", arrivalDate)
+                .Add("departureDate", departureDate)
+                .Add("numberOfGuests", numberOfGuests)
+                .Add("numberOfChildrenUnder12", numberOfChildrenUnder12)
+                .Add("numberOfPets", numberOfPets)
+                .Add("wheelchairAccessible", wheelchairAccessible)
+                .Add("preferredZone", preferredZone)
+                .ToUrl("/Booking/quote");
 
             return await HttpService.GetAsync<BookingQuoteResponse>(url);
         }

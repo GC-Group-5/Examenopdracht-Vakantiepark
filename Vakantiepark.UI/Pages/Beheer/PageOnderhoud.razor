@@ -250,7 +250,7 @@
                     @if (pendingUpdate.Kind == UpdateKind.End)
                     {
                         <p>Weet je zeker dat <strong>@SelectedUnitCode</strong> klaar is?</p>
-                        <p class="mb-0 text-muted-du">De periode blijft zichtbaar als afgelopen. De accommodatie is vanaf vandaag (@Today.ToString("d MMM yyyy")) weer te vinden en te boeken.</p>
+                        <p class="mb-0 text-muted-du">De periode blijft zichtbaar als afgelopen. De accommodatie is vanaf vandaag (@Today.ToString(DateFormats.Date)) weer te vinden en te boeken.</p>
                     }
                     else if (pendingUpdate.Kind == UpdateKind.Cancel)
                     {
@@ -265,11 +265,11 @@
                         </p>
                         @if (pendingUpdate.EndDate < pendingUpdate.OldEndDate)
                         {
-                            <p class="mb-0 text-muted-du">Vanaf @pendingUpdate.EndDate.AddDays(1).ToString("d MMM yyyy") is de accommodatie weer te vinden en te boeken.</p>
+                            <p class="mb-0 text-muted-du">Vanaf @pendingUpdate.EndDate.AddDays(1).ToString(DateFormats.Date) is de accommodatie weer te vinden en te boeken.</p>
                         }
                         else if (pendingUpdate.EndDate > pendingUpdate.OldEndDate)
                         {
-                            <p class="mb-0 text-muted-du">Tot en met @pendingUpdate.EndDate.ToString("d MMM yyyy") is de accommodatie niet te vinden en niet te boeken.</p>
+                            <p class="mb-0 text-muted-du">Tot en met @pendingUpdate.EndDate.ToString(DateFormats.Date) is de accommodatie niet te vinden en niet te boeken.</p>
                         }
                     }
 
@@ -595,10 +595,10 @@
     };
 
     private static string PeriodDates(DateOnly startDate, DateOnly endDate)
-        => $"{startDate:d MMM yyyy} t/m {endDate:d MMM yyyy}";
+        => $"{startDate.ToString(DateFormats.Date)} t/m {endDate.ToString(DateFormats.Date)}";
 
     private static string BookingLine(BookingConflictResponse booking)
-        => $"{booking.BookingNumber} · {booking.Name} · {booking.ArrivalDate:d MMM} – {booking.DepartureDate:d MMM yyyy} · {(booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen")}";
+        => $"{booking.BookingNumber} · {booking.Name} · {booking.ArrivalDate.ToString(DateFormats.Date)} – {booking.DepartureDate.ToString(DateFormats.Date)} · {(booking.NumberOfGuests == 1 ? "1 persoon" : $"{booking.NumberOfGuests} personen")}";
 
     private enum UpdateKind { Change, End, Cancel }
 

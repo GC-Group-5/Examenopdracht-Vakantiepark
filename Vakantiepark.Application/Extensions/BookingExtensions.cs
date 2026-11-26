@@ -3,6 +3,8 @@ using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
 using System.Security.Cryptography;
+using Vakantiepark.Application.Validations.Booking;
+using Vakantiepark.Shared.Constants;
 
 namespace Vakantiepark.Application.Extensions
 {
@@ -24,7 +26,7 @@ namespace Vakantiepark.Application.Extensions
                 FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
                 NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
                 NumberOfGuests = request.NumberOfGuests,
-                NumberOfChildrenUnder12 = request.NumberOfChildrenUnder12,
+                NumberOfChildrenUnder12 = request.CoTravellers.CountChildrenUnder12(request.ArrivalDate),
                 NumberOfPets = request.NumberOfPets,
                 WheelchairAccessible = request.WheelchairAccessible,
                 AccommodationPrice = price.AccommodationPrice,
@@ -41,6 +43,12 @@ namespace Vakantiepark.Application.Extensions
                     .. request.CoTravellers.ToGuests(),
                 ],
             };
+
+        // No tourist tax under 12 (US-38). Only filled-in birth dates count: a traveller without one counts
+        // as 12 or older until reception records the age at check-in. The main booker is always 18 or older.
+        public static int CountChildrenUnder12(this List<TravellerRequest> coTravellers, DateOnly arrivalDate)
+            => coTravellers.Count(traveller => traveller.BirthDate is DateOnly birthDate
+                && CreateBookingRequestValidation.AgeOn(birthDate, arrivalDate) < BookingRules.TouristTaxMinimumAge);
 
         // Only travellers with a name are saved; an empty row means "not known yet".
         public static List<BookingGuest> ToGuests(this List<TravellerRequest> coTravellers)

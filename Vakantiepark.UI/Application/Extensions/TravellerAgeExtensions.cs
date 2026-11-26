@@ -1,5 +1,6 @@
 using System.Globalization;
 using Vakantiepark.Shared.Constants;
+using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.UI.Application.Helpers;
 
 namespace Vakantiepark.UI.Application.Extensions
@@ -34,6 +35,11 @@ namespace Vakantiepark.UI.Application.Extensions
                 : " · geboortedatum nog onbekend";
             return name.Trim() + details + (isMainBooker ? " · hoofdboeker" : "");
         }
+
+        // Same rule as the server: only filled-in birth dates count, a traveller without one counts as 12 or older.
+        public static int CountChildrenUnder12(this List<TravellerRequest> coTravellers, DateOnly arrivalDate)
+            => coTravellers.Count(traveller => traveller.BirthDate is DateOnly birthDate
+                && birthDate.AgeOn(arrivalDate) < BookingRules.TouristTaxMinimumAge);
 
         // e.g. "4 personen, waarvan 2 jonger dan 12".
         public static string PartyLabel(int numberOfGuests, int childrenUnder12)

@@ -42,8 +42,9 @@ namespace Vakantiepark.Infrastructure.Repositories
             }
         }
 
-        public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate)
+        public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid? excludedBookingId = null)
             => await Overlapping(unitIds, arrivalDate, departureDate)
+                .Where(x => excludedBookingId == null || x.Id != excludedBookingId)
                 .Select(x => x.AccommodationUnitId)
                 .Distinct()
                 .ToListAsync();
@@ -71,13 +72,6 @@ namespace Vakantiepark.Infrastructure.Repositories
             booking.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
         }
-
-        public async Task<List<Guid>> GetUnitIdsWithOverlappingBookingExcludingAsync(List<Guid> unitIds, DateOnly arrivalDate, DateOnly departureDate, Guid excludedBookingId)
-            => await Overlapping(unitIds, arrivalDate, departureDate)
-                .Where(x => x.Id != excludedBookingId)
-                .Select(x => x.AccommodationUnitId)
-                .Distinct()
-                .ToListAsync();
 
         // Saves a changed booking and replaces the fellow travellers (the main booker stays).
         // When the overlap constraint refuses it, nothing is saved and the booking stays as it was.

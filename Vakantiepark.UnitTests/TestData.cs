@@ -7,7 +7,7 @@ namespace Vakantiepark.UnitTests
 {
     public static class TestData
     {
-        // A valid request for four persons, two of them under 12; only the main booker has a name.
+        // A valid request for four persons; only the main booker is filled in, so nobody counts as under 12.
         public static CreateBookingRequest CreateNewBookingRequest(Action<CreateBookingRequest>? configure = null)
         {
             DateOnly arrivalDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
@@ -18,7 +18,6 @@ namespace Vakantiepark.UnitTests
                 ArrivalDate = arrivalDate,
                 DepartureDate = arrivalDate.AddDays(7),
                 NumberOfGuests = 4,
-                NumberOfChildrenUnder12 = 2,
                 Name = "Jan Jansen",
                 Email = "jan@example.nl",
                 PhoneNumber = "0612345678",

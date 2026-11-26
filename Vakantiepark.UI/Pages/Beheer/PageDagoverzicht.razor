@@ -43,18 +43,7 @@
             </div>
         </div>
 
-        @if (errorMessage is not null)
-        {
-            <div class="alert alert-danger mt-4" role="alert">@errorMessage</div>
-        }
-        else if (overview is null)
-        {
-            <div class="text-center py-5" role="status">
-                <div class="spinner-border text-success"><span class="visually-hidden">Dagoverzicht wordt geladen…</span></div>
-            </div>
-        }
-        else
-        {
+        <LoadState TValue="DayOverviewResponse" Value="overview" ErrorMessage="@errorMessage" LoadingText="Dagoverzicht wordt geladen…" Class="mt-4" Context="overview">
             <div class="row g-3 mt-2">
                 <div class="col-6">
                     <div class="info-block">
@@ -80,13 +69,11 @@
                     @DayTable(Sorted(overview.Departures), "Er vertrekt op deze dag niemand.")
                 </div>
             </div>
-        }
+        </LoadState>
     </div>
 </section>
 
 @code {
-    private static readonly CultureInfo Dutch = new CultureInfo("nl-NL");
-
     // Staff look back at most a year; older years only make the year list longer.
     private static readonly int FirstYear = DateTime.Today.Year - 1;
 
@@ -103,12 +90,12 @@
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
     private string Intro => date == Today
-        ? $"Wie er vandaag ({date.ToString("dddd d MMMM", Dutch)}) aankomt en vertrekt."
-        : $"Wie er op {date.ToString("dddd d MMMM yyyy", Dutch)} aankomt en vertrekt.";
+        ? $"Wie er vandaag ({date.ToString(DateFormats.DayAndDate)}) aankomt en vertrekt."
+        : $"Wie er op {date.ToString(DateFormats.DayAndDate)} aankomt en vertrekt.";
 
     protected override async Task OnParametersSetAsync()
     {
-        date = DateOnly.TryParseExact(DateFromQuery, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsed) ? parsed : Today;
+        date = DateOnly.TryParseExact(DateFromQuery, DateFormats.Query, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsed) ? parsed : Today;
         chosenDate = date;
         overview = null;
         errorMessage = null;
@@ -124,7 +111,7 @@
         => ShowDay(chosenDate);
 
     private void ShowDay(DateOnly day)
-        => NavigationManager.NavigateTo($"beheer/dagoverzicht?datum={day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}");
+        => NavigationManager.NavigateTo($"beheer/dagoverzicht?datum={day.ToString(DateFormats.Query, CultureInfo.InvariantCulture)}");
 
     // The server sends both lists sorted by zone and unit.
     private List<DayOverviewItemResponse> Sorted(List<DayOverviewItemResponse> items)

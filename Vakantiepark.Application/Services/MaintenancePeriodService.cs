@@ -1,3 +1,4 @@
+using Vakantiepark.Application.Extensions;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.MaintenancePeriods;
 using Vakantiepark.Domain.Entities;
@@ -57,7 +58,7 @@ namespace Vakantiepark.Application.Services
         {
             Accommodation unit = await GetUnitAsync(request.AccommodationUnitCode);
             MaintenanceReason reason = ParseReason(request.Reason);
-            request.StartDate.ValidateMaintenancePeriod(request.EndDate, Today());
+            request.StartDate.ValidateMaintenancePeriod(request.EndDate, TimeProvider.GetToday());
 
             if (reason == MaintenanceReason.Other && string.IsNullOrWhiteSpace(request.Note))
                 throw new ArgumentException("Kies bij de reden 'overig' een toelichting.");
@@ -92,7 +93,7 @@ namespace Vakantiepark.Application.Services
             MaintenancePeriod period = await PeriodRepository.GetByIdAsync(id)
                 ?? throw new ArgumentException("De onderhoudsperiode is niet gevonden.");
 
-            request.StartDate.ValidatePeriodChange(request.EndDate, period, Today());
+            request.StartDate.ValidatePeriodChange(request.EndDate, period, TimeProvider.GetToday());
             (await GetPeriodsOfUnitAsync(period.AccommodationUnitId))
                 .Where(other => other.Id != period.Id)
                 .ValidateNoOverlap(request.StartDate, request.EndDate);
@@ -119,7 +120,7 @@ namespace Vakantiepark.Application.Services
             MaintenancePeriod period = await PeriodRepository.GetByIdAsync(id)
                 ?? throw new ArgumentException("De onderhoudsperiode is niet gevonden.");
 
-            DateOnly today = Today();
+            DateOnly today = TimeProvider.GetToday();
             period.ValidateCanEnd(today);
 
             if (period.StartDate > today)
@@ -155,9 +156,6 @@ namespace Vakantiepark.Application.Services
             Period = ToResponse(period),
             ConflictingBookings = conflicts,
         };
-
-        private DateOnly Today()
-            => DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
 
         private async Task<Accommodation> GetUnitAsync(string accommodationUnitCode)
             => await UnitRepository.GetByCodeWithDetailsAsync(accommodationUnitCode)

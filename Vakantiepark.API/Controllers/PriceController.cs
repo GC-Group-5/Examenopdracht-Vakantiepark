@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Vakantiepark.Application.Interfaces;
-using Vakantiepark.Shared.DTOs;
-using Vakantiepark.Shared.DTOs.Price;
 
 namespace Vakantiepark.API.Controllers
 {
@@ -11,7 +9,7 @@ namespace Vakantiepark.API.Controllers
     
     [ApiController]
     [Route("[controller]")]
-    public class PriceController : ControllerBase
+    public class PriceController : ApiControllerBase
     {
         private readonly IPriceService PriceService;
 
@@ -28,18 +26,7 @@ namespace Vakantiepark.API.Controllers
             [FromQuery] int numberOfGuests,
             [FromQuery] int numberOfChildrenUnder12 = 0,
             [FromQuery] int numberOfPets = 0)
-        {
-            try
-            {
-                PriceSpecificationResponse price = await PriceService.CalculateAsync(
-                    accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, numberOfChildrenUnder12, numberOfPets);
-
-                return Ok(ApiResponse<PriceSpecificationResponse>.Ok(price));
-            }
-            catch (ArgumentException exception)
-            {
-                return BadRequest(ApiResponse<PriceSpecificationResponse>.Fail(exception.Message));
-            }
-        }
+            => await RunAsync(() => PriceService.CalculateAsync(
+                accommodationTypeSlug, arrivalDate, departureDate, numberOfGuests, numberOfChildrenUnder12, numberOfPets));
     }
 }

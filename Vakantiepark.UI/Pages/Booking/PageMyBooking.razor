@@ -14,7 +14,7 @@
         @if (booking is not null)
         {
             <p class="page-intro mt-3 mb-0">
-                @booking.AccommodationTypeName · @booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat)
+                @booking.AccommodationTypeName · @booking.ArrivalDate.ToString(DateFormats.Date) t/m @booking.DepartureDate.ToString(DateFormats.Date)
             </p>
         }
     </div>
@@ -69,60 +69,10 @@
                     </div>
                 </div>
 
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Boekingsnummer</dt>
-                    <dd class="col-sm-8">@booking.BookingNumber</dd>
-
-                    <dt class="col-sm-4">Verblijf</dt>
-                    <dd class="col-sm-8">@booking.AccommodationTypeName · zone @booking.Zone</dd>
-
-                    <dt class="col-sm-4">Data</dt>
-                    <dd class="col-sm-8">@booking.ArrivalDate.ToString(DateFormat) t/m @booking.DepartureDate.ToString(DateFormat) (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</dd>
-
-                    <dt class="col-sm-4">Aankomst en vertrek</dt>
-                    <dd class="col-sm-8">Aankomst vanaf @booking.ArrivalTime.ToString(TimeFormat), vertrek vóór @booking.DepartureTime.ToString(TimeFormat)</dd>
-
-                    <dt class="col-sm-4">Reisgezelschap</dt>
-                    <dd class="col-sm-8">
-                        @TravellerAgeExtensions.PartyLabel(booking.NumberOfGuests, booking.NumberOfChildrenUnder12)
-                        <ul class="list-unstyled mb-0">
-                            @foreach (GuestResponse guest in booking.Guests)
-                            {
-                                <li>@TravellerAgeExtensions.TravellerLabel(guest.Name, guest.BirthDate, booking.ArrivalDate, guest.IsMainBooker)</li>
-                            }
-                        </ul>
-                        @if (TravellerAgeExtensions.MissingTravellersLabel(booking.NumberOfGuests, booking.Guests.Count) is string missing)
-                        {
-                            <div class="text-muted-du small">@missing</div>
-                        }
-                    </dd>
-
-                    <dt class="col-sm-4">Huisdieren</dt>
-                    <dd class="col-sm-8">@(booking.NumberOfPets == 0 ? "Geen" : $"{booking.NumberOfPets} {(booking.NumberOfPets == 1 ? "huisdier" : "huisdieren")}")</dd>
-
-                    <dt class="col-sm-4">Contactgegevens</dt>
-                    <dd class="col-sm-8">@booking.Name<br />@booking.Email<br />@booking.PhoneNumber</dd>
-                </dl>
+                <BookingDetails Booking="booking" />
 
                 <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
-                <table class="table mb-0">
-                    <tbody>
-                        <tr><td>Verblijf (@NumberOfNights @(NumberOfNights == 1 ? "nacht" : "nachten"))</td><td class="text-end">@booking.AccommodationPrice.ToString("C")</td></tr>
-                        <tr><td>Eindschoonmaak</td><td class="text-end">@booking.CleaningFee.ToString("C")</td></tr>
-                        @if (booking.PetCleaningFee > 0m)
-                        {
-                            <tr><td>Schoonmaakkosten huisdieren</td><td class="text-end">@booking.PetCleaningFee.ToString("C")</td></tr>
-                        }
-                        <tr><td>Toeristenbelasting</td><td class="text-end">@booking.TouristTax.ToString("C")</td></tr>
-                        <tr class="fw-semibold"><td>Totaal</td><td class="text-end">@booking.TotalPrice.ToString("C")</td></tr>
-                        <tr><td>Borg (retour bij vertrek)<br /><span class="text-muted">Betaalbaar bij aankomst op het park</span></td><td class="text-end">@booking.SecurityDeposit.ToString("C")</td></tr>
-                        <tr><td>Aanbetaling</td><td class="text-end">@booking.Deposit.ToString("C")</td></tr>
-                        @if (booking.CancellationFee is not null)
-                        {
-                            <tr class="fw-semibold text-danger"><td>Annuleringskosten</td><td class="text-end">@booking.CancellationFee.Value.ToString("C")</td></tr>
-                        }
-                    </tbody>
-                </table>
+                <PriceSpecification Price="booking.ToPriceSpecification()" NumberOfNights="StayLabels.NumberOfNights(booking.ArrivalDate, booking.DepartureDate)" CancellationFee="booking.CancellationFee" />
 
                 @if (successMessage is not null)
                 {
@@ -192,17 +142,12 @@
                                     <InputNumber id="change-guests" class="form-control" Value="changeRequest.NumberOfGuests" TValue="int" ValueExpression="() => changeRequest.NumberOfGuests" ValueChanged="OnChangeGuests" min="1" step="1" />
                                     <div class="form-text">Inclusief hoofdboeker</div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold" for="change-children">Waarvan jonger dan 12</label>
-                                    <InputNumber id="change-children" class="form-control" Value="changeRequest.NumberOfChildrenUnder12" TValue="int" ValueExpression="() => changeRequest.NumberOfChildrenUnder12" ValueChanged="OnChangeChildren" min="0" max="@(changeRequest.NumberOfGuests - 1)" step="1" />
-                                    <div class="form-text">Over kinderen jonger dan 12 betaal je geen toeristenbelasting.</div>
-                                </div>
                             </div>
 
                             @if (changeRequest.CoTravellers.Count > 0)
                             {
                                 <h4 class="h6 mt-4 mb-1">Reisgenoten <span class="badge rounded-pill text-bg-light border fw-normal align-middle">Optioneel</span></h4>
-                                <p class="text-muted-du small mb-2">Deze velden zijn niet verplicht. Wat je leeg laat, vult de receptie aan bij het inchecken.</p>
+                                <p class="text-muted-du small mb-2">Deze velden zijn niet verplicht. Wat je leeg laat, vult de receptie aan bij het inchecken. Over kinderen jonger dan 12 betaal je geen toeristenbelasting. Dat volgt uit de geboortedatum; zonder geboortedatum telt een reisgenoot als 12 jaar of ouder.</p>
                                 @for (int index = 0; index < changeRequest.CoTravellers.Count; index++)
                                 {
                                     int number = index + 2;
@@ -214,7 +159,7 @@
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small" for="@($"change-birthdate-{number}")">Persoon @number: geboortedatum</label>
-                                            <InputDutchDate id="@($"change-birthdate-{number}")" class="form-control" MaxYear="@Today.Year" @bind-Value="traveller.BirthDate" />
+                                            <InputDutchDate id="@($"change-birthdate-{number}")" class="form-control" MaxYear="@Today.Year" @bind-Value="traveller.BirthDate" @bind-Value:after="ClearChangeQuote" />
                                         </div>
                                     </div>
                                 }
@@ -254,9 +199,6 @@
 </section>
 
 @code {
-    private const string DateFormat = DateFormats.Date;
-    private const string TimeFormat = DateFormats.Time;
-
     [Parameter]
     public string? Token { get; set; }
 
@@ -279,8 +221,6 @@
     private string? actionError;
     private string? successMessage;
     private bool isBusy;
-
-    private int NumberOfNights => booking is null ? 0 : booking.DepartureDate.DayNumber - booking.ArrivalDate.DayNumber;
 
     private string StatusClass => BookingStatusBadge.CssClass(booking?.Status);
 
@@ -418,7 +358,6 @@
             ArrivalDate = booking.ArrivalDate,
             DepartureDate = booking.DepartureDate,
             NumberOfGuests = booking.NumberOfGuests,
-            NumberOfChildrenUnder12 = booking.NumberOfChildrenUnder12,
             CoTravellers = booking.Guests
                 .Where(guest => !guest.IsMainBooker)
                 .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
@@ -437,8 +376,6 @@
     private void OnChangeGuests(int numberOfGuests)
     {
         changeRequest.NumberOfGuests = Math.Max(1, numberOfGuests);
-        // The main booker is 18 or older, so fewer persons can mean fewer children.
-        changeRequest.NumberOfChildrenUnder12 = Math.Clamp(changeRequest.NumberOfChildrenUnder12, 0, changeRequest.NumberOfGuests - 1);
         ResizeCoTravellers();
         ClearChangeQuote();
     }
@@ -452,15 +389,8 @@
             .ToList();
     }
 
-    private void OnChangeChildren(int numberOfChildren)
-    {
-        changeRequest.NumberOfChildrenUnder12 = Math.Clamp(numberOfChildren, 0, changeRequest.NumberOfGuests - 1);
-        ClearChangeQuote();
-    }
-
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
-    // e.g. "4 personen, waarvan 2 jonger dan 12"
     private async Task ShowChangeQuoteAsync()
     {
         isBusy = true;

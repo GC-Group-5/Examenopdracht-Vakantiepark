@@ -1,6 +1,7 @@
 using Vakantiepark.Shared.DTOs;
 using Vakantiepark.Shared.DTOs.Accommodation;
 using Vakantiepark.Shared.DTOs.Maintenance;
+using Vakantiepark.UI.Application.Helpers;
 using Vakantiepark.UI.Application.Interfaces;
 
 namespace Vakantiepark.UI.Application.Services
@@ -18,7 +19,7 @@ namespace Vakantiepark.UI.Application.Services
             => await HttpService.GetAsync<List<AccommodationResponse>>("/Accommodation");
 
         public async Task<ApiResponse<MaintenanceUnitOverviewResponse>> GetOverviewAsync(string accommodationUnitCode)
-            => await HttpService.GetAsync<MaintenanceUnitOverviewResponse>($"/MaintenancePeriods?accommodationUnitCode={Uri.EscapeDataString(accommodationUnitCode)}");
+            => await HttpService.GetAsync<MaintenanceUnitOverviewResponse>(new QueryString().Add("accommodationUnitCode", accommodationUnitCode).ToUrl("/MaintenancePeriods"));
 
         public async Task<ApiResponse<MaintenancePeriodSaveResult>> CreateAsync(CreateMaintenancePeriodRequest request)
             => await HttpService.PostAsync<MaintenancePeriodSaveResult, CreateMaintenancePeriodRequest>("/MaintenancePeriods", request);

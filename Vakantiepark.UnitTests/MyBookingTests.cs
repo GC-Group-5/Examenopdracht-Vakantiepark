@@ -127,7 +127,7 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task GetMine_UnknownBookingId_ThrowsNotFound()
         {
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetMineAsync(Guid.NewGuid()));
+            KeyNotFoundException exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _sut.GetMineAsync(Guid.NewGuid()));
 
             Assert.Equal(BookingService.NotFoundMessage, exception.Message);
         }

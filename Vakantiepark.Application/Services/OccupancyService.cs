@@ -28,7 +28,7 @@ namespace Vakantiepark.Application.Services
         public async Task<OccupancyResponse> GetAsync(OccupancyRequest request)
         {
             request.ValidatePaging();
-            DateOnly date = request.Date ?? DateOnly.FromDateTime(TimeProvider.GetUtcNow().UtcDateTime);
+            DateOnly date = request.Date ?? TimeProvider.GetToday();
 
             List<Accommodation> units = await UnitRepository.GetForOccupancyAsync(date, request.AccommodationTypeSlug, request.ZoneId, AccommodationSearchValidation.ParseCategory(request.Category));
             List<Booking> bookings = await BookingRepository.GetStayingOnDateAsync(units.Select(unit => unit.Id).ToList(), date);

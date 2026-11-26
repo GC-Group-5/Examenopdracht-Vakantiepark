@@ -38,7 +38,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _firstUnit, _secondUnit });
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid>());
             _bookingRepository
                 .Setup(x => x.TryAddAsync(It.IsAny<Booking>()))
@@ -98,7 +98,7 @@ namespace Vakantiepark.UnitTests
                 && booking.Guests[0].Name == "Jan Jansen"
                 && booking.Guests[0].BirthDate == new DateOnly(1985, 5, 1)
                 && booking.NumberOfGuests == 4
-                && booking.NumberOfChildrenUnder12 == 2)), Times.Once);
+                && booking.NumberOfChildrenUnder12 == 0)), Times.Once);
         }
 
         [Fact]
@@ -120,11 +120,44 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task CreateAsync_ValidRequest_PassesTheChildrenUnder12ToThePriceCalculation()
+        public async Task CreateAsync_TravellersUnder12ByBirthDate_PassesThemToThePriceCalculation()
         {
-            await _sut.CreateAsync(TestData.CreateNewBookingRequest());
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+            request.CoTravellers =
+            [
+                new TravellerRequest() { Name = "Els Jansen", BirthDate = new DateOnly(1987, 9, 12) },
+                new TravellerRequest() { Name = "Tim Jansen", BirthDate = request.ArrivalDate.AddYears(-8) },
+                new TravellerRequest() { Name = "Sanne Jansen", BirthDate = request.ArrivalDate.AddYears(-5) },
+            ];
+
+            await _sut.CreateAsync(request);
 
             _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 2, 0), Times.Once);
+            _bookingRepository.Verify(x => x.TryAddAsync(It.Is<Booking>(booking => booking.NumberOfChildrenUnder12 == 2)), Times.Once);
+        }
+
+        // Reception fills in the age at check-in; until then the traveller pays tourist tax.
+        [Fact]
+        public async Task CreateAsync_TravellerWithoutBirthDate_CountsAs12OrOlder()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+            request.CoTravellers = [new TravellerRequest() { Name = "Tim Jansen" }, new TravellerRequest()];
+
+            await _sut.CreateAsync(request);
+
+            _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 0, 0), Times.Once);
+        }
+
+        // The age on the arrival date counts, not the age when booking.
+        [Fact]
+        public async Task CreateAsync_ChildTurning12BeforeArrival_PaysTouristTax()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest();
+            request.CoTravellers = [new TravellerRequest() { Name = "Tim Jansen", BirthDate = request.ArrivalDate.AddYears(-12) }];
+
+            await _sut.CreateAsync(request);
+
+            _priceService.Verify(x => x.CalculateAsync("eik-luxe-6", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), 4, 0, 0), Times.Once);
         }
 
         [Fact]
@@ -164,7 +197,7 @@ namespace Vakantiepark.UnitTests
         public async Task CreateAsync_FirstUnitBooked_AssignsFreeUnit()
         {
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid> { _firstUnit.Id });
 
             await _sut.CreateAsync(TestData.CreateNewBookingRequest());
@@ -184,7 +217,7 @@ namespace Vakantiepark.UnitTests
         public async Task CreateAsync_PreferredZoneFull_ThrowsZoneMessageAndSavesNothing()
         {
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid> { _secondUnit.Id });
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
@@ -198,7 +231,7 @@ namespace Vakantiepark.UnitTests
         public async Task CreateAsync_AllUnitsBooked_ThrowsArgumentExceptionAndSavesNothing()
         {
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid> { _firstUnit.Id, _secondUnit.Id });
 
             ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
@@ -471,7 +504,7 @@ namespace Vakantiepark.UnitTests
         public async Task CreateAsync_AllUnitsBooked_SendsNoEmail()
         {
             _bookingRepository
-                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Setup(x => x.GetUnitIdsWithOverlappingBookingAsync(It.IsAny<List<Guid>>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(new List<Guid> { _firstUnit.Id, _secondUnit.Id });
 
             await Assert.ThrowsAsync<ArgumentException>(() => _sut.CreateAsync(TestData.CreateNewBookingRequest()));
@@ -503,7 +536,6 @@ namespace Vakantiepark.UnitTests
         {
             CreateBookingRequest request = TestData.CreateNewBookingRequest();
             request.NumberOfGuests = 1;
-            request.NumberOfChildrenUnder12 = 0;
 
             await _sut.CreateAsync(request);
 

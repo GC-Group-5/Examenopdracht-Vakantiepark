@@ -1,0 +1,70 @@
+@using Vakantiepark.Shared.DTOs.Booking
+@using Vakantiepark.UI.Application.Extensions
+@* The details of a booking, the same on "Mijn boeking" and the reservation in the beheeromgeving; staff see a few lines more. *@
+<dl class="row mb-0">
+    <dt class="col-sm-4">Boekingsnummer</dt>
+    <dd class="col-sm-8">@Booking.BookingNumber</dd>
+
+    @if (BookedAt is DateTime bookedAt)
+    {
+        <dt class="col-sm-4">Geboekt op</dt>
+        <dd class="col-sm-8">@bookedAt.ToLocalTime().ToString(DateFormats.DateAndTime)</dd>
+    }
+
+    <dt class="col-sm-4">Verblijf</dt>
+    <dd class="col-sm-8">@Booking.AccommodationTypeName@(UnitCode is null ? "" : $" · {UnitCode}") · zone @Booking.Zone</dd>
+
+    <dt class="col-sm-4">Data</dt>
+    <dd class="col-sm-8">@Booking.ArrivalDate.ToString(DateFormats.Date) t/m @Booking.DepartureDate.ToString(DateFormats.Date) (@StayLabels.Nights(StayLabels.NumberOfNights(Booking.ArrivalDate, Booking.DepartureDate)))</dd>
+
+    <dt class="col-sm-4">Aankomst en vertrek</dt>
+    <dd class="col-sm-8">Aankomst vanaf @Booking.ArrivalTime.ToString(DateFormats.Time), vertrek vóór @Booking.DepartureTime.ToString(DateFormats.Time)</dd>
+
+    <dt class="col-sm-4">Reisgezelschap</dt>
+    <dd class="col-sm-8">
+        @TravellerAgeExtensions.PartyLabel(Booking.NumberOfGuests, Booking.NumberOfChildrenUnder12)
+        <ul class="list-unstyled mb-0">
+            @foreach (GuestResponse guest in Booking.Guests)
+            {
+                <li>@TravellerAgeExtensions.TravellerLabel(guest.Name, guest.BirthDate, Booking.ArrivalDate, guest.IsMainBooker)</li>
+            }
+        </ul>
+        @if (TravellerAgeExtensions.MissingTravellersLabel(Booking.NumberOfGuests, Booking.Guests.Count) is string missing)
+        {
+            <div class="text-muted-du small">@missing</div>
+        }
+    </dd>
+
+    <dt class="col-sm-4">Huisdieren</dt>
+    <dd class="col-sm-8">@(Booking.NumberOfPets == 0 ? "Geen" : StayLabels.Pets(Booking.NumberOfPets))</dd>
+
+    @if (ForStaff)
+    {
+        <dt class="col-sm-4">Rolstoeltoegankelijk</dt>
+        <dd class="col-sm-8">@(Booking.WheelchairAccessible ? "Ja" : "Nee")</dd>
+
+        <dt class="col-sm-4">Contactgegevens</dt>
+        <dd class="col-sm-8 mb-0">@Booking.Name<br /><a class="admin-link fw-normal" href="mailto:@Booking.Email">@Booking.Email</a><br /><a class="admin-link fw-normal" href="tel:@Booking.PhoneNumber">@Booking.PhoneNumber</a></dd>
+    }
+    else
+    {
+        <dt class="col-sm-4">Contactgegevens</dt>
+        <dd class="col-sm-8 mb-0">@Booking.Name<br />@Booking.Email<br />@Booking.PhoneNumber</dd>
+    }
+</dl>
+
+@code {
+    [Parameter, EditorRequired]
+    public MyBookingResponse Booking { get; set; } = null!;
+
+    // Staff only (US-13): when the booking was made and which unit it has.
+    [Parameter]
+    public DateTime? BookedAt { get; set; }
+
+    [Parameter]
+    public string? UnitCode { get; set; }
+
+    // Staff also see accessibility and can mail or call the guest from here.
+    [Parameter]
+    public bool ForStaff { get; set; }
+}

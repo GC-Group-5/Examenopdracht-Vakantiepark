@@ -197,15 +197,6 @@ a {
     border-top: 5px solid var(--du-aqua);
 }
 
-.booking-card .fake-input {
-    background: var(--du-cream);
-    border: 1px solid transparent;
-    border-radius: 1rem;
-    padding: .8rem .9rem;
-    font-size: .86rem;
-    color: var(--du-muted);
-}
-
 .section-pad {
     padding: 5.5rem 0;
 }
@@ -695,6 +686,57 @@ a {
 
 .form-control.invalid, .form-select.invalid {
     border-color: var(--du-danger);
+}
+
+/* A checkbox in the same box as the text fields (US-45): same height, border, corners and green focus,
+   so a choice lines up with the fields next to it. The whole box is the label, so all of it is clickable. */
+.check-field {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 0;
+    padding: .9rem 1rem;
+    border: 1px solid #dbe3dc;
+    border-radius: 1rem;
+    background: #fff;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.check-field .form-check-input {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    border-color: #dbe3dc;
+    border-radius: .4rem;
+    cursor: pointer;
+}
+
+.check-field .form-check-input:checked {
+    background-color: var(--du-green);
+    border-color: var(--du-green);
+}
+
+.check-field .form-check-input:focus {
+    border-color: var(--du-green);
+    box-shadow: none;
+}
+
+.check-field:has(.form-check-input:checked) {
+    border-color: var(--du-green);
+    background: #f3f7f1;
+}
+
+.check-field:has(.form-check-input:focus-visible) {
+    border-color: var(--du-green);
+    box-shadow: 0 0 0 .2rem rgba(11,93,59,.12);
+}
+
+.check-field:has(.form-check-input:disabled) {
+    background: var(--du-cream);
+    color: var(--du-muted);
+    cursor: not-allowed;
 }
 
 /* Lists in the beheeromgeving (US-13): a calm header, room at the edges and a whole row that is clickable. */
