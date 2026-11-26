@@ -40,7 +40,7 @@ namespace Vakantiepark.Application.Services
             DateOnly today = TimeProvider.GetToday();
             PagedResult<Booking> result = await BookingRepository.SearchAsync(filter, today, request.Page, request.PageSize);
 
-            return result.ToPagedResponse(request, booking => booking.ToReservationListItem(BookingStatus.Get(booking, today)));
+            return result.ToPagedResponse(request, booking => booking.ToReservationListItem(BookingStatus.Get(booking)));
         }
 
         public async Task<ReservationDetailResponse> GetByIdAsync(Guid id)
@@ -48,7 +48,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await BookingRepository.GetByIdWithDetailsAsync(id)
                 ?? throw new KeyNotFoundException(NotFoundMessage);
 
-            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, TimeProvider.GetToday()));
+            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking));
             response.Id = booking.Id;
             response.UnitCode = booking.AccommodationUnit.Code;
             response.CreatedAt = booking.CreatedAt;

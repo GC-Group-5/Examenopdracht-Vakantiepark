@@ -126,13 +126,9 @@ namespace Vakantiepark.Infrastructure.Repositories
                 query = query.Where(x => x.AccommodationUnit.Type.Slug == slug);
             }
 
-            query = filter.State switch
-            {
-                BookingState.Cancelled => query.Where(x => x.DeletedAt != null),
-                BookingState.Completed => query.Where(x => x.DeletedAt == null && x.DepartureDate < today),
-                BookingState.Confirmed => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today),
-                _ => query,
-            };
+            // Cancelled bookings also have DeletedAt; the stored status says the same since US-46.
+            if (filter.State is BookingState state)
+                query = query.Where(x => x.Status == state);
 
             return await query
                 .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)

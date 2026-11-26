@@ -292,6 +292,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("deposit");
 
+                    b.Property<DateOnly>("DepositDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("deposit_due_date");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -340,6 +344,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("security_deposit");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
                     b.Property<decimal>("TotalPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -371,6 +381,9 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.HasIndex("BookingNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_bookings_booking_number");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_bookings_status");
 
                     b.ToTable("bookings", (string)null);
                 });

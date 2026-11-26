@@ -79,7 +79,8 @@
                     <div class="alert alert-success mt-4 mb-0" role="status">@successMessage</div>
                 }
 
-                @if (booking.Status == BookingStatuses.Bevestigd)
+                @* A new booking waits for its deposit (US-46); the guest may still change or cancel it. *@
+                @if (booking.Status is BookingStatuses.InAfwachting or BookingStatuses.Bevestigd)
                 {
                     <h3 class="h5 mt-5 mb-3">Je boeking aanpassen</h3>
 

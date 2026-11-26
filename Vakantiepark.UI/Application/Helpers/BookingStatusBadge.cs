@@ -9,7 +9,8 @@ namespace Vakantiepark.UI.Application.Helpers
             => status switch
             {
                 BookingStatuses.Geannuleerd => "text-bg-danger",
-                BookingStatuses.Afgerond => "text-bg-secondary",
+                BookingStatuses.InAfwachting => "text-bg-warning",
+                BookingStatuses.Uitgecheckt => "text-bg-secondary",
                 _ => "text-bg-success",
             };
     }

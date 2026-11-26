@@ -92,14 +92,14 @@ namespace Vakantiepark.UnitTests
         [Fact]
         public async Task Search_ReturnsRowsWithStatusAndPageCount()
         {
-            Booking upcoming = CreateBooking(Today.AddDays(5), Today.AddDays(10));
-            Booking completed = CreateBooking(Today.AddDays(-10), Today.AddDays(-3));
+            Booking upcoming = CreateBooking(Today.AddDays(5), Today.AddDays(10), booking => booking.Status = BookingState.Confirmed);
+            Booking checkedOut = CreateBooking(Today.AddDays(-10), Today.AddDays(-3), booking => booking.Status = BookingState.CheckedOut);
             Booking cancelled = CreateBooking(Today.AddDays(20), Today.AddDays(25), booking => booking.DeletedAt = DateTime.UtcNow);
-            ReturnFromSearch([upcoming, completed, cancelled], 53);
+            ReturnFromSearch([upcoming, checkedOut, cancelled], 53);
 
             PagedResponse<ReservationListItemResponse> page = await _sut.SearchAsync(new ReservationSearchRequest() { PageSize = 25 });
 
-            Assert.Equal(new List<string>() { BookingStatuses.Bevestigd, BookingStatuses.Afgerond, BookingStatuses.Geannuleerd }, page.Items.Select(item => item.Status).ToList());
+            Assert.Equal(new List<string>() { BookingStatuses.Bevestigd, BookingStatuses.Uitgecheckt, BookingStatuses.Geannuleerd }, page.Items.Select(item => item.Status).ToList());
             Assert.Equal(53, page.TotalCount);
             Assert.Equal(3, page.TotalPages);
             Assert.Equal("BRK4-001", page.Items[0].UnitCode);

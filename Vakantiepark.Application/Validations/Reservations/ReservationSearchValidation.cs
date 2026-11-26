@@ -23,10 +23,12 @@ namespace Vakantiepark.Application.Validations.Reservations
 
             return status.Trim() switch
             {
+                BookingStatuses.InAfwachting => BookingState.AwaitingDeposit,
                 BookingStatuses.Bevestigd => BookingState.Confirmed,
-                BookingStatuses.Afgerond => BookingState.Completed,
+                BookingStatuses.Ingecheckt => BookingState.CheckedIn,
+                BookingStatuses.Uitgecheckt => BookingState.CheckedOut,
                 BookingStatuses.Geannuleerd => BookingState.Cancelled,
-                _ => throw new ArgumentException("Kies Bevestigd, Afgerond of Geannuleerd als status."),
+                _ => throw new ArgumentException($"Kies {BookingStatuses.InAfwachting}, {BookingStatuses.Bevestigd}, {BookingStatuses.Ingecheckt}, {BookingStatuses.Uitgecheckt} of {BookingStatuses.Geannuleerd} als status."),
             };
         }
     }

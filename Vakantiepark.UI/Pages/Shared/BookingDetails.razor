@@ -44,12 +44,13 @@
         <dd class="col-sm-8">@(Booking.WheelchairAccessible ? "Ja" : "Nee")</dd>
 
         <dt class="col-sm-4">Contactgegevens</dt>
-        <dd class="col-sm-8 mb-0">@Booking.Name<br /><a class="admin-link fw-normal" href="mailto:@Booking.Email">@Booking.Email</a><br /><a class="admin-link fw-normal" href="tel:@Booking.PhoneNumber">@Booking.PhoneNumber</a></dd>
+        <dd class="col-sm-8 mb-0">@Booking.Name<a class="admin-link fw-normal d-block text-truncate" href="mailto:@Booking.Email" title="@Booking.Email">@Booking.Email</a><a class="admin-link fw-normal" href="tel:@Booking.PhoneNumber">@Booking.PhoneNumber</a></dd>
     }
     else
     {
         <dt class="col-sm-4">Contactgegevens</dt>
-        <dd class="col-sm-8 mb-0">@Booking.Name<br />@Booking.Email<br />@Booking.PhoneNumber</dd>
+        @* An email address has no spaces to wrap on; a long one is cut off with … and shown whole on hover. *@
+        <dd class="col-sm-8 mb-0">@Booking.Name<span class="d-block text-truncate" title="@Booking.Email">@Booking.Email</span>@Booking.PhoneNumber</dd>
     }
 </dl>
 

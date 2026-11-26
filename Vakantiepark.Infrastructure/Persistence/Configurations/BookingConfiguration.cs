@@ -28,6 +28,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(x => x.Deposit).HasPrecision(18, 2);
             builder.Property(x => x.SecurityDeposit).HasPrecision(18, 2);
             builder.Property(x => x.CancellationFee).HasPrecision(18, 2);
+            builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            builder.HasIndex(x => x.Status);
 
             builder.HasOne(x => x.AccommodationUnit)
                 .WithMany()

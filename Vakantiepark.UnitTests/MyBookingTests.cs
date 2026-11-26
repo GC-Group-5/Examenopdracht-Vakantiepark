@@ -4,6 +4,7 @@ using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Booking;
@@ -133,14 +134,13 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task GetMine_AfterDeparture_HasStatusAfgerond()
+        public async Task GetMine_CheckedOut_HasStatusUitgecheckt()
         {
-            _booking.ArrivalDate = Today.AddDays(-7);
-            _booking.DepartureDate = Today.AddDays(-1);
+            _booking.Status = BookingState.CheckedOut;
 
             MyBookingResponse response = await _sut.GetMineAsync(_booking.Id);
 
-            Assert.Equal("Afgerond", response.Status);
+            Assert.Equal("Uitgecheckt", response.Status);
         }
 
         [Fact]
@@ -173,6 +173,7 @@ namespace Vakantiepark.UnitTests
             => new Booking()
             {
                 Id = Guid.NewGuid(),
+                Status = BookingState.Confirmed,
                 BookingNumber = "K7M2XQ9P",
                 AccessToken = Token,
                 Name = "Jan Jansen",

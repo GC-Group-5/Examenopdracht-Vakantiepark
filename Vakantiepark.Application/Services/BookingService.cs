@@ -468,8 +468,8 @@ namespace Vakantiepark.Application.Services
             return response;
         }
 
-        private string GetStatus(Booking booking)
-            => BookingStatus.Get(booking, TimeProvider.GetToday());
+        private static string GetStatus(Booking booking)
+            => BookingStatus.Get(booking);
 
 
         // Free units of the type that fit the party (the same filter as the search), in the
