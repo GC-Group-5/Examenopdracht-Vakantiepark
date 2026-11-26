@@ -47,7 +47,7 @@ namespace Vakantiepark.API.Controllers
 
         [HttpGet("{id:guid}/Cancel/Quote")]
         public async Task<IActionResult> GetCancellationQuoteAsync(Guid id)
-            => await RunAsync(() => BookingService.GetCancellationQuoteForStaffAsync(id, User.IsInRole(Roles.Beheerder)));
+            => await RunAsync(() => BookingService.GetCancellationQuoteForStaffAsync(id));
 
         [HttpPost("{id:guid}/Cancel")]
         public async Task<IActionResult> CancelAsync(Guid id, StaffCancelBookingRequest request)
