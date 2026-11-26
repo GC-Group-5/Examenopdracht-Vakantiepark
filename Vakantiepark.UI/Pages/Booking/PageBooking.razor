@@ -381,7 +381,6 @@
             return;
 
         request.NumberOfGuests = clampedGuests;
-        request.NumberOfChildrenUnder12 = Math.Clamp(request.NumberOfChildrenUnder12, 0, Math.Max(clampedGuests - 1, 0));
         ResizeCoTravellers();
         await OnPartyChangedAsync();
     }
@@ -408,12 +407,9 @@
     // Pets decide which units may be picked, so the quote is checked again.
     private async Task OnPetsChangedAsync(int newPets)
     {
-        if (quote is not null && newPets > quote.MaxPets)
-        {
-            request.NumberOfPets = newPets;
-            quoteErrorMessage = $"Dit verblijfstype staat maximaal {quote.MaxPets} {(quote.MaxPets == 1 ? "huisdier" : "huisdieren")} toe.";
-            return;
-
+        int maxPets = Math.Max(quote?.MaxPets ?? 0, 1);
+        request.NumberOfPets = Math.Clamp(newPets, 1, maxPets);
+        quoteErrorMessage = null;
         await OnPartyChangedAsync();
     }
 
