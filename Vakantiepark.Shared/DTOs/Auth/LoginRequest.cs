@@ -10,5 +10,9 @@ namespace Vakantiepark.Shared.DTOs.Auth
 
         [Required(ErrorMessage = "Vul je wachtwoord in.")]
         public string Password { get; set; } = string.Empty;
+
+        // Set when this browser was remembered after an earlier login code (US-44).
+        [MaxLength(64)]
+        public string? DeviceToken { get; set; }
     }
 }

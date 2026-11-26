@@ -138,7 +138,7 @@ namespace Vakantiepark.API
                     Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     BearerFormat = "JWT",
-                    Description = "Plak hier de token uit /Auth/Login of /Auth/Guest."
+                    Description = "Plak hier de token uit /Auth/Login, /Auth/VerifyCode of /Auth/Guest."
                 });
 
                 options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
