@@ -28,6 +28,7 @@ namespace Vakantiepark.UI.Pages.Shared
         // field the departure as RangeEnd. The calendar then shows the whole stay, also on hover.
         [Parameter] public DateOnly? RangeStart { get; set; }
         [Parameter] public DateOnly? RangeEnd { get; set; }
+        [Parameter] public EventCallback<bool> IsValidChanged { get; set; }
 
         [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
 
@@ -122,15 +123,20 @@ namespace Vakantiepark.UI.Pages.Shared
         }
 
         // Through CurrentValueAsString, like typing: that also clears an earlier "not a date" error.
-        private void Choose(DateOnly date)
+        private async Task Choose(DateOnly date)
         {
             CurrentValueAsString = date.ToString(DateFormats.Date, CultureInfo.InvariantCulture);
+            await IsValidChanged.InvokeAsync(true);
             isOpen = false;
             hoveredDate = null;
         }
 
-        private void OnTextChanged(ChangeEventArgs args)
-            => CurrentValueAsString = args.Value?.ToString();
+        private async Task OnTextChanged(ChangeEventArgs args)
+        {
+            string? value = args.Value?.ToString();
+            CurrentValueAsString = value;
+            await IsValidChanged.InvokeAsync(TryParseDate(value, out _));
+        }
 
         private void Close()
         {
@@ -174,7 +180,7 @@ namespace Vakantiepark.UI.Pages.Shared
                 return false;
             }
 
-            if (DateOnly.TryParseExact(value.Trim(), AcceptedFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
+            if (TryParseDate(value, out DateOnly date))
             {
                 result = (TValue)(object)date;
                 return true;
@@ -182,6 +188,32 @@ namespace Vakantiepark.UI.Pages.Shared
 
             validationErrorMessage = "Vul de datum in als dd-mm-jjjj, bijvoorbeeld 05-03-1985.";
             return false;
+        }
+
+        private static bool TryParseDate(string? value, out DateOnly date)
+        {
+            date = default;
+            if (string.IsNullOrWhiteSpace(value))
+                return IsNullable;
+
+            string trimmedValue = value.Trim();
+            if (!DateOnly.TryParseExact(trimmedValue, AcceptedFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsedDate))
+                return false;
+
+            string[] parts = trimmedValue.Split('-');
+            if (parts.Length != 3
+                || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int day)
+                || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int month)
+                || !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out int year)
+                || parsedDate.Day != day
+                || parsedDate.Month != month
+                || parsedDate.Year != year)
+            {
+                return false;
+            }
+
+            date = parsedDate;
+            return true;
         }
     }
 }

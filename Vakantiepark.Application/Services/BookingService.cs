@@ -175,11 +175,11 @@ namespace Vakantiepark.Application.Services
             if (!CancellationPolicy.CanCancel(booking, TimeProvider.GetToday()))
                 throw new ArgumentException(CannotCancelMessage);
 
-            return CancellationQuote(booking, settings);
+            return CancellationQuote(booking, settings, isBeheerder: false);
         }
 
         // The same costs for a guest and staff (US-12, US-14).
-        private CancellationQuoteResponse CancellationQuote(Booking booking, ParkSettings settings)
+        private CancellationQuoteResponse CancellationQuote(Booking booking, ParkSettings settings, bool isBeheerder)
         {
             decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
 
@@ -188,7 +188,7 @@ namespace Vakantiepark.Application.Services
                 DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, TimeProvider.GetToday()),
                 TotalPrice = booking.TotalPrice,
                 CancellationFee = fee,
-                Explanation = ExplainFee(booking, settings, fee),
+                Explanation = ExplainFee(booking, settings, fee, isBeheerder),
             };
         }
 
@@ -285,12 +285,12 @@ namespace Vakantiepark.Application.Services
             await ApplyChangeAsync(plan, request);
         }
 
-        public async Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId)
+        public async Task<CancellationQuoteResponse> GetCancellationQuoteForStaffAsync(Guid bookingId, bool isBeheerder)
         {
             Booking booking = await FindCancellableByStaffAsync(bookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
-            return CancellationQuote(booking, settings);
+            return CancellationQuote(booking, settings, isBeheerder);
         }
 
         // Unlike a guest, staff may also cancel on or after the arrival day; the fee follows US-12.
@@ -434,17 +434,26 @@ namespace Vakantiepark.Application.Services
             return booking;
         }
 
-        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee)
+        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee, bool isBeheerder)
         {
             CultureInfo dutch = new CultureInfo("nl-NL");
             int freeCancellationDays = CancellationPolicy.FreeCancellationDays(booking, settings);
             int noRefundDays = CancellationPolicy.NoRefundDays(booking, settings);
 
+            if (fee == 0m && isBeheerder)
+                return $"Je annuleert een boeking van meer dan {freeCancellationDays} dagen voor aankomst. De boeker krijgt alles terug, inclusief de aanbetaling.";
+
             if (fee == 0m)
                 return $"Je annuleert meer dan {freeCancellationDays} dagen voor aankomst. Dat is kosteloos: je krijgt alles terug, ook de aanbetaling.";
 
+            if (fee == booking.Deposit && isBeheerder)
+                return $"Je annuleert een boeking tussen de {noRefundDays} en {freeCancellationDays} dagen voor aankomst. De boeker krijgt de rest terug, de aanbetaling ({fee.ToString("C", dutch)}) vervalt.";
+
             if (fee == booking.Deposit)
-                return $"Je annuleert {freeCancellationDays} tot {noRefundDays} dagen voor aankomst. De aanbetaling ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+                return $"Je annuleert {noRefundDays} tot {freeCancellationDays} dagen voor aankomst. De aanbetaling ({fee.ToString("C", dutch)}) vervalt; de rest krijg je terug.";
+
+            if (isBeheerder)
+                return $"Je annuleert een boeking van minder dan {noRefundDays} dagen voor aankomst. De boeker betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) wordt terugbetaald.";
 
             return $"Je annuleert minder dan {noRefundDays} dagen voor aankomst. Je betaalt het volledige verblijf ({fee.ToString("C", dutch)}); de toeristenbelasting ({booking.TouristTax.ToString("C", dutch)}) krijg je terug.";
         }
@@ -601,7 +610,7 @@ namespace Vakantiepark.Application.Services
                     ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
                     ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
                     ["CancellationFee"] = fee.ToString("C", dutch),
-                    ["FeeExplanation"] = ExplainFee(booking, settings, fee),
+                    ["FeeExplanation"] = ExplainFee(booking, settings, fee, isBeheerder: false),
                     ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
                 });
 

@@ -44,11 +44,11 @@
                         </div>
                         <div class="col-6 col-lg-12">
                             <label class="form-label fw-semibold" for="search-arrival">Aankomst</label>
-                            <InputDutchDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@DepartureDate" />
+                            <InputDutchDate id="search-arrival" class="form-control" @bind-Value="ArrivalDate" IsValidChanged="OnArrivalDateValidityChanged" MinDate="@Today" MinYear="@Today.Year" RangeEnd="@DepartureDate" />
                         </div>
                         <div class="col-6 col-lg-12">
                             <label class="form-label fw-semibold" for="search-departure">Vertrek</label>
-                            <InputDutchDate id="search-departure" class="form-control" @bind-Value="DepartureDate" MinDate="@ArrivalDate.AddDays(1)" MinYear="@Today.Year" RangeStart="@ArrivalDate" />
+                            <InputDutchDate id="search-departure" class="form-control" @bind-Value="DepartureDate" IsValidChanged="OnDepartureDateValidityChanged" MinDate="@ArrivalDate.AddDays(1)" MinYear="@Today.Year" RangeStart="@ArrivalDate" />
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold" for="search-guests">Personen</label>
@@ -100,7 +100,7 @@
 
                 @if (isSearching)
                 {
-                    <div class="p-4 border rounded-4 bg-white shadow-sm" role="status">Ik zoek beschikbare verblijven…</div>
+                    <div class="p-4 border rounded-4 bg-white shadow-sm" role="status">Op zoek naar beschikbare verblijven…</div>
                 }
                 else if (results is not null && results.Count > 0 && searched is not null)
                 {
@@ -185,6 +185,8 @@
     private bool WheelchairAccessible;
     private DateOnly ArrivalDate = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
     private DateOnly DepartureDate = DateOnly.FromDateTime(DateTime.Today).AddDays(11);
+    private bool isArrivalDateValid = true;
+    private bool isDepartureDateValid = true;
 
     private bool isSearching;
     private string? errorMessage;
@@ -270,11 +272,23 @@
             SelectedZoneId = "";
     }
 
+    private void OnArrivalDateValidityChanged(bool isValid)
+        => isArrivalDateValid = isValid;
+
+    private void OnDepartureDateValidityChanged(bool isValid)
+        => isDepartureDateValid = isValid;
+
     private async Task SearchAsync()
     {
         errorMessage = null;
         searchMessage = null;
         results = null;
+
+        if (!isArrivalDateValid || !isDepartureDateValid)
+        {
+            errorMessage = "Vul een geldige aankomst- en vertrekdatum in voordat je zoekt.";
+            return;
+        }
 
         if (ArrivalDate < Today)
         {
