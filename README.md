@@ -30,6 +30,9 @@ In de ontwikkelomgeving maakt de API bij de eerste start automatisch deze accoun
 | Schoonmaker | `schoonmaker@dropuut.example` | `Schoonmaker123!` |
 
 Inloggen als medewerker: https://localhost:4200/beheer/inloggen.
+Medewerkers en beheerders krijgen na het wachtwoord een code van 6 cijfers per e-mail (US-44). In de
+ontwikkelomgeving staat die mail in **Mailpit** (open `mailpit` in het Aspire-dashboard). Met
+'Onthoud dit apparaat' is de code daarna 30 dagen niet nodig in die browser. Schoonmakers krijgen geen code.
 Een **gast** heeft geen account, maar logt in met het boekingsnummer (bijv. `DOU-7KQ3M9XP`) en het
 e-mailadres van een boeking via `POST /Auth/Guest`.
 
