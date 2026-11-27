@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Je inlogcode</title>
+</head>
+<!-- Same colours and fonts as the website (Vakantiepark.UI/wwwroot/css/theme.css).
+     Email clients ignore <style> and CSS variables, so every style is inline. -->
+<body style="margin:0; padding:0; background-color:#f7f4ec; font-family:Inter, -apple-system, 'Segoe UI', Arial, sans-serif; color:#183129; line-height:1.5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f4ec;">
+        <tr>
+            <td align="center" style="padding:32px 16px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+
+                    <!-- Header: park name in the logo style -->
+                    <tr>
+                        <td style="padding:0 0 20px;">
+                            <span style="font-family:Georgia, 'Times New Roman', serif; font-size:26px; font-weight:bold; color:#073d2b;">Vakantiepark D'r op Uut</span>
+                        </td>
+                    </tr>
+
+                    <!-- Card -->
+                    <tr>
+                        <td style="background-color:#ffffff; border:1px solid #dfe5dc; border-top:5px solid #49a8aa; border-radius:16px; padding:32px;">
+
+                            <p style="margin:0 0 8px; font-size:12px; letter-spacing:3px; text-transform:uppercase; font-weight:800; color:#0b5d3b;">Beheeromgeving</p>
+                            <h1 style="margin:0 0 16px; font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.2; color:#073d2b;">Je inlogcode, {{Name}}</h1>
+                            <p style="margin:0 0 24px; color:#6e786f;">Vul deze code in op de inlogpagina om verder te gaan.</p>
+
+                            <!-- Code -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+                                <tr>
+                                    <td style="background-color:#f7f4ec; border-left:4px solid #70b943; border-radius:8px; padding:16px 20px;">
+                                        <p style="margin:0; font-size:13px; color:#6e786f;">Inlogcode</p>
+                                        <p style="margin:4px 0 8px; font-size:32px; font-weight:bold; letter-spacing:8px; color:#0b5d3b;">{{Code}}</p>
+                                        <p style="margin:0; font-size:14px;">De code is {{ValidMinutes}} minuten geldig.</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0;">Heb je niet zelf geprobeerd in te loggen? Dan kent iemand anders je wachtwoord. Laat het direct een beheerder weten.</p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer bar -->
+                    <tr>
+                        <td style="padding:20px 8px 0; text-align:center; font-size:12px; color:#6e786f;">
+                            Vakantiepark D'r op Uut · Je ontvangt deze e-mail omdat er is ingelogd met jouw account.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

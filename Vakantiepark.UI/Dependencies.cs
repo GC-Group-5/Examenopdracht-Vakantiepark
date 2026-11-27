@@ -19,6 +19,7 @@ namespace Vakantiepark.UI
         private static IServiceCollection RegisterAuthentication(this IServiceCollection services)
         {
             services.AddScoped<TokenStorage>();
+            services.AddScoped<TrustedDeviceStorage>();
             services.AddScoped<JwtAuthenticationStateProvider>();
             services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<JwtAuthenticationStateProvider>());
             services.AddTransient<AuthTokenHandler>();

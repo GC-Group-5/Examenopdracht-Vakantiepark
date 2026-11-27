@@ -25,6 +25,11 @@ namespace Vakantiepark.API.Controllers
         public async Task<IActionResult> LoginAsync(LoginRequest request)
             => await RunAsync(() => AuthService.LoginAsync(request));
 
+        [HttpPost("VerifyCode")]
+        [EnableRateLimiting(RateLimitPolicies.Login)]
+        public async Task<IActionResult> VerifyLoginCodeAsync(VerifyLoginCodeRequest request)
+            => await RunAsync(() => AuthService.VerifyLoginCodeAsync(request));
+
         [HttpPost("Guest")]
         [EnableRateLimiting(RateLimitPolicies.Login)]
         public async Task<IActionResult> GuestLoginAsync(GuestLoginRequest request)

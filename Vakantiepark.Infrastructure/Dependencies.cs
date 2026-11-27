@@ -43,6 +43,7 @@ namespace Vakantiepark.Infrastructure
             services.AddScoped<IAccommodationTypeRepository, AccommodationTypeRepository>();
             services.AddScoped<IFeatureRepository, FeatureRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
 
             return services;
         }
