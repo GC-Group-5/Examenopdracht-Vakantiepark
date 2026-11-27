@@ -1,32 +1,179 @@
 ﻿@page "/beheer/schoonmaak"
 @attribute [Authorize(Roles = Roles.Schoonmaker)]
+@using System.Globalization
+@using Vakantiepark.Shared.DTOs.Cleaning
+@inject ICleaningService CleaningService
 @inject NavigationManager NavigationManager
 @inject IAuthService AuthService
 
-<PageTitle>Schoonmaakbeheer | Vakantiepark D'r op Uut</PageTitle>
+<PageTitle>Schoonmaak | Vakantiepark D'r op Uut</PageTitle>
 
 <section class="page-head">
     <div class="container">
-        <div class="eyebrow">Schoonmaakbeheer</div>
-        <AuthorizeView Context="auth">
-            <h1 class="page-title mt-2">Hallo, @auth.User.Identity?.Name</h1>
-            <p class="page-intro mt-4">
-                Je bent ingelogd als <strong>@Roles.Schoonmaker</strong>.
-            </p>
-        </AuthorizeView>
+        <div class="eyebrow">Schoonmaak</div>
+        <h1 class="page-title mt-2">Vertrekken</h1>
+        <p class="page-intro mt-4">@Intro</p>
         <button type="button" class="btn btn-du-light mt-3" @onclick="LogoutAsync">Uitloggen</button>
     </div>
 </section>
 
 <section class="section-pad">
     <div class="container">
-        <div class="row g-4">
-            <div class="col-md-6 col-xl-4"><div class="info-block"><strong>Vertrekken per dag</strong><div class="small text-muted-du">Welke accommodaties leegkomen en schoongemaakt moeten worden (US-32).</div></div></div>
+        @* US-32: Vandaag and Morgen are one tap on a phone; an earlier date shows who cleaned what. *@
+        <div class="detail-meta-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <button type="button" class="btn w-100 @(date == Today ? "btn-du" : "btn-du-light")" @onclick="() => ShowDay(Today)">Vandaag</button>
+                </div>
+                <div class="col-6 col-md-2">
+                    <button type="button" class="btn w-100 @(date == Today.AddDays(1) ? "btn-du" : "btn-du-light")" @onclick="() => ShowDay(Today.AddDays(1))">Morgen</button>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-semibold" for="cleaning-date">Andere datum</label>
+                    <InputDutchDate id="cleaning-date" class="form-control" @bind-Value="chosenDate" @bind-Value:after="ShowChosenDate" MinYear="@FirstYear" />
+                </div>
+            </div>
         </div>
+
+        @if (actionError is not null)
+        {
+            <div class="alert alert-danger mt-4" role="alert">@actionError</div>
+        }
+
+        <LoadState TValue="CleaningDayResponse" Value="day" ErrorMessage="@errorMessage" LoadingText="Vertrekken worden geladen…" Class="mt-4" Context="day">
+            @if (day.Units.Count == 0)
+            {
+                <div class="detail-meta-card p-4 text-muted-du">Er komen op deze dag geen accommodaties leeg.</div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (CleaningItemResponse unit in day.Units)
+                    {
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="detail-meta-card p-3 h-100 d-flex flex-column gap-2">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <strong class="fs-5">@unit.UnitCode</strong>
+                                        <div class="small text-muted-du">@unit.TypeName · @unit.Zone</div>
+                                    </div>
+                                    <span class="badge rounded-pill @StatusClass(unit.Status)">@unit.Status</span>
+                                </div>
+
+                                @if (unit.GuestsArriveToday)
+                                {
+                                    <div class="small fw-semibold text-danger">Nieuwe gasten komen dezelfde dag: eerst schoonmaken.</div>
+                                }
+
+                                @if (unit.CleanedBy is not null)
+                                {
+                                    <div class="small text-muted-du">@CleanedByText(unit)</div>
+                                }
+
+                                @if (CanAct && unit.Status != CleaningStatuses.Klaar)
+                                {
+                                    <div class="mt-auto pt-2">
+                                        @if (unit.Status == CleaningStatuses.TeSchoonmaken)
+                                        {
+                                            <button type="button" class="btn btn-du w-100" disabled="@busy" @onclick="() => StartAsync(unit.BookingId)">Begin met schoonmaken</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-du w-100" disabled="@busy" @onclick="() => FinishAsync(unit.BookingId)">Klaar</button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </LoadState>
     </div>
 </section>
 
 @code {
+    // Cleaners look back at most a year; older years only make the year list longer.
+    private static readonly int FirstYear = DateTime.Today.Year - 1;
+
+    // The day lives in the address, so a refresh on the phone keeps the same day.
+    [SupplyParameterFromQuery(Name = "datum")]
+    public string? DateFromQuery { get; set; }
+
+    private DateOnly date;
+    private DateOnly chosenDate;
+    private CleaningDayResponse? day;
+    private string? errorMessage;
+    private string? actionError;
+    private bool busy;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    // Before the departure day the guests are still there, so only today and earlier get buttons.
+    private bool CanAct => date <= Today;
+
+    private string Intro => date == Today
+        ? $"Deze accommodaties komen vandaag ({date.ToString(DateFormats.DayAndDate)}) leeg."
+        : $"Deze accommodaties komen op {date.ToString(DateFormats.DayAndDate)} leeg.";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        date = DateOnly.TryParseExact(DateFromQuery, DateFormats.Query, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsed) ? parsed : Today;
+        chosenDate = date;
+        actionError = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        day = null;
+        errorMessage = null;
+
+        ApiResponse<CleaningDayResponse> response = await CleaningService.GetDayAsync(date);
+        if (response.Succeeded && response.Value is not null)
+            day = response.Value;
+        else
+            errorMessage = response.Message ?? "De vertrekken konden niet worden geladen. Probeer het later opnieuw.";
+    }
+
+    private async Task StartAsync(Guid bookingId)
+        => await ActAsync(() => CleaningService.StartAsync(bookingId));
+
+    private async Task FinishAsync(Guid bookingId)
+        => await ActAsync(() => CleaningService.FinishAsync(bookingId));
+
+    // Reloads after every tap, so the cleaner also sees what colleagues changed in the meantime.
+    private async Task ActAsync(Func<Task<ApiResponse<object>>> action)
+    {
+        busy = true;
+        actionError = null;
+
+        ApiResponse<object> response = await action();
+        if (!response.Succeeded)
+            actionError = response.Message ?? "Dat lukte niet. Probeer het opnieuw.";
+
+        await LoadAsync();
+        busy = false;
+    }
+
+    private void ShowChosenDate()
+        => ShowDay(chosenDate);
+
+    private void ShowDay(DateOnly newDay)
+        => NavigationManager.NavigateTo($"beheer/schoonmaak?datum={newDay.ToString(DateFormats.Query, CultureInfo.InvariantCulture)}");
+
+    private static string CleanedByText(CleaningItemResponse unit)
+        => unit.FinishedAt is DateTime finishedAt
+            ? $"Schoongemaakt door {unit.CleanedBy} om {finishedAt.ToLocalTime().ToString(DateFormats.Time)}"
+            : $"{unit.CleanedBy} is hiermee bezig";
+
+    private static string StatusClass(string status) => status switch
+    {
+        CleaningStatuses.Klaar => "text-bg-success",
+        CleaningStatuses.Bezig => "text-bg-warning",
+        _ => "text-bg-secondary",
+    };
+
     private async Task LogoutAsync()
     {
         await AuthService.LogoutAsync();
