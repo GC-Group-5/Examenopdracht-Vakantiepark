@@ -40,9 +40,9 @@ namespace Vakantiepark.UI.Authentication
             }
         }
 
-        public async Task SignInAsync(string token)
+        public async Task SignInAsync(string token, bool rememberMe)
         {
-            await TokenStorage.SetAsync(token);
+            await TokenStorage.SetAsync(token, rememberMe);
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
 
