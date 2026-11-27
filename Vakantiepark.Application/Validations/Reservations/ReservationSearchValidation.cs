@@ -15,6 +15,15 @@ namespace Vakantiepark.Application.Validations.Reservations
                 throw new ArgumentException("De einddatum van de periode moet op of na de begindatum liggen.");
         }
 
+        // "In afwachting" and "Aanbetaling te laat" are both AwaitingDeposit in the database; the due date
+        // tells them apart. Null means the due date does not matter.
+        public static bool? ParseDepositLate(string? status) => status?.Trim() switch
+        {
+            BookingStatuses.AanbetalingTeLaat => true,
+            BookingStatuses.InAfwachting => false,
+            _ => null,
+        };
+
         // Empty means every status.
         public static BookingState? ParseStatus(string? status)
         {
@@ -23,10 +32,12 @@ namespace Vakantiepark.Application.Validations.Reservations
 
             return status.Trim() switch
             {
+                BookingStatuses.InAfwachting or BookingStatuses.AanbetalingTeLaat => BookingState.AwaitingDeposit,
                 BookingStatuses.Bevestigd => BookingState.Confirmed,
-                BookingStatuses.Afgerond => BookingState.Completed,
+                BookingStatuses.Ingecheckt => BookingState.CheckedIn,
+                BookingStatuses.Uitgecheckt => BookingState.CheckedOut,
                 BookingStatuses.Geannuleerd => BookingState.Cancelled,
-                _ => throw new ArgumentException("Kies Bevestigd, Afgerond of Geannuleerd als status."),
+                _ => throw new ArgumentException($"Kies {BookingStatuses.InAfwachting}, {BookingStatuses.AanbetalingTeLaat}, {BookingStatuses.Bevestigd}, {BookingStatuses.Ingecheckt}, {BookingStatuses.Uitgecheckt} of {BookingStatuses.Geannuleerd} als status."),
             };
         }
     }

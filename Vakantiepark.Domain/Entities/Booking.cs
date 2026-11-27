@@ -1,3 +1,4 @@
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces;
 
 namespace Vakantiepark.Domain.Entities
@@ -39,6 +40,12 @@ namespace Vakantiepark.Domain.Entities
         public decimal Deposit { get; set; }
         public decimal? CancellationFee { get; set; }
         public decimal SecurityDeposit { get; set; }
+
+        // US-46: a new booking waits for its deposit; staff move it on (paid, checked in, checked out).
+        public BookingState Status { get; set; } = BookingState.AwaitingDeposit;
+
+        // Arrival minus the free-cancellation term, or the booking date when that is already past.
+        public DateOnly DepositDueDate { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

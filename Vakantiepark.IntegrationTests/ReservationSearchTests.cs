@@ -37,18 +37,54 @@ namespace Vakantiepark.IntegrationTests
         }
 
         [Fact]
-        public async Task SearchAsync_Status_SplitsConfirmedCompletedAndCancelled()
+        public async Task SearchAsync_Status_FiltersOnTheStoredStatus()
         {
             TestUnit unit = await CreateUnitAsync();
-            Booking confirmed = TestData.CreateBooking(unit.Id, Today.AddDays(2), Today.AddDays(4));
-            Booking completed = TestData.CreateBooking(unit.Id, Today.AddDays(-6), Today.AddDays(-2));
-            Booking cancelled = TestData.CreateBooking(unit.Id, Today.AddDays(10), Today.AddDays(12), booking => booking.DeletedAt = DateTime.UtcNow);
-            await SaveAsync(confirmed, completed, cancelled);
+            Booking awaitingDeposit = TestData.CreateBooking(unit.Id, Today.AddDays(14), Today.AddDays(16));
+            Booking confirmed = TestData.CreateBooking(unit.Id, Today.AddDays(2), Today.AddDays(4), booking => booking.Status = BookingState.Confirmed);
+            Booking checkedOut = TestData.CreateBooking(unit.Id, Today.AddDays(-6), Today.AddDays(-2), booking => booking.Status = BookingState.CheckedOut);
+            Booking cancelled = TestData.CreateBooking(unit.Id, Today.AddDays(10), Today.AddDays(12), booking =>
+            {
+                booking.Status = BookingState.Cancelled;
+                booking.DeletedAt = DateTime.UtcNow;
+            });
+            await SaveAsync(awaitingDeposit, confirmed, checkedOut, cancelled);
 
+            Assert.Equal(awaitingDeposit.Id, Assert.Single((await SearchAsync(unit, BookingState.AwaitingDeposit)).Items).Id);
             Assert.Equal(confirmed.Id, Assert.Single((await SearchAsync(unit, BookingState.Confirmed)).Items).Id);
-            Assert.Equal(completed.Id, Assert.Single((await SearchAsync(unit, BookingState.Completed)).Items).Id);
+            Assert.Equal(checkedOut.Id, Assert.Single((await SearchAsync(unit, BookingState.CheckedOut)).Items).Id);
             Assert.Equal(cancelled.Id, Assert.Single((await SearchAsync(unit, BookingState.Cancelled)).Items).Id);
-            Assert.Equal(3, (await SearchAsync(unit, null)).TotalCount);
+            Assert.Equal(4, (await SearchAsync(unit, null)).TotalCount);
+        }
+
+        [Fact]
+        public async Task SearchAsync_DepositLate_SplitsUnpaidBookingsByTheirDueDate()
+        {
+            TestUnit unit = await CreateUnitAsync();
+            Booking late = TestData.CreateBooking(unit.Id, Today.AddDays(20), Today.AddDays(22), booking => booking.DepositDueDate = Today.AddDays(-1));
+            Booking dueToday = TestData.CreateBooking(unit.Id, Today.AddDays(30), Today.AddDays(32), booking => booking.DepositDueDate = Today);
+            Booking paid = TestData.CreateBooking(unit.Id, Today.AddDays(40), Today.AddDays(42), booking =>
+            {
+                booking.Status = BookingState.Confirmed;
+                booking.DepositDueDate = Today.AddDays(-10);
+            });
+            await SaveAsync(late, dueToday, paid);
+
+            PagedResult<Booking> lateResult = await SearchAsync(new BookingSearchFilter()
+            {
+                AccommodationTypeSlug = unit.TypeSlug,
+                State = BookingState.AwaitingDeposit,
+                DepositLate = true,
+            });
+            PagedResult<Booking> onTimeResult = await SearchAsync(new BookingSearchFilter()
+            {
+                AccommodationTypeSlug = unit.TypeSlug,
+                State = BookingState.AwaitingDeposit,
+                DepositLate = false,
+            });
+
+            Assert.Equal(late.Id, Assert.Single(lateResult.Items).Id);
+            Assert.Equal(dueToday.Id, Assert.Single(onTimeResult.Items).Id);
         }
 
         [Fact]

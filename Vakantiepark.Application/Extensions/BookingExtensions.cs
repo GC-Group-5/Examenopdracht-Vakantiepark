@@ -3,7 +3,9 @@ using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
 using System.Security.Cryptography;
+using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Validations.Booking;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Shared.Constants;
 
 namespace Vakantiepark.Application.Extensions
@@ -11,10 +13,12 @@ namespace Vakantiepark.Application.Extensions
     public static class BookingExtensions
     {
         // The main booker and every fellow traveller with a name become a BookingGuest.
-        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings)
+        public static Booking ToEntity(this CreateBookingRequest request, Guid accommodationUnitId, string bookingNumber, PriceSpecificationResponse price, ParkSettings settings, DateOnly today)
             => new Booking()
             {
                 BookingNumber = bookingNumber,
+                Status = BookingState.AwaitingDeposit,
+                DepositDueDate = DepositPolicy.DueDate(request.ArrivalDate, settings.FreeCancellationDaysBeforeArrival, settings.DepositDueDaysBeforeArrival, today),
                 AccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant(),
                 Name = request.Name.Trim(),
                 Email = request.Email.Trim(),
@@ -83,6 +87,7 @@ namespace Vakantiepark.Application.Extensions
                 TotalPrice = booking.TotalPrice,
                 SecurityDeposit = booking.SecurityDeposit,
                 Deposit = booking.Deposit,
+                DepositDueDate = booking.DepositDueDate,
             };
 
         // Needs Guests and AccommodationUnit with Type and Zone loaded.

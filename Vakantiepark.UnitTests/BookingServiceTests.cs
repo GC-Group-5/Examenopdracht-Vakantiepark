@@ -7,6 +7,7 @@ using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Filters;
 using Xunit;
 using Moq;
@@ -28,6 +29,9 @@ namespace Vakantiepark.UnitTests
         private readonly Accommodation _firstUnit = TestData.CreateAccommodation("EL6-001", "Waterkant");
         private readonly Accommodation _secondUnit = TestData.CreateAccommodation("EL6-002", "Bosrand");
         private readonly BookingService _sut;
+
+        // The service runs on a FixedTimeProvider set to now, so this is its today.
+        private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
 
         public BookingServiceTests()
         {
@@ -83,6 +87,37 @@ namespace Vakantiepark.UnitTests
                 && booking.NumberOfGuests == request.NumberOfGuests
                 && booking.TotalPrice == 817m
                 && booking.Deposit == 163.40m)), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_BookedMoreThanThirtyDaysAhead_AwaitsTheDepositUntilSevenDaysBeforeArrival()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
+            {
+                r.ArrivalDate = Today().AddDays(60);
+                r.DepartureDate = Today().AddDays(67);
+            });
+
+            await _sut.CreateAsync(request);
+
+            Assert.NotNull(_savedBooking);
+            Assert.Equal(BookingState.AwaitingDeposit, _savedBooking.Status);
+            Assert.Equal(Today().AddDays(53), _savedBooking.DepositDueDate);
+        }
+
+        [Fact]
+        public async Task CreateAsync_BookedWithinThirtyDays_DepositIsDueToday()
+        {
+            CreateBookingRequest request = TestData.CreateNewBookingRequest(r =>
+            {
+                r.ArrivalDate = Today().AddDays(10);
+                r.DepartureDate = Today().AddDays(17);
+            });
+
+            await _sut.CreateAsync(request);
+
+            Assert.NotNull(_savedBooking);
+            Assert.Equal(Today(), _savedBooking.DepositDueDate);
         }
 
         [Fact]

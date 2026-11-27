@@ -21,5 +21,8 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public decimal SecurityDeposit { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal Deposit { get; set; }
+
+        // US-46: the deposit must be transferred by this date.
+        public DateOnly DepositDueDate { get; set; }
     }
 }

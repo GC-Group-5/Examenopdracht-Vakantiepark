@@ -1,11 +1,12 @@
 namespace Vakantiepark.Domain.Enums
 {
-    // Derived from the booking, never stored: cancelled = DeletedAt is set,
-    // completed = departure is in the past, otherwise confirmed.
+    // Stored on the booking (US-46). Cancelled also sets DeletedAt, so the overlap check keeps working.
     public enum BookingState
     {
+        AwaitingDeposit,
         Confirmed,
-        Completed,
+        CheckedIn,
+        CheckedOut,
         Cancelled,
     }
 }

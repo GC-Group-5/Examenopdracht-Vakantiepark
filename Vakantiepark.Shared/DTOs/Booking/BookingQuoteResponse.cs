@@ -22,5 +22,10 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public int FreeCancellationDaysBeforeArrival { get; set; }
         public int NoRefundDaysBeforeArrival { get; set; }
         public decimal DepositPercentage { get; set; }
+
+        // US-46: when and where the deposit must be transferred if the guest books now.
+        public DateOnly DepositDueDate { get; set; }
+        public string BankAccountNumber { get; set; } = string.Empty;
+        public string BankAccountName { get; set; } = string.Empty;
     }
 }

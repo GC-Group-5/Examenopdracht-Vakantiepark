@@ -74,12 +74,21 @@
                 <h3 class="h5 mt-4 mb-3">Prijsspecificatie</h3>
                 <PriceSpecification Price="booking.ToPriceSpecification()" NumberOfNights="StayLabels.NumberOfNights(booking.ArrivalDate, booking.DepartureDate)" CancellationFee="booking.CancellationFee" />
 
+                @if (booking.Status is BookingStatuses.InAfwachting or BookingStatuses.AanbetalingTeLaat)
+                {
+                    <div class="mt-4">
+                        <DepositInstructions Amount="booking.Deposit" DueDate="booking.DepositDueDate" BookingNumber="@booking.BookingNumber"
+                                             BankAccountNumber="@booking.BankAccountNumber" BankAccountName="@booking.BankAccountName" />
+                    </div>
+                }
+
                 @if (successMessage is not null)
                 {
                     <div class="alert alert-success mt-4 mb-0" role="status">@successMessage</div>
                 }
 
-                @if (booking.Status == BookingStatuses.Bevestigd)
+                @* A new booking waits for its deposit (US-46); the guest may still change or cancel it. *@
+                @if (booking.Status is BookingStatuses.InAfwachting or BookingStatuses.AanbetalingTeLaat or BookingStatuses.Bevestigd)
                 {
                     <h3 class="h5 mt-5 mb-3">Je boeking aanpassen</h3>
 

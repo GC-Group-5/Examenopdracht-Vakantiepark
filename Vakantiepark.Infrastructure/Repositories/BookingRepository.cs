@@ -68,6 +68,7 @@ namespace Vakantiepark.Infrastructure.Repositories
         public async Task CancelAsync(Booking booking, decimal cancellationFee)
         {
             booking.CancellationFee = cancellationFee;
+            booking.Status = BookingState.Cancelled;
             booking.DeletedAt = DateTime.UtcNow;
             booking.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
@@ -126,13 +127,15 @@ namespace Vakantiepark.Infrastructure.Repositories
                 query = query.Where(x => x.AccommodationUnit.Type.Slug == slug);
             }
 
-            query = filter.State switch
-            {
-                BookingState.Cancelled => query.Where(x => x.DeletedAt != null),
-                BookingState.Completed => query.Where(x => x.DeletedAt == null && x.DepartureDate < today),
-                BookingState.Confirmed => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today),
-                _ => query,
-            };
+            // Cancelled bookings also have DeletedAt; the stored status says the same since US-46.
+            if (filter.State is BookingState state)
+                query = query.Where(x => x.Status == state);
+
+            // Paying on the due date itself is still on time.
+            if (filter.DepositLate == true)
+                query = query.Where(x => x.Status == BookingState.AwaitingDeposit && x.DepositDueDate < today);
+            else if (filter.DepositLate == false)
+                query = query.Where(x => x.Status == BookingState.AwaitingDeposit && x.DepositDueDate >= today);
 
             return await query
                 .Include(x => x.AccommodationUnit).ThenInclude(x => x.Type)

@@ -34,6 +34,7 @@ namespace Vakantiepark.Application.Services
                 From = request.From,
                 To = request.To,
                 State = ReservationSearchValidation.ParseStatus(request.Status),
+                DepositLate = ReservationSearchValidation.ParseDepositLate(request.Status),
                 AccommodationTypeSlug = request.AccommodationTypeSlug,
             };
 

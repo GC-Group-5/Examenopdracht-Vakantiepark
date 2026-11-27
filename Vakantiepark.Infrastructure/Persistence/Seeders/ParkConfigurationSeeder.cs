@@ -63,6 +63,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             await context.SaveChangesAsync(cancellationToken);
         }
 
+        public const int DefaultDepositDueDaysBeforeArrival = 7;
+        public const string DefaultBankAccountNumber = "NL91 ABNA 0417 1643 00";
+        public const string DefaultBankAccountName = "Vakantiepark D'r op Uut";
+
         public static ParkSettings BuildParkSettings(DateTime now) => new()
         {
             Id = Guid.NewGuid(),
@@ -74,6 +78,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             DepositPercentage = 20m,
             FreeCancellationDaysBeforeArrival = 30,
             NoRefundDaysBeforeArrival = 7,
+            DepositDueDaysBeforeArrival = DefaultDepositDueDaysBeforeArrival,
+            // A test account until the client gives the real one (open question in US-46).
+            BankAccountNumber = DefaultBankAccountNumber,
+            BankAccountName = DefaultBankAccountName,
             CreatedAt = now,
         };
 

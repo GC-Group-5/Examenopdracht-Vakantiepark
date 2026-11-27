@@ -14,6 +14,9 @@ namespace Vakantiepark.Domain.Filters
         public DateOnly? To { get; set; }
 
         public BookingState? State { get; set; }
+
+        // US-46: true = awaiting the deposit past its due date, false = awaiting it and still on time, null = either.
+        public bool? DepositLate { get; set; }
         public string? AccommodationTypeSlug { get; set; }
     }
 }

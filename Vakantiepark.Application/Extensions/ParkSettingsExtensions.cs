@@ -13,8 +13,11 @@ namespace Vakantiepark.Application.Extensions
             DepositPercentage = settings.DepositPercentage,
             FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
             NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
+            DepositDueDaysBeforeArrival = settings.DepositDueDaysBeforeArrival,
             PetCleaningFee = settings.PetCleaningFee,
             SecurityDeposit = settings.SecurityDeposit,
+            BankAccountNumber = settings.BankAccountNumber,
+            BankAccountName = settings.BankAccountName,
         };
 
         // Called after model validation, so every required value is filled in.
@@ -26,8 +29,11 @@ namespace Vakantiepark.Application.Extensions
             settings.DepositPercentage = request.DepositPercentage!.Value;
             settings.FreeCancellationDaysBeforeArrival = request.FreeCancellationDaysBeforeArrival!.Value;
             settings.NoRefundDaysBeforeArrival = request.NoRefundDaysBeforeArrival!.Value;
+            settings.DepositDueDaysBeforeArrival = request.DepositDueDaysBeforeArrival!.Value;
             settings.PetCleaningFee = request.PetCleaningFee!.Value;
             settings.SecurityDeposit = request.SecurityDeposit!.Value;
+            settings.BankAccountNumber = request.BankAccountNumber.Trim();
+            settings.BankAccountName = request.BankAccountName.Trim();
         }
 
         public static AddTouristTaxRateRequest ToRequest(this TouristTaxRate rate) => new()

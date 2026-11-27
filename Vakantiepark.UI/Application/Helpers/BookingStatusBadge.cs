@@ -8,8 +8,9 @@ namespace Vakantiepark.UI.Application.Helpers
         public static string CssClass(string? status)
             => status switch
             {
-                BookingStatuses.Geannuleerd => "text-bg-danger",
-                BookingStatuses.Afgerond => "text-bg-secondary",
+                BookingStatuses.Geannuleerd or BookingStatuses.AanbetalingTeLaat => "text-bg-danger",
+                BookingStatuses.InAfwachting => "text-bg-warning",
+                BookingStatuses.Uitgecheckt => "text-bg-secondary",
                 _ => "text-bg-success",
             };
     }

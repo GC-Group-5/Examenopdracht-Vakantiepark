@@ -292,6 +292,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("deposit");
 
+                    b.Property<DateOnly>("DepositDueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("deposit_due_date");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -340,6 +344,12 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("security_deposit");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
                     b.Property<decimal>("TotalPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -371,6 +381,9 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.HasIndex("BookingNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_bookings_booking_number");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_bookings_status");
 
                     b.ToTable("bookings", (string)null);
                 });
@@ -685,6 +698,18 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("arrival_time");
 
+                    b.Property<string>("BankAccountName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("bank_account_name");
+
+                    b.Property<string>("BankAccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)")
+                        .HasColumnName("bank_account_number");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -696,6 +721,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<TimeOnly>("DepartureTime")
                         .HasColumnType("time without time zone")
                         .HasColumnName("departure_time");
+
+                    b.Property<int>("DepositDueDaysBeforeArrival")
+                        .HasColumnType("integer")
+                        .HasColumnName("deposit_due_days_before_arrival");
 
                     b.Property<decimal>("DepositPercentage")
                         .HasPrecision(5, 2)

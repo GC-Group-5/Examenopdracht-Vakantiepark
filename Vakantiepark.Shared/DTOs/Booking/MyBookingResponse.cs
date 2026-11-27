@@ -11,5 +11,9 @@ namespace Vakantiepark.Shared.DTOs.Booking
         public bool CanCancel { get; set; }
         public bool CanChange { get; set; }
         public decimal? CancellationFee { get; set; }
+
+        // US-46: where an unpaid deposit goes; empty on the staff detail page, which does not need it.
+        public string BankAccountNumber { get; set; } = string.Empty;
+        public string BankAccountName { get; set; } = string.Empty;
     }
 }

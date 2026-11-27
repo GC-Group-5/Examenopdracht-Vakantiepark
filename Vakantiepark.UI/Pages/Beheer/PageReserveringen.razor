@@ -36,8 +36,11 @@
                     <label class="form-label fw-semibold" for="reservation-status">Status</label>
                     <select id="reservation-status" class="form-select" @bind="status">
                         <option value="">Alle statussen</option>
+                        <option value="@BookingStatuses.InAfwachting">@BookingStatuses.InAfwachting</option>
+                        <option value="@BookingStatuses.AanbetalingTeLaat">@BookingStatuses.AanbetalingTeLaat</option>
                         <option value="@BookingStatuses.Bevestigd">@BookingStatuses.Bevestigd</option>
-                        <option value="@BookingStatuses.Afgerond">@BookingStatuses.Afgerond</option>
+                        <option value="@BookingStatuses.Ingecheckt">@BookingStatuses.Ingecheckt</option>
+                        <option value="@BookingStatuses.Uitgecheckt">@BookingStatuses.Uitgecheckt</option>
                         <option value="@BookingStatuses.Geannuleerd">@BookingStatuses.Geannuleerd</option>
                     </select>
                 </div>
@@ -81,7 +84,7 @@
                                 <tr>
                                     @* stretched-link makes the whole row clickable while the row holds only one link. *@
                                     <td><a class="admin-link stretched-link" href="@DetailUrl(reservation.Id)">@reservation.BookingNumber</a></td>
-                                    <td>@reservation.Name<div class="small text-muted-du">@reservation.Email</div></td>
+                                    <td>@reservation.Name<div class="small text-muted-du text-truncate" style="max-width: 16rem" title="@reservation.Email">@reservation.Email</div></td>
                                     <td>@reservation.AccommodationTypeName<div class="small text-muted-du">@reservation.UnitCode</div></td>
                                     <td>@reservation.ArrivalDate.ToString(DateFormats.Date)</td>
                                     <td>@reservation.DepartureDate.ToString(DateFormats.Date)</td>

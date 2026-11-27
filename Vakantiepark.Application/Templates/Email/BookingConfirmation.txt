@@ -22,6 +22,13 @@ Borg (retour bij vertrek): {{SecurityDeposit}}
 De borg wordt betaald bij aankomst op het park en bij vertrek terugbetaald.
 Aanbetaling ({{DepositPercentage}}%): {{Deposit}}
 
+AANBETALING OVERMAKEN
+Maak de aanbetaling van {{Deposit}} uiterlijk {{DepositDueDate}} over naar:
+Rekeningnummer: {{BankAccountNumber}}
+Ten name van:   {{BankAccountName}}
+Onder vermelding van: {{BookingNumber}}
+Pas als de aanbetaling binnen is, ligt je boeking vast. Is ze er niet op tijd, dan kunnen we je boeking annuleren.
+
 ANNULERINGSVOORWAARDEN
 - Meer dan {{FreeCancellationDays}} dagen voor aankomst: je krijgt alles terug.
 - Tussen {{NoRefundDays}} en {{FreeCancellationDays}} dagen voor aankomst: je verliest de aanbetaling, de rest krijg je terug.
