@@ -23,6 +23,13 @@ namespace Vakantiepark.Domain.Entities
         public int FreeCancellationDaysBeforeArrival { get; set; }
         public int NoRefundDaysBeforeArrival { get; set; }
 
+        // Swimming pool (US-22), in park time. Every day is split into swim slots of SwimSlotMinutes from
+        // opening to closing; a new slot starts with SwimSlotDefaultCapacity places.
+        public TimeOnly PoolOpensAt { get; set; }
+        public TimeOnly PoolClosesAt { get; set; }
+        public int SwimSlotMinutes { get; set; }
+        public int SwimSlotDefaultCapacity { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }

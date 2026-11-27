@@ -142,6 +142,10 @@ namespace Vakantiepark.UnitTests
                 DepositPercentage = 20m,
                 FreeCancellationDaysBeforeArrival = 30,
                 NoRefundDaysBeforeArrival = 7,
+                PoolOpensAt = new TimeOnly(9, 0),
+                PoolClosesAt = new TimeOnly(21, 0),
+                SwimSlotMinutes = 90,
+                SwimSlotDefaultCapacity = 80,
             };
 
             configure?.Invoke(settings);

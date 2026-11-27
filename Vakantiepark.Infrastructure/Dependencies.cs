@@ -44,6 +44,7 @@ namespace Vakantiepark.Infrastructure
             services.AddScoped<IFeatureRepository, FeatureRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
+            services.AddScoped<ISwimSlotRepository, SwimSlotRepository>();
 
             return services;
         }
