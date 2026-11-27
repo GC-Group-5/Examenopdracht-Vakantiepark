@@ -39,8 +39,16 @@ namespace Vakantiepark.UI.Application.Services
         public async Task<ApiResponse<List<AccommodationTypeResponse>>> GetTypesAsync()
             => await HttpService.GetAsync<List<AccommodationTypeResponse>>("/AccommodationType");
 
-        public async Task<ApiResponse<List<AccommodationResponse>>> GetUnitsAsync()
-            => await HttpService.GetAsync<List<AccommodationResponse>>("/Accommodation");
+        public async Task<ApiResponse<ChangeOptionsResponse>> GetChangeOptionsAsync(Guid id, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
+        {
+            string url = new QueryString()
+                .Add("arrivalDate", arrivalDate)
+                .Add("departureDate", departureDate)
+                .Add("numberOfGuests", numberOfGuests)
+                .ToUrl($"/Reservations/{id}/ChangeOptions");
+
+            return await HttpService.GetAsync<ChangeOptionsResponse>(url);
+        }
 
         public async Task<ApiResponse<ReservationDetailResponse>> ChangeAsync(Guid id, StaffChangeBookingRequest request)
             => await HttpService.PutAsync<ReservationDetailResponse, StaffChangeBookingRequest>($"/Reservations/{id}", request);

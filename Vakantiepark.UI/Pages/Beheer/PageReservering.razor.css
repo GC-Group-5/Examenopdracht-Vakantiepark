@@ -1,0 +1,30 @@
+/* US-51: every unit of the type as a tile, so the staff member sees at once what is free and what is not. */
+.unit-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: .5rem;
+}
+
+.unit-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: .6rem .8rem;
+    border: 1px solid var(--du-line);
+    border-radius: .75rem;
+    background: #fff;
+    color: var(--du-ink);
+    text-align: left;
+}
+
+    .unit-option.active {
+        border-color: var(--du-green);
+        box-shadow: 0 0 0 2px var(--du-green);
+    }
+
+    .unit-option.unavailable {
+        border-style: dashed;
+        background: var(--du-cream);
+        color: var(--du-muted);
+        cursor: not-allowed;
+    }

@@ -1,6 +1,5 @@
 @page "/beheer/reserveringen/{Id:guid}"
 @attribute [Authorize(Roles = Roles.Staff)]
-@using Vakantiepark.Shared.DTOs.Accommodation
 @using Vakantiepark.Shared.DTOs.Booking
 @using Vakantiepark.Shared.DTOs.Reservations
 @using Vakantiepark.UI.Application.Extensions
@@ -68,7 +67,7 @@
                 <EditForm Model="changeRequest" OnValidSubmit="SaveChangeAsync" class="detail-meta-card mt-4">
                     <DataAnnotationsValidator />
                     <h2 class="h4 mb-1">Reservering wijzigen</h2>
-                    <p class="text-muted-du small">Dezelfde controles als bij boeken; de termijn voor gasten geldt hier niet. De prijs wordt opnieuw berekend.</p>
+                    <p class="text-muted-du small">Dezelfde controles als bij boeken; de termijn voor gasten geldt hier niet. Bekijk na het kiezen van de data wat er vrij is en kies een verblijf. De prijs wordt opnieuw berekend.</p>
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -103,20 +102,66 @@
                             <label class="form-label fw-semibold" for="edit-guests">Aantal personen</label>
                             <InputNumber id="edit-guests" class="form-control" @bind-Value="changeRequest.NumberOfGuests" min="1" step="1" />
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="edit-unit">Eenheid</label>
-                            <InputSelect id="edit-unit" class="form-select" @bind-Value="changeRequest.AccommodationUnitCode">
-                                <option value="">Huidige houden (@reservation.UnitCode) als die vrij is</option>
-                                @foreach (AccommodationResponse unit in UnitsOfType)
-                                {
-                                    <option value="@unit.Code">@unit.Code · zone @unit.Zone</option>
-                                }
-                            </InputSelect>
-                        </div>
                     </div>
 
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-4">
+                        <button type="button" class="btn btn-du-light" @onclick="CheckAvailabilityAsync" disabled="@(isBusy || isCheckingOptions)">
+                            @(isCheckingOptions ? "Bezig met zoeken…" : "Bekijk wat er vrij is")
+                        </button>
+                        @if (changeOptions is not null && !OptionsMatchForm)
+                        {
+                            <span class="small text-muted-du">De data of het aantal personen is veranderd. Bekijk opnieuw wat er vrij is.</span>
+                        }
+                    </div>
+
+                    @if (optionsError is not null)
+                    {
+                        <div class="alert alert-danger mt-3 mb-0" role="alert">@optionsError</div>
+                    }
+
+                    @if (changeOptions is not null && OptionsMatchForm)
+                    {
+                        @if (changeOptions.Types.Count == 0)
+                        {
+                            <div class="alert alert-warning mt-3 mb-0" role="status">Er is in deze periode geen verblijf vrij dat bij dit gezelschap past.</div>
+                        }
+                        else
+                        {
+                            @if (changeOptions.CurrentTypeFull)
+                            {
+                                <div class="alert alert-warning mt-3 mb-0" role="status">Geen enkel verblijf van @reservation.AccommodationTypeName is in deze periode vrij en passend. Daaronder staan andere types met nog plek.</div>
+                            }
+
+                            @foreach (ChangeOptionTypeResponse option in changeOptions.Types)
+                            {
+                                <h3 class="h6 mt-4 mb-2">@option.TypeName · @option.TotalPrice.ToString("C")</h3>
+                                <div class="unit-options" role="group" aria-label="Vrije verblijven @option.TypeName">
+                                    @foreach (ChangeOptionUnitResponse unit in option.Units)
+                                    {
+                                        @if (unit.Availability == UnitAvailability.Vrij)
+                                        {
+                                            <button type="button" class="unit-option @(unit.Code == changeRequest.AccommodationUnitCode ? "active" : null)"
+                                                    aria-pressed="@(unit.Code == changeRequest.AccommodationUnitCode)" @onclick="() => changeRequest.AccommodationUnitCode = unit.Code">
+                                                <span class="fw-semibold">@unit.Code</span>
+                                                <span class="small text-muted-du">zone @unit.Zone@(unit.IsCurrent ? " · huidig" : null)</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            @* Not a disabled button: browsers show no hover text on disabled elements. *@
+                                            <span class="unit-option unavailable" title="@UnavailableText(unit.Availability)" tabindex="0" aria-label="@unit.Code, @UnavailableText(unit.Availability)">
+                                                <span class="fw-semibold">@unit.Code</span>
+                                                <span class="small">@unit.Availability.ToLowerInvariant()@(unit.IsCurrent ? " · huidig" : null)</span>
+                                            </span>
+                                        }
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+
                     <div class="d-flex flex-wrap gap-2 mt-4">
-                        <button type="submit" class="btn btn-du" disabled="@isBusy">@(isBusy ? "Bezig met opslaan…" : "Wijziging opslaan")</button>
+                        <button type="submit" class="btn btn-du" disabled="@(isBusy || !CanSaveChange)">@(isBusy ? "Bezig met opslaan…" : "Wijziging opslaan")</button>
                         <button type="button" class="btn btn-du-light" @onclick="CloseAction" disabled="@isBusy">Terug</button>
                     </div>
                 </EditForm>
@@ -180,7 +225,10 @@
     private StaffChangeBookingRequest changeRequest = new StaffChangeBookingRequest();
     private StaffCancelBookingRequest cancelRequest = new StaffCancelBookingRequest();
     private CancellationQuoteResponse? cancelQuote;
-    private List<AccommodationResponse> units = [];
+    private ChangeOptionsResponse? changeOptions;
+    private (DateOnly ArrivalDate, DateOnly DepartureDate, int NumberOfGuests)? optionsCheckedFor;
+    private bool isCheckingOptions;
+    private string? optionsError;
     private bool isBusy;
     private string? actionError;
     private string? successMessage;
@@ -189,13 +237,13 @@
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 
-    // Staff may move a booking to another unit of the same type (US-14).
-    private List<AccommodationResponse> UnitsOfType => reservation is null
-        ? []
-        : units
-            .Where(unit => unit.TypeName == reservation.AccommodationTypeName)
-            .OrderBy(unit => unit.Code)
-            .ToList();
+    // US-51: what is free only counts for the dates and party it was checked for.
+    private bool OptionsMatchForm => optionsCheckedFor == (changeRequest.ArrivalDate, changeRequest.DepartureDate, changeRequest.NumberOfGuests);
+
+    // Saving needs a unit picked from the free units for exactly what is on screen.
+    private bool CanSaveChange => OptionsMatchForm
+        && changeOptions is not null
+        && changeOptions.Types.Any(option => option.Units.Any(unit => unit.Code == changeRequest.AccommodationUnitCode && unit.Availability == UnitAvailability.Vrij));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -219,12 +267,6 @@
         if (reservation is null)
             return;
 
-        if (units.Count == 0)
-        {
-            ApiResponse<List<AccommodationResponse>> response = await ReservationService.GetUnitsAsync();
-            units = response.Succeeded && response.Value is not null ? response.Value : [];
-        }
-
         GuestResponse? mainBooker = reservation.Guests.FirstOrDefault(guest => guest.IsMainBooker);
         changeRequest = new StaffChangeBookingRequest()
         {
@@ -242,7 +284,40 @@
         };
         ClearMessages();
         mode = Mode.Change;
+        await CheckAvailabilityAsync();
     }
+
+    // The current unit stays picked when it is still free; otherwise the staff member chooses.
+    private async Task CheckAvailabilityAsync()
+    {
+        isCheckingOptions = true;
+        optionsError = null;
+        (DateOnly, DateOnly, int) checkedFor = (changeRequest.ArrivalDate, changeRequest.DepartureDate, changeRequest.NumberOfGuests);
+
+        ApiResponse<ChangeOptionsResponse> response = await ReservationService.GetChangeOptionsAsync(Id, changeRequest.ArrivalDate, changeRequest.DepartureDate, changeRequest.NumberOfGuests);
+
+        isCheckingOptions = false;
+        if (!response.Succeeded || response.Value is null)
+        {
+            changeOptions = null;
+            optionsCheckedFor = null;
+            optionsError = response.Message ?? "De beschikbaarheid kon niet worden opgehaald. Probeer het opnieuw.";
+            return;
+        }
+
+        changeOptions = response.Value;
+        optionsCheckedFor = checkedFor;
+        changeRequest.AccommodationUnitCode = changeOptions.Types
+            .SelectMany(option => option.Units)
+            .FirstOrDefault(unit => unit.IsCurrent && unit.Availability == UnitAvailability.Vrij)?.Code;
+    }
+
+    private static string UnavailableText(string availability) => availability switch
+    {
+        UnitAvailability.Geboekt => "Al geboekt in deze periode",
+        UnitAvailability.Onderhoud => "In onderhoud in deze periode",
+        _ => "Past niet bij dit gezelschap: te klein, of geen huisdieren of rolstoeltoegang",
+    };
 
     // Fewer persons than known travellers: the last travellers are dropped, as the server allows no more.
     private async Task SaveChangeAsync()
@@ -308,5 +383,8 @@
         actionError = null;
         successMessage = null;
         cancelQuote = null;
+        changeOptions = null;
+        optionsCheckedFor = null;
+        optionsError = null;
     }
 }
