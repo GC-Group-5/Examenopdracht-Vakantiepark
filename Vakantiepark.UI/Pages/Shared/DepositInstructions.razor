@@ -1,0 +1,40 @@
+﻿@* US-46: there is no online payment. The guest transfers the deposit and staff mark it as paid (US-47);
+   the same block in the summary before booking and on "Mijn boeking". *@
+<div class="alert @(IsLate ? "alert-danger" : "alert-warning") mb-0" role="status">
+    <div class="fw-semibold">Aanbetaling van @Amount.ToString("C") @(DueDate <= Today ? "direct" : $"uiterlijk {DueDate.ToString(DateFormats.Date)}") overmaken</div>
+    <dl class="row small mt-2 mb-2">
+        <dt class="col-sm-5">Rekeningnummer</dt>
+        <dd class="col-sm-7 mb-1">@BankAccountNumber</dd>
+        <dt class="col-sm-5">Ten name van</dt>
+        <dd class="col-sm-7 mb-1">@BankAccountName</dd>
+        <dt class="col-sm-5">Onder vermelding van</dt>
+        <dd class="col-sm-7 mb-0">@(BookingNumber ?? "je boekingsnummer (dat krijg je na het bevestigen)")</dd>
+    </dl>
+    <div class="small">
+        @(IsLate
+            ? "De uiterste betaaldatum is verstreken. Maak het bedrag zo snel mogelijk over, anders kan je boeking worden geannuleerd."
+            : "Pas als de aanbetaling binnen is, ligt je boeking vast.")
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public decimal Amount { get; set; }
+
+    [Parameter, EditorRequired]
+    public DateOnly DueDate { get; set; }
+
+    [Parameter, EditorRequired]
+    public string BankAccountNumber { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string BankAccountName { get; set; } = string.Empty;
+
+    // Empty in the summary: the booking number only exists once the guest has confirmed.
+    [Parameter]
+    public string? BookingNumber { get; set; }
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private bool IsLate => DueDate < Today;
+}

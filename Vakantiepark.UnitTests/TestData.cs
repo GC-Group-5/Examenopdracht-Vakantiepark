@@ -142,6 +142,9 @@ namespace Vakantiepark.UnitTests
                 DepositPercentage = 20m,
                 FreeCancellationDaysBeforeArrival = 30,
                 NoRefundDaysBeforeArrival = 7,
+                DepositDueDaysBeforeArrival = 7,
+                BankAccountNumber = "NL91 ABNA 0417 1643 00",
+                BankAccountName = "Vakantiepark D'r op Uut",
             };
 
             configure?.Invoke(settings);

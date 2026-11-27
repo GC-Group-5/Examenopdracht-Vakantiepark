@@ -5,6 +5,7 @@ using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Booking;
@@ -315,6 +316,29 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task Change_AwaitingDeposit_MovesTheDueDateWithTheArrival()
+        {
+            _booking.Status = BookingState.AwaitingDeposit;
+            ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
+
+            await _sut.ChangeAsync(request, null);
+
+            Assert.Equal(request.ArrivalDate.AddDays(-7), _booking.DepositDueDate);
+        }
+
+        [Fact]
+        public async Task Change_DepositAlreadyPaid_KeepsTheDueDate()
+        {
+            DateOnly paidDueDate = Today.AddDays(-5);
+            _booking.Status = BookingState.Confirmed;
+            _booking.DepositDueDate = paidDueDate;
+
+            await _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null);
+
+            Assert.Equal(paidDueDate, _booking.DepositDueDate);
+        }
+
+        [Fact]
         public async Task Change_SavesTheFilledInTravellersAndSkipsEmptyRows()
         {
             ChangeBookingRequest request = ChangeRequest(shiftDays: 2);
@@ -433,6 +457,34 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task GetCancellationQuote_DepositNotPaid_SaysNothingIsRefunded()
+        {
+            SetArrival(60);
+            _booking.Status = BookingState.AwaitingDeposit;
+
+            CancellationQuoteResponse quote = await _sut.GetCancellationQuoteAsync(Access(), null);
+
+            Assert.Equal(0m, quote.CancellationFee);
+            Assert.Equal("Je hebt de aanbetaling nog niet betaald. Annuleren is kosteloos: je hoeft niets te betalen en er wordt niets terugbetaald.", quote.Explanation);
+        }
+
+        [Fact]
+        public async Task CancelByStaffAsync_DepositLate_EmailSaysTheParkCancelledForTheDeposit()
+        {
+            SetArrival(60);
+            _booking.Status = BookingState.AwaitingDeposit;
+            _booking.DepositDueDate = Today.AddDays(-1);
+
+            await _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Aanbetaling niet ontvangen" }, StaffUserId);
+
+            _emailSender.Verify(x => x.SendAsync(
+                "jan@example.nl",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<string>(text => text.Contains("We hebben je boeking geannuleerd omdat de aanbetaling niet op tijd binnen was. Je hoeft niets te betalen."))), Times.Once);
+        }
+
+        [Fact]
         public async Task CancelByStaffAsync_OnTheArrivalDay_CancelsLogsTheReasonAndEmails()
         {
             SetArrival(0);
@@ -528,6 +580,7 @@ namespace Vakantiepark.UnitTests
             {
                 Id = Guid.NewGuid(),
                 BookingNumber = "K7M2XQ9P",
+                Status = BookingState.Confirmed,
                 AccessToken = Token,
                 Name = "Jan Jansen",
                 Email = "jan@example.nl",

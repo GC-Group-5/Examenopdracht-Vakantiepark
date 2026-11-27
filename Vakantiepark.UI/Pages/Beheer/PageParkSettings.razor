@@ -95,7 +95,7 @@
                     <div class="col-12">
                         <fieldset class="p-4 border rounded-4 bg-white">
                             <legend class="h5 float-none">Betalen en annuleren</legend>
-                            <p class="small text-muted-du">De aanbetaling en de borg worden bij de receptie voldaan; de borg krijgt de gast terug bij vertrek. Tussen beide annuleringsgrenzen krijgt de gast een deel terug.</p>
+                            <p class="small text-muted-du">Wie vóór de grens voor gratis annuleren boekt, maakt de aanbetaling uiterlijk het ingestelde aantal dagen voor aankomst over; wie later boekt, betaalt direct. De borg wordt bij de receptie voldaan en krijgt de gast terug bij vertrek. Tussen beide annuleringsgrenzen krijgt de gast een deel terug.</p>
                             <div class="row g-3">
                                 <div class="col-md-6 col-xl-3">
                                     <label class="form-label" for="deposit">Aanbetaling</label>
@@ -128,6 +128,25 @@
                                         <span class="input-group-text">dagen voor aankomst</span>
                                     </div>
                                     <ValidationMessage For="() => settings.Rules.NoRefundDaysBeforeArrival" />
+                                </div>
+                                <div class="col-md-6 col-xl-3">
+                                    <label class="form-label" for="deposit-due">Aanbetaling binnen uiterlijk</label>
+                                    <div class="input-group">
+                                        <InputNumber id="deposit-due" class="form-control" @bind-Value="settings.Rules.DepositDueDaysBeforeArrival" />
+                                        <span class="input-group-text">dagen voor aankomst</span>
+                                    </div>
+                                    <ValidationMessage For="() => settings.Rules.DepositDueDaysBeforeArrival" />
+                                </div>
+                                <div class="w-100"></div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="bank-account-number">Rekeningnummer voor de aanbetaling</label>
+                                    <InputText id="bank-account-number" class="form-control" maxlength="34" @bind-Value="settings.Rules.BankAccountNumber" placeholder="NL00 BANK 0123 4567 89" />
+                                    <ValidationMessage For="() => settings.Rules.BankAccountNumber" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="bank-account-name">Ten name van</label>
+                                    <InputText id="bank-account-name" class="form-control" maxlength="100" @bind-Value="settings.Rules.BankAccountName" />
+                                    <ValidationMessage For="() => settings.Rules.BankAccountName" />
                                 </div>
                             </div>
                         </fieldset>

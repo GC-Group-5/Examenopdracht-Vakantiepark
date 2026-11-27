@@ -23,6 +23,10 @@ namespace Vakantiepark.Shared.DTOs.Park
         [Range(0, 365, ErrorMessage = "Vul een aantal dagen tussen 0 en 365 in.")]
         public int? FreeCancellationDaysBeforeArrival { get; set; }
 
+        [Required(ErrorMessage = "Vul in hoeveel dagen voor aankomst de aanbetaling binnen moet zijn.")]
+        [Range(0, 365, ErrorMessage = "Vul een aantal dagen tussen 0 en 365 in.")]
+        public int? DepositDueDaysBeforeArrival { get; set; }
+
         [Required(ErrorMessage = "Vul in vanaf hoeveel dagen voor aankomst er niets wordt terugbetaald.")]
         [Range(0, 365, ErrorMessage = "Vul een aantal dagen tussen 0 en 365 in.")]
         public int? NoRefundDaysBeforeArrival { get; set; }
@@ -34,5 +38,14 @@ namespace Vakantiepark.Shared.DTOs.Park
         [Required(ErrorMessage = "Vul het bedrag van de borg in.")]
         [Range(typeof(decimal), "0", "10000", ErrorMessage = "De borg mag niet negatief zijn.")]
         public decimal? SecurityDeposit { get; set; }
+
+        // US-46: where the guest transfers the deposit. An IBAN is at most 34 characters.
+        [Required(ErrorMessage = "Vul het rekeningnummer voor de aanbetaling in.")]
+        [StringLength(34, ErrorMessage = "Het rekeningnummer mag maximaal 34 tekens zijn.")]
+        public string BankAccountNumber { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vul de tenaamstelling van de rekening in.")]
+        [StringLength(100, ErrorMessage = "De tenaamstelling mag maximaal 100 tekens zijn.")]
+        public string BankAccountName { get; set; } = string.Empty;
     }
 }

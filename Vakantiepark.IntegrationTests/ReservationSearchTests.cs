@@ -58,6 +58,36 @@ namespace Vakantiepark.IntegrationTests
         }
 
         [Fact]
+        public async Task SearchAsync_DepositLate_SplitsUnpaidBookingsByTheirDueDate()
+        {
+            TestUnit unit = await CreateUnitAsync();
+            Booking late = TestData.CreateBooking(unit.Id, Today.AddDays(20), Today.AddDays(22), booking => booking.DepositDueDate = Today.AddDays(-1));
+            Booking dueToday = TestData.CreateBooking(unit.Id, Today.AddDays(30), Today.AddDays(32), booking => booking.DepositDueDate = Today);
+            Booking paid = TestData.CreateBooking(unit.Id, Today.AddDays(40), Today.AddDays(42), booking =>
+            {
+                booking.Status = BookingState.Confirmed;
+                booking.DepositDueDate = Today.AddDays(-10);
+            });
+            await SaveAsync(late, dueToday, paid);
+
+            PagedResult<Booking> lateResult = await SearchAsync(new BookingSearchFilter()
+            {
+                AccommodationTypeSlug = unit.TypeSlug,
+                State = BookingState.AwaitingDeposit,
+                DepositLate = true,
+            });
+            PagedResult<Booking> onTimeResult = await SearchAsync(new BookingSearchFilter()
+            {
+                AccommodationTypeSlug = unit.TypeSlug,
+                State = BookingState.AwaitingDeposit,
+                DepositLate = false,
+            });
+
+            Assert.Equal(late.Id, Assert.Single(lateResult.Items).Id);
+            Assert.Equal(dueToday.Id, Assert.Single(onTimeResult.Items).Id);
+        }
+
+        [Fact]
         public async Task SearchAsync_Period_IncludesBookingsThatTouchItOnlyOnTheDepartureDay()
         {
             TestUnit unit = await CreateUnitAsync();

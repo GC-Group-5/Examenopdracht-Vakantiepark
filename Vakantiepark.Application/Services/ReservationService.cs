@@ -34,13 +34,14 @@ namespace Vakantiepark.Application.Services
                 From = request.From,
                 To = request.To,
                 State = ReservationSearchValidation.ParseStatus(request.Status),
+                DepositLate = ReservationSearchValidation.ParseDepositLate(request.Status),
                 AccommodationTypeSlug = request.AccommodationTypeSlug,
             };
 
             DateOnly today = TimeProvider.GetToday();
             PagedResult<Booking> result = await BookingRepository.SearchAsync(filter, today, request.Page, request.PageSize);
 
-            return result.ToPagedResponse(request, booking => booking.ToReservationListItem(BookingStatus.Get(booking)));
+            return result.ToPagedResponse(request, booking => booking.ToReservationListItem(BookingStatus.Get(booking, today)));
         }
 
         public async Task<ReservationDetailResponse> GetByIdAsync(Guid id)
@@ -48,7 +49,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await BookingRepository.GetByIdWithDetailsAsync(id)
                 ?? throw new KeyNotFoundException(NotFoundMessage);
 
-            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking));
+            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, TimeProvider.GetToday()));
             response.Id = booking.Id;
             response.UnitCode = booking.AccommodationUnit.Code;
             response.CreatedAt = booking.CreatedAt;

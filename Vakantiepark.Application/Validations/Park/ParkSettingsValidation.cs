@@ -13,6 +13,10 @@ namespace Vakantiepark.Application.Validations.Park
 
             if (request.NoRefundDaysBeforeArrival > request.FreeCancellationDaysBeforeArrival)
                 throw new ArgumentException("Het aantal dagen zonder terugbetaling mag niet groter zijn dan het aantal dagen voor gratis annuleren.");
+
+            // Who books within the free-cancellation term pays at once, so a longer deposit term would never apply.
+            if (request.DepositDueDaysBeforeArrival > request.FreeCancellationDaysBeforeArrival)
+                throw new ArgumentException("Het aantal dagen voor de aanbetaling mag niet groter zijn dan het aantal dagen voor gratis annuleren.");
         }
 
         public static void Validate(this AddTouristTaxRateRequest request, IEnumerable<TouristTaxRate> existingRates)

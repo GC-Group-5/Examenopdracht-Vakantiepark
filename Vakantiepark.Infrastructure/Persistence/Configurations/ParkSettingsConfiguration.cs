@@ -11,6 +11,8 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(settings => settings.DepositPercentage).HasPrecision(5, 2);
             builder.Property(settings => settings.PetCleaningFee).HasPrecision(18, 2);
             builder.Property(settings => settings.SecurityDeposit).HasPrecision(18, 2);
+            builder.Property(settings => settings.BankAccountNumber).IsRequired().HasMaxLength(34);
+            builder.Property(settings => settings.BankAccountName).IsRequired().HasMaxLength(100);
         }
     }
 }

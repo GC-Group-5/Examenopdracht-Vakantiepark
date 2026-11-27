@@ -11,8 +11,10 @@ namespace Vakantiepark.Application.Helpers
         public static BookingState GetState(Booking booking)
             => booking.DeletedAt is not null ? BookingState.Cancelled : booking.Status;
 
-        public static string Get(Booking booking)
-            => ToText(GetState(booking));
+        // An unpaid deposit past its due date is shown as its own status, but stays AwaitingDeposit in the
+        // database: it only follows from the date, and staff decide whether to cancel (US-46).
+        public static string Get(Booking booking, DateOnly today)
+            => DepositPolicy.IsLate(booking, today) ? BookingStatuses.AanbetalingTeLaat : ToText(GetState(booking));
 
         public static string ToText(BookingState state) => state switch
         {

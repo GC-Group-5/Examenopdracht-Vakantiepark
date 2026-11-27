@@ -8,5 +8,8 @@ namespace Vakantiepark.Shared.Constants
         public const string Ingecheckt = "Ingecheckt";
         public const string Uitgecheckt = "Uitgecheckt";
         public const string Geannuleerd = "Geannuleerd";
+
+        // US-46: shown instead of InAfwachting once the due date has passed. Not stored: it follows from the date.
+        public const string AanbetalingTeLaat = "Aanbetaling te laat";
     }
 }

@@ -23,6 +23,13 @@ namespace Vakantiepark.Domain.Entities
         public int FreeCancellationDaysBeforeArrival { get; set; }
         public int NoRefundDaysBeforeArrival { get; set; }
 
+        // US-46: who books before the free-cancellation term pays the deposit this many days before arrival.
+        public int DepositDueDaysBeforeArrival { get; set; }
+
+        // US-46: the guest transfers the deposit to this account; there is no online payment.
+        public string BankAccountNumber { get; set; } = string.Empty;
+        public string BankAccountName { get; set; } = string.Empty;
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }

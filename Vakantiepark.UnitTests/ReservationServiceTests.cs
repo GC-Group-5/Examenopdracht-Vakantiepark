@@ -84,6 +84,43 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
+        public async Task Search_DepositLate_FiltersBookingsAwaitingTheDepositPastTheirDueDate()
+        {
+            await _sut.SearchAsync(new ReservationSearchRequest() { Status = BookingStatuses.AanbetalingTeLaat });
+
+            Assert.NotNull(_usedFilter);
+            Assert.Equal(BookingState.AwaitingDeposit, _usedFilter.State);
+            Assert.True(_usedFilter.DepositLate);
+        }
+
+        [Fact]
+        public async Task Search_UnpaidBookingPastItsDueDate_HasStatusAanbetalingTeLaat()
+        {
+            Booking late = CreateBooking(Today.AddDays(20), Today.AddDays(25), booking => booking.DepositDueDate = Today.AddDays(-1));
+            Booking dueToday = CreateBooking(Today.AddDays(30), Today.AddDays(35), booking => booking.DepositDueDate = Today);
+            Booking paid = CreateBooking(Today.AddDays(40), Today.AddDays(45), booking =>
+            {
+                booking.Status = BookingState.Confirmed;
+                booking.DepositDueDate = Today.AddDays(-10);
+            });
+            ReturnFromSearch([late, dueToday, paid], 3);
+
+            PagedResponse<ReservationListItemResponse> page = await _sut.SearchAsync(new ReservationSearchRequest());
+
+            Assert.Equal(new List<string>() { BookingStatuses.AanbetalingTeLaat, BookingStatuses.InAfwachting, BookingStatuses.Bevestigd }, page.Items.Select(item => item.Status).ToList());
+        }
+
+        [Fact]
+        public async Task Search_AwaitingDeposit_LeavesOutTheLateOnes()
+        {
+            await _sut.SearchAsync(new ReservationSearchRequest() { Status = BookingStatuses.InAfwachting });
+
+            Assert.NotNull(_usedFilter);
+            Assert.Equal(BookingState.AwaitingDeposit, _usedFilter.State);
+            Assert.False(_usedFilter.DepositLate);
+        }
+
+        [Fact]
         public async Task Search_UnknownStatus_Throws()
         {
             await Assert.ThrowsAsync<ArgumentException>(() => _sut.SearchAsync(new ReservationSearchRequest() { Status = "Betaald" }));

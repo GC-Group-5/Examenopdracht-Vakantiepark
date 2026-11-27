@@ -12,6 +12,7 @@ using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Constants;
 
@@ -100,6 +101,9 @@ namespace Vakantiepark.Application.Services
                 FreeCancellationDaysBeforeArrival = settings.FreeCancellationDaysBeforeArrival,
                 NoRefundDaysBeforeArrival = settings.NoRefundDaysBeforeArrival,
                 DepositPercentage = settings.DepositPercentage,
+                DepositDueDate = DepositPolicy.DueDate(arrivalDate, settings.FreeCancellationDaysBeforeArrival, settings.DepositDueDaysBeforeArrival, TimeProvider.GetToday()),
+                BankAccountNumber = settings.BankAccountNumber,
+                BankAccountName = settings.BankAccountName,
             };
         }
 
@@ -130,7 +134,7 @@ namespace Vakantiepark.Application.Services
             // The database then refuses this booking, and the next free unit is tried.
             foreach (Accommodation unit in candidates)
             {
-                Booking booking = request.ToEntity(unit.Id, bookingNumber, price, settings);
+                Booking booking = request.ToEntity(unit.Id, bookingNumber, price, settings, TimeProvider.GetToday());
 
                 if (await BookingRepository.TryAddAsync(booking))
                 {
@@ -188,7 +192,7 @@ namespace Vakantiepark.Application.Services
                 DaysBeforeArrival = CancellationPolicy.DaysBeforeArrival(booking.ArrivalDate, TimeProvider.GetToday()),
                 TotalPrice = booking.TotalPrice,
                 CancellationFee = fee,
-                Explanation = ExplainFee(booking, settings, fee, forStaff),
+                Explanation = ExplainFee(booking, settings, fee, forStaff, depositPaid: booking.Status != BookingState.AwaitingDeposit),
             };
         }
 
@@ -202,8 +206,10 @@ namespace Vakantiepark.Application.Services
                 throw new ArgumentException(CannotCancelMessage);
 
             decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
+            // Read before cancelling, because cancelling changes the status.
+            bool depositPaid = booking.Status != BookingState.AwaitingDeposit;
             await BookingRepository.CancelAsync(booking, fee);
-            await SendCancellationAsync(booking, settings, fee);
+            await SendCancellationAsync(booking, settings, fee, depositPaid, cancelledForLateDeposit: false);
 
             return ToMine(booking, settings);
         }
@@ -251,6 +257,10 @@ namespace Vakantiepark.Application.Services
             booking.TouristTax = newPrice.TouristTax;
             booking.TotalPrice = newPrice.TotalPrice;
             booking.Deposit = newPrice.Deposit;
+
+            // An unpaid deposit follows the new arrival; once paid, the due date no longer matters.
+            if (booking.Status == BookingState.AwaitingDeposit)
+                booking.DepositDueDate = DepositPolicy.DueDate(booking.ArrivalDate, CancellationPolicy.FreeCancellationDays(booking, plan.Settings), plan.Settings.DepositDueDaysBeforeArrival, TimeProvider.GetToday());
 
             // Someone else may have booked the unit since the check; then nothing is saved.
             if (!await BookingRepository.TryUpdateAsync(booking, request.CoTravellers.ToGuests()))
@@ -302,6 +312,9 @@ namespace Vakantiepark.Application.Services
             Booking booking = await FindCancellableByStaffAsync(bookingId);
             ParkSettings settings = await GetParkSettingsAsync();
             decimal fee = CancellationPolicy.CalculateFee(booking, settings, TimeProvider.GetToday());
+            // Read before cancelling, because cancelling changes the status.
+            bool depositPaid = booking.Status != BookingState.AwaitingDeposit;
+            bool cancelledForLateDeposit = DepositPolicy.IsLate(booking, TimeProvider.GetToday());
 
             // No Id: EF then sees a new row; a set Id on a tracked booking makes it try an UPDATE.
             booking.Changes.Add(new BookingChange()
@@ -313,7 +326,7 @@ namespace Vakantiepark.Application.Services
             });
 
             await BookingRepository.CancelAsync(booking, fee);
-            await SendCancellationAsync(booking, settings, fee);
+            await SendCancellationAsync(booking, settings, fee, depositPaid, cancelledForLateDeposit);
         }
 
         private static void UpdateMainBooker(Booking booking, StaffChangeBookingRequest request)
@@ -434,11 +447,15 @@ namespace Vakantiepark.Application.Services
             return booking;
         }
 
-        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee, bool forStaff)
+        private static string ExplainFee(Booking booking, ParkSettings settings, decimal fee, bool forStaff, bool depositPaid)
         {
             CultureInfo dutch = new CultureInfo("nl-NL");
             int freeCancellationDays = CancellationPolicy.FreeCancellationDays(booking, settings);
             int noRefundDays = CancellationPolicy.NoRefundDays(booking, settings);
+
+            // US-46: before the deposit is in, nothing has been paid, so nothing can be refunded either.
+            if (!depositPaid)
+                return ExplainFeeWithoutPayment(fee, freeCancellationDays, forStaff, dutch);
 
             if (fee == 0m && forStaff)
                 return $"Je annuleert een boeking van meer dan {freeCancellationDays} dagen voor aankomst. De boeker krijgt alles terug, inclusief de aanbetaling.";
@@ -461,15 +478,14 @@ namespace Vakantiepark.Application.Services
         // "Mijn boeking" plus what the page may offer (US-12) and the costs of a cancelled booking.
         private MyBookingResponse ToMine(Booking booking, ParkSettings settings)
         {
-            MyBookingResponse response = booking.ToMyBookingResponse(GetStatus(booking));
+            MyBookingResponse response = booking.ToMyBookingResponse(BookingStatus.Get(booking, TimeProvider.GetToday()));
             response.CanCancel = CancellationPolicy.CanCancel(booking, TimeProvider.GetToday());
             response.CanChange = CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday());
             response.CancellationFee = booking.CancellationFee;
+            response.BankAccountNumber = settings.BankAccountNumber;
+            response.BankAccountName = settings.BankAccountName;
             return response;
         }
-
-        private static string GetStatus(Booking booking)
-            => BookingStatus.Get(booking);
 
 
         // Free units of the type that fit the party (the same filter as the search), in the
@@ -582,6 +598,9 @@ namespace Vakantiepark.Application.Services
                     ["SecurityDeposit"] = booking.SecurityDeposit.ToString("C", dutch),
                     ["Deposit"] = booking.Deposit.ToString("C", dutch),
                     ["DepositPercentage"] = settings.DepositPercentage.ToString("0.##", dutch),
+                    ["DepositDueDate"] = booking.DepositDueDate.ToString("dddd d MMMM yyyy", dutch),
+                    ["BankAccountNumber"] = settings.BankAccountNumber,
+                    ["BankAccountName"] = settings.BankAccountName,
                     ["FreeCancellationDays"] = settings.FreeCancellationDaysBeforeArrival.ToString(dutch),
                     ["NoRefundDays"] = settings.NoRefundDaysBeforeArrival.ToString(dutch),
                     ["MyBookingUrl"] = myBookingUrl
@@ -595,8 +614,27 @@ namespace Vakantiepark.Application.Services
             }
         }
 
+        private static string ExplainFeeWithoutPayment(decimal fee, int freeCancellationDays, bool forStaff, CultureInfo dutch)
+        {
+            if (fee == 0m && forStaff)
+                return "De boeker heeft de aanbetaling nog niet betaald. Annuleren is kosteloos en er hoeft niets terugbetaald te worden.";
+
+            if (fee == 0m)
+                return "Je hebt de aanbetaling nog niet betaald. Annuleren is kosteloos: je hoeft niets te betalen en er wordt niets terugbetaald.";
+
+            if (forStaff)
+                return $"De boeker heeft nog niets betaald. Omdat er binnen {freeCancellationDays} dagen voor aankomst wordt geannuleerd, zijn de annuleringskosten {fee.ToString("C", dutch)}.";
+
+            return $"Je hebt nog niets betaald. Omdat je binnen {freeCancellationDays} dagen voor aankomst annuleert, zijn de annuleringskosten {fee.ToString("C", dutch)}.";
+        }
+
+        // Only in the email: the guest did not cancel himself, the park did because the deposit never came in.
+        private static string ExplainLateDepositCancellation(decimal fee, CultureInfo dutch)
+            => "We hebben je boeking geannuleerd omdat de aanbetaling niet op tijd binnen was."
+                + (fee == 0m ? " Je hoeft niets te betalen." : $" De annuleringskosten zijn {fee.ToString("C", dutch)}.");
+
         // Like the confirmation: a mail server that is down is logged, the cancellation stays.
-        private async Task SendCancellationAsync(Booking booking, ParkSettings settings, decimal fee)
+        private async Task SendCancellationAsync(Booking booking, ParkSettings settings, decimal fee, bool depositPaid, bool cancelledForLateDeposit)
         {
             try
             {
@@ -610,7 +648,9 @@ namespace Vakantiepark.Application.Services
                     ["ArrivalDate"] = booking.ArrivalDate.ToString("dddd d MMMM yyyy", dutch),
                     ["DepartureDate"] = booking.DepartureDate.ToString("dddd d MMMM yyyy", dutch),
                     ["CancellationFee"] = fee.ToString("C", dutch),
-                    ["FeeExplanation"] = ExplainFee(booking, settings, fee, forStaff: false),
+                    ["FeeExplanation"] = cancelledForLateDeposit
+                        ? ExplainLateDepositCancellation(fee, dutch)
+                        : ExplainFee(booking, settings, fee, forStaff: false, depositPaid),
                     ["MyBookingUrl"] = $"{FrontendSettings.BaseUrl.TrimEnd('/')}/mijn-boeking/{booking.AccessToken}"
                 });
 

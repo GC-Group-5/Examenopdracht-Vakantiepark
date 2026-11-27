@@ -698,6 +698,18 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("arrival_time");
 
+                    b.Property<string>("BankAccountName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("bank_account_name");
+
+                    b.Property<string>("BankAccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)")
+                        .HasColumnName("bank_account_number");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -709,6 +721,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<TimeOnly>("DepartureTime")
                         .HasColumnType("time without time zone")
                         .HasColumnName("departure_time");
+
+                    b.Property<int>("DepositDueDaysBeforeArrival")
+                        .HasColumnType("integer")
+                        .HasColumnName("deposit_due_days_before_arrival");
 
                     b.Property<decimal>("DepositPercentage")
                         .HasPrecision(5, 2)
