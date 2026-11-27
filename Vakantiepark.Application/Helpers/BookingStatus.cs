@@ -15,7 +15,7 @@ namespace Vakantiepark.Application.Helpers
             if (booking.DepartureDate < today)
                 return BookingState.Completed;
 
-            return BookingState.Confirmed;
+            return booking.Status;
         }
 
         public static string Get(Booking booking, DateOnly today)
@@ -25,6 +25,7 @@ namespace Vakantiepark.Application.Helpers
         {
             BookingState.Cancelled => BookingStatuses.Geannuleerd,
             BookingState.Completed => BookingStatuses.Afgerond,
+            BookingState.AwaitingDeposit => BookingStatuses.InAfwachtingVanAanbetaling,
             _ => BookingStatuses.Bevestigd,
         };
     }

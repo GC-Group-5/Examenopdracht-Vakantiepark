@@ -7,6 +7,7 @@ using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Filters;
 using Xunit;
 using Moq;
@@ -82,7 +83,42 @@ namespace Vakantiepark.UnitTests
                 && booking.DepartureDate == request.DepartureDate
                 && booking.NumberOfGuests == request.NumberOfGuests
                 && booking.TotalPrice == 817m
-                && booking.Deposit == 163.40m)), Times.Once);
+                && booking.Deposit == 163.40m
+                && booking.Status == BookingState.AwaitingDeposit)), Times.Once);
+        }
+
+        [Fact]
+        public async Task ConfirmDepositAsync_UsesBookingNumberAndConfirmsBooking()
+        {
+            Booking booking = TestData.CreateBooking(DateOnly.FromDateTime(DateTime.UtcNow), x => x.Status = BookingState.AwaitingDeposit);
+            _bookingRepository.Setup(x => x.GetByBookingNumberAsync(booking.BookingNumber)).ReturnsAsync(booking);
+
+            await _sut.ConfirmDepositAsync($" {booking.BookingNumber.ToLowerInvariant()} ");
+
+            Assert.Equal(BookingState.Confirmed, booking.Status);
+            _bookingRepository.Verify(x => x.GetByBookingNumberAsync(booking.BookingNumber), Times.Once);
+            _bookingRepository.Verify(x => x.UpdateAsync(booking), Times.Once);
+        }
+
+        [Fact]
+        public async Task ConfirmDepositAsync_UnknownBookingNumber_ThrowsNotFound()
+        {
+            _bookingRepository.Setup(x => x.GetByBookingNumberAsync("UNKNOWN")).ReturnsAsync((Booking?)null);
+
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => _sut.ConfirmDepositAsync("UNKNOWN"));
+
+            _bookingRepository.Verify(x => x.UpdateAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ConfirmDepositAsync_BookingAlreadyConfirmed_ThrowsAndDoesNotSave()
+        {
+            Booking booking = TestData.CreateBooking(DateOnly.FromDateTime(DateTime.UtcNow), x => x.Status = BookingState.Confirmed);
+            _bookingRepository.Setup(x => x.GetByBookingNumberAsync(booking.BookingNumber)).ReturnsAsync(booking);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.ConfirmDepositAsync(booking.BookingNumber));
+
+            _bookingRepository.Verify(x => x.UpdateAsync(It.IsAny<Booking>()), Times.Never);
         }
 
         [Fact]

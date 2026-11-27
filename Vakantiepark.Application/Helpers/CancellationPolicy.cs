@@ -1,4 +1,5 @@
 ﻿using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Application.Helpers
 {
@@ -11,9 +12,9 @@ namespace Vakantiepark.Application.Helpers
             => booking.DeletedAt is null
                 && DaysBeforeArrival(booking.ArrivalDate, today) > 0;
 
-        public static bool CanChange(Booking booking, ParkSettings settings, DateOnly today)
+        public static bool CanChange(Booking booking)
             => booking.DeletedAt is null
-                && DaysBeforeArrival(booking.ArrivalDate, today) >= FreeCancellationDays(booking, settings);
+                && booking.Status == BookingState.AwaitingDeposit;
 
         public static decimal CalculateFee(Booking booking, ParkSettings settings, DateOnly today)
         {

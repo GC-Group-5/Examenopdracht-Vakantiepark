@@ -36,6 +36,10 @@ namespace Vakantiepark.API.Controllers
         public async Task<IActionResult> GetByIdAsync(Guid id)
             => await RunAsync(() => ReservationService.GetByIdAsync(id));
 
+        [HttpPost("{bookingNumber}/ConfirmDeposit")]
+        public async Task<IActionResult> ConfirmDepositAsync(string bookingNumber)
+            => await RunAsync(() => BookingService.ConfirmDepositAsync(bookingNumber), "De aanbetaling is verwerkt en de boeking is bevestigd.");
+
         // US-14: the same rules as for a guest, without the term; returns the updated reservation.
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> ChangeAsync(Guid id, StaffChangeBookingRequest request)

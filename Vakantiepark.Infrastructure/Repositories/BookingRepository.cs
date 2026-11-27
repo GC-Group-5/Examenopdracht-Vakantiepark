@@ -130,7 +130,8 @@ namespace Vakantiepark.Infrastructure.Repositories
             {
                 BookingState.Cancelled => query.Where(x => x.DeletedAt != null),
                 BookingState.Completed => query.Where(x => x.DeletedAt == null && x.DepartureDate < today),
-                BookingState.Confirmed => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today),
+                BookingState.Confirmed => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today && x.Status == BookingState.Confirmed),
+                BookingState.AwaitingDeposit => query.Where(x => x.DeletedAt == null && x.DepartureDate >= today && x.Status == BookingState.AwaitingDeposit),
                 _ => query,
             };
 

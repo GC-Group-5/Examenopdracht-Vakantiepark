@@ -1,5 +1,6 @@
 using Vakantiepark.Application.Helpers;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Xunit;
 
 namespace Vakantiepark.UnitTests
@@ -54,7 +55,8 @@ namespace Vakantiepark.UnitTests
             booking.NoRefundDaysBeforeArrival = 7;
 
             Assert.Equal(0m, CancellationPolicy.CalculateFee(booking, changedSettings, Today));
-            Assert.True(CancellationPolicy.CanChange(booking, changedSettings, Today));
+            booking.Status = BookingState.AwaitingDeposit;
+            Assert.True(CancellationPolicy.CanChange(booking));
         }
 
         [Theory]
@@ -67,12 +69,23 @@ namespace Vakantiepark.UnitTests
         }
 
         [Theory]
-        [InlineData(31, true)]
-        [InlineData(30, true)]
-        [InlineData(29, false)]
-        public void CanChange_UntilThe30DayLimit(int daysBefore, bool expected)
+        [InlineData(31)]
+        [InlineData(29)]
+        [InlineData(1)]
+        public void CanChange_WhileAwaitingDepositRegardlessOfArrivalDate(int daysBefore)
         {
-            Assert.Equal(expected, CancellationPolicy.CanChange(CreateBooking(daysBefore), _settings, Today));
+            Booking booking = CreateBooking(daysBefore);
+            booking.Status = BookingState.AwaitingDeposit;
+
+            Assert.True(CancellationPolicy.CanChange(booking));
+        }
+
+        [Fact]
+        public void CanChange_AfterDepositIsPaid_IsRefused()
+        {
+            Booking booking = CreateBooking(60);
+
+            Assert.False(CancellationPolicy.CanChange(booking));
         }
 
         [Fact]
@@ -82,7 +95,8 @@ namespace Vakantiepark.UnitTests
             booking.DeletedAt = DateTime.UtcNow;
 
             Assert.False(CancellationPolicy.CanCancel(booking, Today));
-            Assert.False(CancellationPolicy.CanChange(booking, _settings, Today));
+            booking.Status = BookingState.AwaitingDeposit;
+            Assert.False(CancellationPolicy.CanChange(booking));
         }
 
         // Total 600: stay 480 + cleaning 110 + tourist tax 10; deposit 120 (20%).

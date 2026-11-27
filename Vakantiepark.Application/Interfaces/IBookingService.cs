@@ -11,6 +11,7 @@ namespace Vakantiepark.Application.Interfaces
         Task<BookingQuoteResponse> GetQuoteAsync(string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, AccommodationUnitFilter filter, int numberOfChildrenUnder12, string? preferredZone);
 
         Task<BookingResponse> CreateAsync(CreateBookingRequest request);
+        Task ConfirmDepositAsync(string bookingNumber);
         Task<MyBookingResponse> GetMineByTokenAsync(string token);
         Task<MyBookingResponse> GetMineAsync(Guid bookingId);
 
