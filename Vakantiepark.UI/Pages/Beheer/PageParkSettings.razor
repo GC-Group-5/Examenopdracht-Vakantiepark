@@ -57,12 +57,12 @@
                             <div class="row g-3">
                                 <div class="col-sm-6">
                                     <label class="form-label" for="arrival-time">Aankomst vanaf</label>
-                                    <InputDate id="arrival-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.ArrivalTime" />
+                                    <input id="arrival-time" type="text" class="form-control" placeholder="uu:mm" @bind="settings.Rules.ArrivalTime" @bind:format="HH:mm" />
                                     <ValidationMessage For="() => settings.Rules.ArrivalTime" />
                                 </div>
                                 <div class="col-sm-6">
                                     <label class="form-label" for="departure-time">Vertrek voor</label>
-                                    <InputDate id="departure-time" Type="InputDateType.Time" class="form-control" @bind-Value="settings.Rules.DepartureTime" />
+                                    <input id="departure-time" type="text" class="form-control" placeholder="uu:mm" @bind="settings.Rules.DepartureTime" @bind:format="HH:mm" />
                                     <ValidationMessage For="() => settings.Rules.DepartureTime" />
                                 </div>
                             </div>
@@ -317,18 +317,32 @@
                                 @if (selected.SeasonPrices.Count > 0)
                                 {
                                     <h3 class="h6 mt-4">Seizoensprijzen per nacht</h3>
-                                    <div class="row g-3">
-                                        @foreach (SeasonPriceRequest seasonPrice in selected.SeasonPrices)
-                                        {
-                                            <div class="col-sm-6 col-xl-4">
-                                                <label class="form-label" for="@($"{selected.Slug}-{seasonPrice.SeasonId}")">@SeasonName(seasonPrice.SeasonId)</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text">€</span>
-                                                    <InputNumber id="@($"{selected.Slug}-{seasonPrice.SeasonId}")" class="form-control" step="0.01" placeholder="@($"Standaard {selected.DefaultPricePerNight:0.00}")" @bind-Value="seasonPrice.PricePerNight" />
-                                                </div>
-                                                <ValidationMessage For="() => seasonPrice.PricePerNight" />
-                                            </div>
-                                        }
+                                    <p class="small text-muted-du">Laat een prijs leeg om de standaardprijs van € @selected.DefaultPricePerNight?.ToString("0.00") te gebruiken.</p>
+                                    <div class="table-responsive">
+                                        <table class="table align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Seizoen</th>
+                                                    <th scope="col">Prijs per nacht</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (SeasonPriceRequest seasonPrice in selected.SeasonPrices)
+                                                {
+                                                    <tr>
+                                                        <th scope="row">@SeasonName(seasonPrice.SeasonId)</th>
+                                                        <td>
+                                                            <label class="visually-hidden" for="@($"{selected.Slug}-{seasonPrice.SeasonId}")">Prijs per nacht voor @SeasonName(seasonPrice.SeasonId)</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text">€</span>
+                                                                <InputNumber id="@($"{selected.Slug}-{seasonPrice.SeasonId}")" class="form-control" step="0.01" placeholder="@($"Standaard {selected.DefaultPricePerNight:0.00}")" @bind-Value="seasonPrice.PricePerNight" />
+                                                            </div>
+                                                            <ValidationMessage For="() => seasonPrice.PricePerNight" />
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
                                     </div>
                                 }
 
