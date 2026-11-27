@@ -13,6 +13,7 @@ namespace Vakantiepark.Infrastructure.Persistence.Configurations
             builder.Property(x => x.Email).IsRequired().HasMaxLength(254);
             builder.Property(x => x.PasswordHash).IsRequired();
             builder.Property(x => x.Role).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(x => x.LoginCodeHash).HasMaxLength(100);
 
             builder.HasIndex(x => x.Email).IsUnique();
         }

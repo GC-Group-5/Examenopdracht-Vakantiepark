@@ -95,8 +95,8 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="booking-guests">Aantal personen</label>
-                                    <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" step="1" />
-                                    <div class="form-text">Telt de hoofdboeker en alle reisgenoten.</div>
+                                    <InputNumber id="booking-guests" class="form-control" Value="request.NumberOfGuests" TValue="int" ValueExpression="() => request.NumberOfGuests" ValueChanged="OnGuestsChangedAsync" min="1" max="@MaxGuestsForStay" step="1" />
+                                    <div class="form-text">Telt de hoofdboeker en alle reisgenoten. Maximaal @MaxGuestsForStay personen.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-label fw-semibold">Toegankelijkheid</div>
@@ -316,6 +316,9 @@
 
     private string PartyLabel => TravellerAgeExtensions.PartyLabel(request.NumberOfGuests, ChildrenUnder12);
 
+    // The largest free unit of this type caps the party; without a quote only the general maximum applies.
+    private int MaxGuestsForStay => quote?.MaxPersons is > 0 ? Math.Min(MaxGuests, quote.MaxPersons) : MaxGuests;
+
     protected override async Task OnParametersSetAsync()
     {
         if (!HasStay)
@@ -378,7 +381,11 @@
     // Fewer persons drop the last traveller rows, and with them maybe a child under 12.
     private async Task OnGuestsChangedAsync(int newGuests)
     {
-        request.NumberOfGuests = newGuests;
+        int clampedGuests = Math.Clamp(newGuests, 1, MaxGuestsForStay);
+        if (clampedGuests == request.NumberOfGuests)
+            return;
+
+        request.NumberOfGuests = clampedGuests;
         ResizeCoTravellers();
         await OnPartyChangedAsync();
     }
@@ -405,14 +412,9 @@
     // Pets decide which units may be picked, so the quote is checked again.
     private async Task OnPetsChangedAsync(int newPets)
     {
-        if (quote is not null && newPets > quote.MaxPets)
-        {
-            request.NumberOfPets = newPets;
-            quoteErrorMessage = $"Dit verblijfstype staat maximaal {StayLabels.Pets(quote.MaxPets)} toe.";
-            return;
-        }
-
-        request.NumberOfPets = newPets;
+        int maxPets = Math.Max(quote?.MaxPets ?? 0, 1);
+        request.NumberOfPets = Math.Clamp(newPets, 1, maxPets);
+        quoteErrorMessage = null;
         await OnPartyChangedAsync();
     }
 

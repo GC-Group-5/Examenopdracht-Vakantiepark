@@ -852,6 +852,52 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("tourist_tax_rates", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.TrustedDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_trusted_devices");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_trusted_devices_token_hash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_trusted_devices_user_id");
+
+                    b.ToTable("trusted_devices", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -877,6 +923,10 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("failed_login_attempts");
 
+                    b.Property<int>("FailedLoginCodeAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_login_code_attempts");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -890,6 +940,15 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end");
+
+                    b.Property<DateTime?>("LoginCodeExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("login_code_expires_at");
+
+                    b.Property<string>("LoginCodeHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("login_code_hash");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -1095,6 +1154,18 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_maintenance_periods_accommodations_accommodation_unit_id");
 
                     b.Navigation("AccommodationUnit");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.TrustedDevice", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_trusted_devices_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Accommodation", b =>

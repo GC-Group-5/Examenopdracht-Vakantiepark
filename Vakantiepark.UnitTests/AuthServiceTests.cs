@@ -4,6 +4,7 @@ using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Shared.DTOs.Auth;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Xunit;
 using Moq;
 
@@ -12,11 +13,16 @@ namespace Vakantiepark.UnitTests
     public class AuthServiceTests
     {
         private const string CorrectPassword = "Medewerker123!";
+        private const string CorrectCode = "123456";
+        private const string CodeHash = "code-hash";
+        private const string DeviceToken = "device-token";
 
         private readonly Mock<IUserRepository> _userRepository = new Mock<IUserRepository>();
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
         private readonly Mock<IPasswordHasher> _passwordHasher = new Mock<IPasswordHasher>();
+        private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepository = new Mock<ITrustedDeviceRepository>();
         private readonly Mock<ITokenService> _tokenService = new Mock<ITokenService>();
+        private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly FixedTimeProvider _timeProvider = new FixedTimeProvider(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero));
         private readonly User _user = TestData.CreateUser();
         private readonly AuthService _sut;
@@ -26,32 +32,216 @@ namespace Vakantiepark.UnitTests
             _userRepository.Setup(x => x.GetByEmailAsync(_user.Email)).ReturnsAsync(_user);
             _passwordHasher.Setup(x => x.Verify(It.IsAny<string>(), _user.PasswordHash)).Returns(false);
             _passwordHasher.Setup(x => x.Verify(CorrectPassword, _user.PasswordHash)).Returns(true);
+            _passwordHasher.Setup(x => x.Verify(It.IsAny<string>(), CodeHash)).Returns(false);
+            _passwordHasher.Setup(x => x.Verify(CorrectCode, CodeHash)).Returns(true);
+            _passwordHasher.Setup(x => x.Hash(It.IsAny<string>())).Returns(CodeHash);
             _tokenService.Setup(x => x.CreateStaffToken(It.IsAny<User>())).Returns(new TokenResponse() { Token = "staff-token" });
             _tokenService.Setup(x => x.CreateGuestToken(It.IsAny<Booking>())).Returns(new TokenResponse() { Token = "guest-token" });
 
-            _sut = new AuthService(_userRepository.Object, _bookingRepository.Object, _passwordHasher.Object, _tokenService.Object, _timeProvider);
+            _sut = new AuthService(_userRepository.Object, _bookingRepository.Object, _passwordHasher.Object, _trustedDeviceRepository.Object, _tokenService.Object, _emailSender.Object, _timeProvider);
         }
 
         private DateOnly Today => DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
 
-        private static LoginRequest Login(string email, string password)
-            => new LoginRequest() { Email = email, Password = password };
+        private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
+
+        private static LoginRequest Login(string email, string password, string? deviceToken = null)
+            => new LoginRequest() { Email = email, Password = password, DeviceToken = deviceToken };
+
+        private VerifyLoginCodeRequest Code(string code, bool rememberDevice = false)
+            => new VerifyLoginCodeRequest() { Email = _user.Email, Code = code, RememberDevice = rememberDevice };
+
+        private void GiveUserValidCode()
+        {
+            _user.LoginCodeHash = CodeHash;
+            _user.LoginCodeExpiresAt = Now.AddMinutes(AuthService.LoginCodeValidMinutes);
+        }
 
         [Fact]
-        public async Task LoginAsync_CorrectPassword_ReturnsStaffToken()
+        public async Task LoginAsync_Medewerker_EmailsCodeInsteadOfToken()
         {
-            TokenResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword));
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword));
 
-            Assert.Equal("staff-token", result.Token);
-            _tokenService.Verify(x => x.CreateStaffToken(_user), Times.Once);
+            Assert.True(result.RequiresCode);
+            Assert.Null(result.Token);
+            Assert.Equal(CodeHash, _user.LoginCodeHash);
+            Assert.Equal(Now.AddMinutes(AuthService.LoginCodeValidMinutes), _user.LoginCodeExpiresAt);
+            _emailSender.Verify(x => x.SendAsync(_user.Email, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            _tokenService.Verify(x => x.CreateStaffToken(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginAsync_Medewerker_EmailsSixDigitCodeThatMatchesStoredHash()
+        {
+            string? hashedCode = null;
+            string? textBody = null;
+            _passwordHasher.Setup(x => x.Hash(It.IsAny<string>())).Callback<string>(code => hashedCode = code).Returns(CodeHash);
+            _emailSender.Setup(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string, string, string>((_, _, _, text) => textBody = text);
+
+            await _sut.LoginAsync(Login(_user.Email, CorrectPassword));
+
+            Assert.NotNull(hashedCode);
+            Assert.Matches(@"^\d{6}$", hashedCode);
+            Assert.Contains(hashedCode, textBody);
+        }
+
+        [Fact]
+        public async Task LoginAsync_Beheerder_RequiresCode()
+        {
+            _user.Role = UserRole.Beheerder;
+
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword));
+
+            Assert.True(result.RequiresCode);
+        }
+
+        [Fact]
+        public async Task LoginAsync_Schoonmaker_ReturnsTokenWithoutCode()
+        {
+            _user.Role = UserRole.Schoonmaker;
+
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword));
+
+            Assert.False(result.RequiresCode);
+            Assert.Equal("staff-token", result.Token?.Token);
+            _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginAsync_TrustedDevice_ReturnsTokenWithoutCode()
+        {
+            _trustedDeviceRepository.Setup(x => x.IsTrustedAsync(_user.Id, It.IsAny<string>(), Now)).ReturnsAsync(true);
+
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword, DeviceToken));
+
+            Assert.Equal("staff-token", result.Token?.Token);
+            _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginAsync_UnknownOrExpiredDevice_RequiresCode()
+        {
+            _trustedDeviceRepository.Setup(x => x.IsTrustedAsync(_user.Id, It.IsAny<string>(), Now)).ReturnsAsync(false);
+
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword, DeviceToken));
+
+            Assert.True(result.RequiresCode);
+        }
+
+        [Fact]
+        public async Task LoginAsync_TrustedDeviceButWrongPassword_ThrowsUnauthorizedAccessException()
+        {
+            _trustedDeviceRepository.Setup(x => x.IsTrustedAsync(_user.Id, It.IsAny<string>(), Now)).ReturnsAsync(true);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.LoginAsync(Login(_user.Email, "fout", DeviceToken)));
+            _tokenService.Verify(x => x.CreateStaffToken(It.IsAny<User>()), Times.Never);
         }
 
         [Fact]
         public async Task LoginAsync_EmailWithCapitalsAndSpaces_FindsUser()
         {
-            TokenResponse result = await _sut.LoginAsync(Login("  Medewerker@DropUut.example ", CorrectPassword));
+            LoginResponse result = await _sut.LoginAsync(Login("  Medewerker@DropUut.example ", CorrectPassword));
 
-            Assert.Equal("staff-token", result.Token);
+            Assert.True(result.RequiresCode);
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_CorrectCode_ReturnsTokenAndClearsCode()
+        {
+            GiveUserValidCode();
+
+            LoginResponse result = await _sut.VerifyLoginCodeAsync(Code(CorrectCode));
+
+            Assert.Equal("staff-token", result.Token?.Token);
+            Assert.Null(result.DeviceToken);
+            Assert.Null(_user.LoginCodeHash);
+            Assert.Null(_user.LoginCodeExpiresAt);
+            _trustedDeviceRepository.Verify(x => x.AddAsync(It.IsAny<TrustedDevice>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_CodeUsedTwice_SecondTimeThrows()
+        {
+            GiveUserValidCode();
+            await _sut.VerifyLoginCodeAsync(Code(CorrectCode));
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code(CorrectCode)));
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_ExpiredCode_ThrowsUnauthorizedAccessException()
+        {
+            GiveUserValidCode();
+            _timeProvider.Advance(TimeSpan.FromMinutes(AuthService.LoginCodeValidMinutes + 1));
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code(CorrectCode)));
+            _tokenService.Verify(x => x.CreateStaffToken(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_NoCodeRequested_ThrowsUnauthorizedAccessException()
+        {
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code(CorrectCode)));
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_WrongCode_CountsAttemptAndThrows()
+        {
+            GiveUserValidCode();
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code("000000")));
+
+            Assert.Equal(1, _user.FailedLoginCodeAttempts);
+            Assert.Equal(CodeHash, _user.LoginCodeHash);
+            _userRepository.Verify(x => x.UpdateAsync(_user), Times.Once);
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_FifthWrongCode_InvalidatesCode()
+        {
+            GiveUserValidCode();
+
+            for (int attempt = 0; attempt < AuthService.MaxFailedLoginCodeAttempts; attempt++)
+                await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code("000000")));
+
+            Assert.Null(_user.LoginCodeHash);
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.VerifyLoginCodeAsync(Code(CorrectCode)));
+        }
+
+        [Fact]
+        public async Task VerifyLoginCodeAsync_RememberDevice_StoresHashedTokenFor30Days()
+        {
+            GiveUserValidCode();
+            TrustedDevice? saved = null;
+            _trustedDeviceRepository.Setup(x => x.AddAsync(It.IsAny<TrustedDevice>()))
+                .Callback<TrustedDevice>(device => saved = device)
+                .ReturnsAsync((TrustedDevice device) => device);
+
+            LoginResponse result = await _sut.VerifyLoginCodeAsync(Code(CorrectCode, rememberDevice: true));
+
+            Assert.NotNull(result.DeviceToken);
+            Assert.NotNull(saved);
+            Assert.Equal(_user.Id, saved.UserId);
+            Assert.NotEqual(result.DeviceToken, saved.TokenHash);
+            Assert.Equal(Now.AddDays(AuthService.TrustedDeviceDays), saved.ExpiresAt);
+        }
+
+        [Fact]
+        public async Task LoginAsync_RememberedDevice_LooksUpSameHashThatWasStored()
+        {
+            GiveUserValidCode();
+            TrustedDevice? saved = null;
+            _trustedDeviceRepository.Setup(x => x.AddAsync(It.IsAny<TrustedDevice>()))
+                .Callback<TrustedDevice>(device => saved = device)
+                .ReturnsAsync((TrustedDevice device) => device);
+            LoginResponse verified = await _sut.VerifyLoginCodeAsync(Code(CorrectCode, rememberDevice: true));
+            _trustedDeviceRepository.Setup(x => x.IsTrustedAsync(_user.Id, saved!.TokenHash, Now)).ReturnsAsync(true);
+
+            LoginResponse result = await _sut.LoginAsync(Login(_user.Email, CorrectPassword, verified.DeviceToken));
+
+            Assert.False(result.RequiresCode);
+            Assert.Equal("staff-token", result.Token?.Token);
         }
 
         [Fact]

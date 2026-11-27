@@ -1,0 +1,9 @@
+Vakantiepark D'r op Uut
+
+Je inlogcode, {{Name}}
+
+INLOGCODE: {{Code}}
+De code is {{ValidMinutes}} minuten geldig.
+
+Heb je niet zelf geprobeerd in te loggen? Dan kent iemand anders je wachtwoord.
+Laat het direct een beheerder weten.
