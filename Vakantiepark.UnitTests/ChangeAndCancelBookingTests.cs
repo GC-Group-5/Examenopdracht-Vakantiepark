@@ -7,13 +7,15 @@ using Vakantiepark.Application.Settings;
 using Vakantiepark.Domain.Entities;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Xunit;
 
 namespace Vakantiepark.UnitTests
 {
-    // US-12: cancelling and changing the guest's own booking; US-14: the same by staff, without the term.
+    // US-12: cancelling and changing the guest's own booking; US-14: the same by staff, without the term;
+    // US-51: staff first sees what is free, and may move the booking to another type.
     public class ChangeAndCancelBookingTests
     {
         private const string Token = "a3f1c2d4e5b6a7980112233445566778899aabbccddeeff00112233445566778";
@@ -22,12 +24,15 @@ namespace Vakantiepark.UnitTests
 
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
         private readonly Mock<IAccommodationUnitRepository> _unitRepository = new Mock<IAccommodationUnitRepository>();
+        private readonly Mock<IAccommodationTypeRepository> _typeRepository = new Mock<IAccommodationTypeRepository>();
         private readonly Mock<IPriceService> _priceService = new Mock<IPriceService>();
         private readonly Mock<IRepository<Season>> _seasonRepository = new Mock<IRepository<Season>>();
         private readonly Mock<IEmailSender> _emailSender = new Mock<IEmailSender>();
         private readonly AccommodationType _type = TestData.CreateAccommodationType(type => { type.Slug = "eik-luxe-6"; type.Name = "Eik Luxe 6"; });
+        private readonly AccommodationType _largerType = TestData.CreateAccommodationType(type => { type.Slug = "beuk-8"; type.Name = "Beuk 8"; });
         private readonly Accommodation _currentUnit;
         private readonly Accommodation _otherUnit;
+        private readonly Accommodation _largerUnit;
         private readonly Booking _booking;
         private readonly BookingService _sut;
 
@@ -35,6 +40,7 @@ namespace Vakantiepark.UnitTests
         {
             _currentUnit = TestData.CreateAccommodation("EL6-001", configure: unit => unit.Type = _type);
             _otherUnit = TestData.CreateAccommodation("EL6-002", configure: unit => unit.Type = _type);
+            _largerUnit = TestData.CreateAccommodation("B8-001", zone: "Bosrand", configure: unit => { unit.Type = _largerType; unit.MaxPersons = 8; });
             _booking = CreateBooking(daysBeforeArrival: 60);
 
             _bookingRepository.Setup(x => x.GetByAccessTokenAsync(Token)).ReturnsAsync(() => _booking);
@@ -46,6 +52,11 @@ namespace Vakantiepark.UnitTests
             _unitRepository
                 .Setup(x => x.GetInServiceUnitsAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
                 .ReturnsAsync(() => new List<Accommodation> { _currentUnit, _otherUnit });
+            _unitRepository.Setup(x => x.GetInServiceUnitsAsync(_largerType.Slug, It.IsAny<DateOnly>(), It.IsAny<DateOnly>())).ReturnsAsync(() => [_largerUnit]);
+            _unitRepository.Setup(x => x.GetByCodeWithDetailsAsync(_otherUnit.Code)).ReturnsAsync(() => _otherUnit);
+            _unitRepository.Setup(x => x.GetByCodeWithDetailsAsync(_largerUnit.Code)).ReturnsAsync(() => _largerUnit);
+            _typeRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(() => [_type, _largerType]);
+            _unitRepository.Setup(x => x.GetAllWithDetailsAsync()).ReturnsAsync(() => [_currentUnit, _otherUnit, _largerUnit]);
             _priceService
                 .Setup(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(TestData.CreatePriceSpecification());
@@ -57,7 +68,7 @@ namespace Vakantiepark.UnitTests
             _sut = new BookingService(
                 _bookingRepository.Object,
                 _unitRepository.Object,
-                new Mock<IAccommodationTypeRepository>().Object,
+                _typeRepository.Object,
                 _priceService.Object,
                 new Mock<IBookingNumberGenerator>().Object,
                 _seasonRepository.Object,
@@ -480,6 +491,107 @@ namespace Vakantiepark.UnitTests
                 () => _sut.CancelByStaffAsync(_booking.Id, new StaffCancelBookingRequest() { Reason = "Dubbel geboekt" }, StaffUserId));
 
             Assert.Equal(BookingService.AlreadyCancelledMessage, exception.Message);
+        }
+
+        // ---------- Change options for staff (US-51) ----------
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_OwnTypeHasFreeUnits_ListsOnlyTheOwnTypeWithItsPrice()
+        {
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate.AddDays(2), _booking.DepartureDate.AddDays(2), 2);
+
+            Assert.False(result.CurrentTypeFull);
+            ChangeOptionTypeResponse option = Assert.Single(result.Types);
+            Assert.Equal(_type.Slug, option.TypeSlug);
+            Assert.Equal(TestData.CreatePriceSpecification().TotalPrice, option.TotalPrice);
+            Assert.Equal(["EL6-001", "EL6-002"], option.Units.Select(unit => unit.Code));
+            Assert.All(option.Units, unit => Assert.Equal(UnitAvailability.Vrij, unit.Availability));
+            Assert.True(option.Units[0].IsCurrent);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_OtherUnitBooked_IsListedAsBooked()
+        {
+            UnitsTaken(_otherUnit.Id);
+
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate.AddDays(2), _booking.DepartureDate.AddDays(2), 2);
+
+            ChangeOptionTypeResponse option = Assert.Single(result.Types);
+            Assert.Equal(UnitAvailability.Vrij, option.Units[0].Availability);
+            Assert.Equal(UnitAvailability.Geboekt, option.Units[1].Availability);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_UnitInMaintenance_IsListedAsMaintenance()
+        {
+            _unitRepository.Setup(x => x.GetInServiceUnitsAsync(_type.Slug, It.IsAny<DateOnly>(), It.IsAny<DateOnly>())).ReturnsAsync(() => [_otherUnit]);
+
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate.AddDays(2), _booking.DepartureDate.AddDays(2), 2);
+
+            Assert.Equal(UnitAvailability.Onderhoud, Assert.Single(result.Types).Units[0].Availability);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_OwnTypeFull_AddsOtherTypesWithAFreeUnit()
+        {
+            UnitsTaken(_currentUnit.Id, _otherUnit.Id);
+
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate.AddDays(2), _booking.DepartureDate.AddDays(2), 2);
+
+            Assert.True(result.CurrentTypeFull);
+            Assert.Equal([_type.Slug, _largerType.Slug], result.Types.Select(option => option.TypeSlug));
+            Assert.All(result.Types[0].Units, unit => Assert.Equal(UnitAvailability.Geboekt, unit.Availability));
+            Assert.Equal(UnitAvailability.Vrij, Assert.Single(result.Types[1].Units).Availability);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_PartyTooBigForOwnType_ShowsItDoesNotFitAndAddsALargerType()
+        {
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate, _booking.DepartureDate, 8);
+
+            Assert.True(result.CurrentTypeFull);
+            Assert.All(result.Types[0].Units, unit => Assert.Equal(UnitAvailability.PastNiet, unit.Availability));
+            Assert.Equal(_largerType.Slug, result.Types[1].TypeSlug);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_NothingFreeAnywhere_ShowsOnlyTheOwnType()
+        {
+            UnitsTaken(_currentUnit.Id, _otherUnit.Id, _largerUnit.Id);
+
+            ChangeOptionsResponse result = await _sut.GetChangeOptionsAsync(_booking.Id, _booking.ArrivalDate, _booking.DepartureDate, 2);
+
+            Assert.True(result.CurrentTypeFull);
+            Assert.Equal(_type.Slug, Assert.Single(result.Types).TypeSlug);
+        }
+
+        [Fact]
+        public async Task GetChangeOptionsAsync_ArrivalInThePast_ThrowsArgumentException()
+        {
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.GetChangeOptionsAsync(_booking.Id, Today.AddDays(-1), Today.AddDays(6), 2));
+
+            Assert.Equal("De aankomstdatum ligt in het verleden.", exception.Message);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_UnitOfAnotherType_MovesTheBookingAndPricesTheNewType()
+        {
+            await _sut.ChangeByStaffAsync(_booking.Id, StaffChangeRequest(shiftDays: 2, unitCode: "B8-001"), StaffUserId);
+
+            Assert.Equal(_largerUnit.Id, _booking.AccommodationUnitId);
+            _priceService.Verify(x => x.CalculateAsync(_largerType.Slug, It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Once);
+            Assert.EndsWith("eenheid B8-001 (Beuk 8)", Assert.Single(_booking.Changes).Description);
+        }
+
+        [Fact]
+        public async Task ChangeByStaffAsync_UnknownUnitCode_IsRefusedAndNothingIsSaved()
+        {
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.ChangeByStaffAsync(_booking.Id, StaffChangeRequest(shiftDays: 2, unitCode: "XX-999"), StaffUserId));
+
+            Assert.Equal(BookingService.ChosenUnitNotFreeMessage, exception.Message);
+            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>()), Times.Never);
         }
 
         // ---------- Helpers ----------

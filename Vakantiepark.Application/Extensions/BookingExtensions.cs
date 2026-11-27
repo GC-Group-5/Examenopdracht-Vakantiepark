@@ -50,6 +50,13 @@ namespace Vakantiepark.Application.Extensions
             => coTravellers.Count(traveller => traveller.BirthDate is DateOnly birthDate
                 && CreateBookingRequestValidation.AgeOn(birthDate, arrivalDate) < BookingRules.TouristTaxMinimumAge);
 
+        // The fellow travellers already on a booking, in the shape a change request uses.
+        public static List<TravellerRequest> ToCoTravellers(this IEnumerable<BookingGuest> guests)
+            => guests
+                .Where(guest => !guest.IsMainBooker)
+                .Select(guest => new TravellerRequest() { Name = guest.Name, BirthDate = guest.BirthDate })
+                .ToList();
+
         // Only travellers with a name are saved; an empty row means "not known yet".
         public static List<BookingGuest> ToGuests(this List<TravellerRequest> coTravellers)
             => coTravellers
