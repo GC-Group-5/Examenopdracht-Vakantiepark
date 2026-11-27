@@ -451,6 +451,67 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                     b.ToTable("booking_guests", (string)null);
                 });
 
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Cleaning", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccommodationUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accommodation_unit_id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cleanings");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_cleanings_booking_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_cleanings_user_id");
+
+                    b.HasIndex("AccommodationUnitId", "FinishedAt")
+                        .HasDatabaseName("ix_cleanings_accommodation_unit_id_finished_at");
+
+                    b.ToTable("cleanings", (string)null);
+                });
+
             modelBuilder.Entity("Vakantiepark.Domain.Entities.Feature", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1101,6 +1162,35 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_booking_guests_bookings_booking_id");
 
                     b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.Cleaning", b =>
+                {
+                    b.HasOne("Vakantiepark.Domain.Entities.Accommodation", "AccommodationUnit")
+                        .WithMany()
+                        .HasForeignKey("AccommodationUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cleanings_accommodations_accommodation_unit_id");
+
+                    b.HasOne("Vakantiepark.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cleanings_bookings_booking_id");
+
+                    b.HasOne("Vakantiepark.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_cleanings_users_user_id");
+
+                    b.Navigation("AccommodationUnit");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.FeatureOption", b =>

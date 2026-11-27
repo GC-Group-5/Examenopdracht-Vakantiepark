@@ -26,6 +26,7 @@ namespace Vakantiepark.Infrastructure.Persistence
         public DbSet<User> Users => Set<User>();
         public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
         public DbSet<ParkFacility> ParkFacilities => Set<ParkFacility>();
+        public DbSet<Cleaning> Cleanings => Set<Cleaning>();
 
         public ApplicationDBContext(DbContextOptions<ApplicationDBContext> options)
             : base(options) { }
@@ -54,6 +55,7 @@ namespace Vakantiepark.Infrastructure.Persistence
             builder.Entity<User>(options => options.Configure());
             builder.Entity<TrustedDevice>(options => options.Configure());
             builder.Entity<ParkFacility>(options => options.Configure());
+            builder.Entity<Cleaning>(options => options.Configure());
         }
     }
 }
