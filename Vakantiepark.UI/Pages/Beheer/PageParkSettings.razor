@@ -318,6 +318,23 @@
                                 {
                                     <h3 class="h6 mt-4">Seizoensprijzen per nacht</h3>
                                     <p class="small text-muted-du">Laat een prijs leeg om de standaardprijs van € @selected.DefaultPricePerNight?.ToString("0.00") te gebruiken.</p>
+                                    <div class="row g-2 align-items-center mb-3">
+                                        <div class="col-sm-5">
+                                            <label class="visually-hidden" for="season-search">Zoek een seizoen</label>
+                                            <input id="season-search" type="search" class="form-control" placeholder="Zoek op naam" @bind="seasonSearch" @bind:event="oninput" />
+                                        </div>
+                                        <div class="col-sm-4">
+                                            <label class="visually-hidden" for="season-sort">Sorteren</label>
+                                            <select id="season-sort" class="form-select" @bind="seasonSort">
+                                                <option value="periode">Op periode</option>
+                                                <option value="naam">Op naam</option>
+                                                <option value="prijs">Op prijs</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-3">
+                                            <button type="button" class="btn btn-du-light w-100" title="Volgorde omdraaien" @onclick="() => sortDescending = !sortDescending">@SortDirectionLabel</button>
+                                        </div>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table align-middle mb-0">
                                             <thead>
@@ -328,7 +345,11 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach (SeasonPriceRequest seasonPrice in selected.SeasonPrices)
+                                                @if (VisibleSeasonPrices(selected).Count == 0)
+                                                {
+                                                    <tr><td colspan="3" class="text-muted-du">Geen seizoenen gevonden.</td></tr>
+                                                }
+                                                @foreach (SeasonPriceRequest seasonPrice in VisibleSeasonPrices(selected))
                                                 {
                                                     <tr>
                                                         <th scope="row">@SeasonName(seasonPrice.SeasonId)</th>
@@ -381,6 +402,9 @@
     private SaveSeasonRequest season = new();
     private Guid? editingSeasonId;
     private string? selectedTypeSlug;
+    private string seasonSearch = string.Empty;
+    private string seasonSort = "periode";
+    private bool sortDescending;
     private string? message;
     private bool succeeded;
     private bool isBusy;
@@ -400,6 +424,16 @@
         .MaxBy(rate => rate.ValidFrom);
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    private string SortDirectionLabel => (seasonSort, sortDescending) switch
+    {
+        ("naam", false) => "A → Z",
+        ("naam", true) => "Z → A",
+        ("prijs", false) => "Laagste eerst",
+        ("prijs", true) => "Hoogste eerst",
+        (_, false) => "Vroegste eerst",
+        (_, true) => "Laatste eerst",
+    };
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -497,11 +531,30 @@
         return rate.ValidFrom > Today ? "text-bg-light border" : "text-bg-light text-muted-du fw-normal";
     }
 
-    private string SeasonName(Guid seasonId) => settings!.Seasons.First(existing => existing.Id == seasonId).Name;
+    private SeasonResponse FindSeason(Guid seasonId) => settings!.Seasons.First(existing => existing.Id == seasonId);
+
+    private string SeasonName(Guid seasonId) => FindSeason(seasonId).Name;
 
     private string SeasonPeriod(Guid seasonId)
+        => $"{FindSeason(seasonId).StartDate?.ToString(DateFormats.Date)} t/m {FindSeason(seasonId).EndDate?.ToString(DateFormats.Date)}";
+
+    // Only changes which rows are shown; hidden season prices are still saved with the form.
+    // The seasons arrive in date order, so "periode" keeps that order.
+    private List<SeasonPriceRequest> VisibleSeasonPrices(TypePricesResponse type)
     {
-        SeasonResponse found = settings!.Seasons.First(existing => existing.Id == seasonId);
-        return $"{found.StartDate?.ToString(DateFormats.Date)} t/m {found.EndDate?.ToString(DateFormats.Date)}";
+        IEnumerable<SeasonPriceRequest> prices = type.SeasonPrices
+            .Where(price => SeasonName(price.SeasonId).Contains(seasonSearch.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        List<SeasonPriceRequest> sorted = seasonSort switch
+        {
+            "naam" => prices.OrderBy(price => SeasonName(price.SeasonId)).ToList(),
+            "prijs" => prices.OrderBy(price => price.PricePerNight ?? type.DefaultPricePerNight).ToList(),
+            _ => prices.ToList(),
+        };
+
+        if (sortDescending)
+            sorted.Reverse();
+
+        return sorted;
     }
 }
