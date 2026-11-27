@@ -5,7 +5,8 @@ using Vakantiepark.Shared.Constants;
 namespace Vakantiepark.UI.Authentication
 {
     // Guests use localStorage so they stay logged in on their own phone during the stay (the token expires after departure).
-    // Staff use sessionStorage: the token disappears when the browser closes, which is safer on a shared reception PC.
+    // Staff use sessionStorage: the token disappears when the browser closes, which is safer on a shared reception PC,
+    // unless they tick "Onthoud mij" on their own device.
     public class TokenStorage
     {
         private const string Key = "vakantiepark.token";
@@ -26,12 +27,12 @@ namespace Vakantiepark.UI.Authentication
             return token;
         }
 
-        public async Task SetAsync(string token)
+        public async Task SetAsync(string token, bool rememberMe)
         {
             await RemoveAsync();
 
             bool isGuest = JwtParser.ReadClaims(token).Any(claim => claim.Type == ClaimTypes.Role && claim.Value == Roles.Gast);
-            if (isGuest)
+            if (isGuest || rememberMe)
                 await JSRuntime.InvokeVoidAsync("localStorage.setItem", Key, token);
             else
                 await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", Key, token);

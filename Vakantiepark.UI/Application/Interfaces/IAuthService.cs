@@ -5,7 +5,8 @@ namespace Vakantiepark.UI.Application.Interfaces
 {
     public interface IAuthService
     {
-        Task<ApiResponse<TokenResponse>> LoginAsync(LoginRequest request);
+        Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request, bool rememberMe);
+        Task<ApiResponse<LoginResponse>> VerifyLoginCodeAsync(VerifyLoginCodeRequest request);
         Task<ApiResponse<TokenResponse>> GuestLoginAsync(GuestLoginRequest request);
         Task LogoutAsync();
     }
