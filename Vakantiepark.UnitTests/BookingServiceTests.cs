@@ -335,6 +335,7 @@ namespace Vakantiepark.UnitTests
             Assert.Equal("Eik Luxe 6", quote.AccommodationTypeName);
             Assert.Equal("Waterkant", quote.Zone);
             Assert.Equal(new TimeOnly(15, 0), quote.ArrivalTime);
+            Assert.Equal(6, quote.MaxPersons);
             Assert.Equal(817m, quote.Price.TotalPrice);
             Assert.Equal(163.40m, quote.Price.Deposit);
             Assert.Equal(30, quote.FreeCancellationDaysBeforeArrival);
@@ -363,6 +364,21 @@ namespace Vakantiepark.UnitTests
 
             Assert.Equal("Dit verblijfstype staat maximaal 2 huisdieren toe.", exception.Message);
             _bookingRepository.Verify(x => x.TryAddAsync(It.IsAny<Booking>()), Times.Never);
+        }
+
+        // US-54: more pets than the type allows must never reach the price calculation.
+        [Fact]
+        public async Task GetQuoteAsync_MorePetsThanAllowed_ThrowsAndCalculatesNoPrice()
+        {
+            _secondUnit.Features.Add(MaxPets(2));
+            DateOnly arrival = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+            AccommodationUnitFilter filter = new AccommodationUnitFilter { NumberOfGuests = 2, NumberOfPets = 3 };
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _sut.GetQuoteAsync("eik-luxe-6", arrival, arrival.AddDays(7), filter, 0, null));
+
+            Assert.Equal("Dit verblijfstype staat maximaal 2 huisdieren toe.", exception.Message);
+            _priceService.Verify(x => x.CalculateAsync(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]
