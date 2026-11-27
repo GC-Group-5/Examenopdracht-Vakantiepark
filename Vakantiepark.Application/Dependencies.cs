@@ -30,6 +30,7 @@ namespace Vakantiepark.Application
             services.AddScoped<IParkFacilityService, ParkFacilityService>();
             services.AddScoped<IOccupancyService, OccupancyService>();
             services.AddScoped<IParkSettingsService, ParkSettingsService>();
+            services.AddScoped<ISwimSlotService, SwimSlotService>();
 
             return services;
         }

@@ -8,9 +8,6 @@ namespace Vakantiepark.Application.Services
 {
     public class ParkFacilityService : IParkFacilityService
     {
-        // Opening hours are Dutch clock times, while the server runs in UTC.
-        private const string ParkTimeZoneId = "Europe/Amsterdam";
-
         private readonly IRepository<ParkFacility> ParkFacilityRepository;
         private readonly TimeProvider TimeProvider;
 
@@ -23,7 +20,7 @@ namespace Vakantiepark.Application.Services
         // Activities that have ended are left out.
         public async Task<List<ParkFacilityResponse>> GetAllAsync()
         {
-            DateTimeOffset parkNow = TimeZoneInfo.ConvertTime(TimeProvider.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(ParkTimeZoneId));
+            DateTimeOffset parkNow = TimeProvider.GetParkNow();
             IEnumerable<ParkFacility> facilities = await ParkFacilityRepository.GetAllAsync();
 
             return facilities
