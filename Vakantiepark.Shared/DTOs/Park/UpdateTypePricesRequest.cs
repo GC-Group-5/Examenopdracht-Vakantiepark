@@ -5,7 +5,8 @@ namespace Vakantiepark.Shared.DTOs.Park
     public class UpdateTypePricesRequest
     {
         [Required(ErrorMessage = "Vul de standaardprijs per nacht in.")]
-        [Range(typeof(decimal), "0.01", "100000", ErrorMessage = "De standaardprijs moet hoger dan 0 zijn.")]
+        // The limits are written with a dot; the browser runs in nl-NL, where "0.01" is not a number (US-53 bug).
+        [Range(typeof(decimal), "0.01", "100000", ParseLimitsInInvariantCulture = true, ErrorMessage = "De standaardprijs moet hoger dan 0 zijn.")]
         public decimal? DefaultPricePerNight { get; set; }
 
         [Required(ErrorMessage = "Vul de eindschoonmaakkosten in.")]
@@ -20,7 +21,7 @@ namespace Vakantiepark.Shared.DTOs.Park
     {
         public Guid SeasonId { get; set; }
 
-        [Range(typeof(decimal), "0.01", "100000", ErrorMessage = "Een seizoensprijs moet hoger dan 0 zijn.")]
+        [Range(typeof(decimal), "0.01", "100000", ParseLimitsInInvariantCulture = true, ErrorMessage = "Een seizoensprijs moet hoger dan 0 zijn.")]
         public decimal? PricePerNight { get; set; }
     }
 
