@@ -5,8 +5,10 @@ using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Services;
 using Vakantiepark.Application.Settings;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Helpers;
 using Vakantiepark.Domain.Interfaces.Repositories;
+using Vakantiepark.Shared.Constants;
 using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Xunit;
@@ -272,13 +274,35 @@ namespace Vakantiepark.UnitTests
         }
 
         [Fact]
-        public async Task Change_Within30DaysOfArrival_IsRefused()
+        public async Task Change_Within30DaysOfArrival_IsAllowedWhileAwaitingDeposit()
         {
-            SetArrival(29);
+            SetArrival(10);
 
-            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null));
+            ChangeQuoteResponse quote = await _sut.GetChangeQuoteAsync(ChangeRequest(shiftDays: 2), null);
+
+            Assert.Equal(600m, quote.OldTotalPrice);
+        }
+
+        [Fact]
+        public async Task Change_AfterDepositIsPaid_IsRefusedAndNothingIsSaved()
+        {
+            SetArrival(10);
+            _booking.Status = BookingState.Confirmed;
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.ChangeAsync(ChangeRequest(shiftDays: 2), null));
 
             Assert.Equal(BookingService.CannotChangeMessage, exception.Message);
+            _bookingRepository.Verify(x => x.TryUpdateAsync(It.IsAny<Booking>(), It.IsAny<List<BookingGuest>>()), Times.Never);
+            _emailSender.Verify(x => x.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetMine_AwaitingDeposit_CanChangeAndShowsStatus()
+        {
+            MyBookingResponse response = await _sut.GetMineByTokenAsync(Token);
+
+            Assert.Equal(BookingStatuses.InAfwachtingVanAanbetaling, response.Status);
+            Assert.True(response.CanChange);
         }
 
         [Fact]
@@ -528,6 +552,7 @@ namespace Vakantiepark.UnitTests
             {
                 Id = Guid.NewGuid(),
                 BookingNumber = "K7M2XQ9P",
+                Status = BookingState.AwaitingDeposit,
                 AccessToken = Token,
                 Name = "Jan Jansen",
                 Email = "jan@example.nl",

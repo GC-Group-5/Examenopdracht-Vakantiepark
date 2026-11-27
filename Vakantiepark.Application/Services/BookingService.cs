@@ -12,6 +12,7 @@ using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Constants;
 
@@ -143,6 +144,23 @@ namespace Vakantiepark.Application.Services
             }
 
             throw new ArgumentException(CreateBookingRequestValidation.NotAvailableMessage);
+        }
+
+        public async Task ConfirmDepositAsync(string bookingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(bookingNumber))
+                throw new ArgumentException("Vul een boekingsnummer in.");
+
+            Booking? booking = await BookingRepository.GetByBookingNumberAsync(bookingNumber.Trim().ToUpperInvariant());
+
+            if (booking is null)
+                throw new KeyNotFoundException(NotFoundMessage);
+
+            if (booking.Status != BookingState.AwaitingDeposit)
+                throw new ArgumentException("Deze boeking wacht niet op een aanbetaling.");
+
+            booking.Status = BookingState.Confirmed;
+            await BookingRepository.UpdateAsync(booking);
         }
 
         // The link from the confirmation email works up to and including the departure date.
@@ -364,7 +382,7 @@ namespace Vakantiepark.Application.Services
             Booking booking = await FindOwnBookingAsync(request.Token, guestBookingId);
             ParkSettings settings = await GetParkSettingsAsync();
 
-            if (!CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday()))
+            if (!CancellationPolicy.CanChange(booking))
                 throw new ArgumentException(CannotChangeMessage);
 
             return await PlanChangeAsync(booking, settings, request, chosenUnitCode: null);
@@ -466,7 +484,7 @@ namespace Vakantiepark.Application.Services
         {
             MyBookingResponse response = booking.ToMyBookingResponse(GetStatus(booking));
             response.CanCancel = CancellationPolicy.CanCancel(booking, TimeProvider.GetToday());
-            response.CanChange = CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday());
+            response.CanChange = CancellationPolicy.CanChange(booking);
             response.CancellationFee = booking.CancellationFee;
             return response;
         }

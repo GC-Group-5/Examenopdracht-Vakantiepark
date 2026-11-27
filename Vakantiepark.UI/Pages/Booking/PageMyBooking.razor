@@ -79,7 +79,7 @@
                     <div class="alert alert-success mt-4 mb-0" role="status">@successMessage</div>
                 }
 
-                @if (booking.Status == BookingStatuses.Bevestigd)
+                @if (booking.Status == BookingStatuses.InAfwachtingVanAanbetaling || booking.Status == BookingStatuses.Bevestigd)
                 {
                     <h3 class="h5 mt-5 mb-3">Je boeking aanpassen</h3>
 

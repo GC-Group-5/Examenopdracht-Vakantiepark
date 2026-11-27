@@ -1,4 +1,5 @@
 using Vakantiepark.Domain.Interfaces;
+using Vakantiepark.Domain.Enums;
 
 namespace Vakantiepark.Domain.Entities
 {
@@ -6,6 +7,7 @@ namespace Vakantiepark.Domain.Entities
     {
         public Guid Id { get; set; }
         public string BookingNumber { get; set; } = string.Empty;
+        public BookingState Status { get; set; } = BookingState.Confirmed;
 
         // Secret, unguessable key in the personal link to "Mijn boeking" in the confirmation email.
         public string AccessToken { get; set; } = string.Empty;
