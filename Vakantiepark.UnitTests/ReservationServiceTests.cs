@@ -18,6 +18,7 @@ namespace Vakantiepark.UnitTests
         private static readonly DateOnly Today = new DateOnly(2027, 4, 1);
 
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
+        private readonly Mock<ICleaningRepository> _cleaningRepository = new Mock<ICleaningRepository>();
         private readonly ReservationService _sut;
         private BookingSearchFilter? _usedFilter;
         private int _usedPage;
@@ -25,7 +26,11 @@ namespace Vakantiepark.UnitTests
 
         public ReservationServiceTests()
         {
-            _sut = new ReservationService(_bookingRepository.Object, new FixedTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero)));
+            _cleaningRepository
+                .Setup(x => x.GetByBookingIdsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new List<Cleaning>());
+
+            _sut = new ReservationService(_bookingRepository.Object, _cleaningRepository.Object, new FixedTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero)));
             ReturnFromSearch([], 0);
         }
 
@@ -215,6 +220,92 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(1, arrival.NumberOfPets);
             Assert.Equal("DOU-7KQ3M9XP", arrival.BookingNumber);
         }
+
+        [Fact]
+        public async Task GetDayOverview_Departure_ShowsCleaningStatusAndCleaner()
+        {
+            Booking departing = CreateBooking(Today.AddDays(-3), Today);
+            Booking arriving = CreateBooking(Today, Today.AddDays(4));
+            ReturnForDay(Today, departing, arriving);
+            _cleaningRepository
+                .Setup(x => x.GetByBookingIdsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new List<Cleaning>() { CreateCleaning(departing, CleaningStatus.Clean) });
+
+            DayOverviewResponse overview = await _sut.GetDayOverviewAsync(Today);
+
+            DayOverviewItemResponse departure = Assert.Single(overview.Departures);
+            Assert.Equal(CleaningStatuses.Klaar, departure.CleaningStatus);
+            Assert.Equal("Sam Schoonmaker", departure.CleanedBy);
+            Assert.Null(Assert.Single(overview.Arrivals).CleaningStatus);
+        }
+
+        [Fact]
+        public async Task GetDayOverview_DepartureNobodyStarted_IsToClean()
+        {
+            ReturnForDay(Today, CreateBooking(Today.AddDays(-3), Today));
+
+            DayOverviewItemResponse departure = Assert.Single((await _sut.GetDayOverviewAsync(Today)).Departures);
+
+            Assert.Equal(CleaningStatuses.TeSchoonmaken, departure.CleaningStatus);
+            Assert.Null(departure.CleanedBy);
+        }
+
+        [Fact]
+        public async Task GetById_GuestsStillThere_HasNoCleaningStatus()
+        {
+            Booking booking = CreateBooking(Today.AddDays(-2), Today.AddDays(3));
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(booking.Id)).ReturnsAsync(booking);
+
+            ReservationDetailResponse detail = await _sut.GetByIdAsync(booking.Id);
+
+            Assert.Null(detail.CleaningStatus);
+        }
+
+        [Fact]
+        public async Task GetById_Departed_ShowsWhoCleanedItAndWhen()
+        {
+            Booking booking = CreateBooking(Today.AddDays(-5), Today);
+            Cleaning cleaning = CreateCleaning(booking, CleaningStatus.Clean);
+            cleaning.FinishedAt = Today.ToDateTime(new TimeOnly(11, 30));
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(booking.Id)).ReturnsAsync(booking);
+            _cleaningRepository.Setup(x => x.GetByBookingIdAsync(booking.Id)).ReturnsAsync(cleaning);
+
+            ReservationDetailResponse detail = await _sut.GetByIdAsync(booking.Id);
+
+            Assert.Equal(CleaningStatuses.Klaar, detail.CleaningStatus);
+            Assert.Equal("Sam Schoonmaker", detail.CleanedBy);
+            Assert.Equal(cleaning.FinishedAt, detail.CleanedAt);
+        }
+
+        [Fact]
+        public async Task GetById_DepartedNobodyStarted_IsToClean()
+        {
+            Booking booking = CreateBooking(Today.AddDays(-5), Today.AddDays(-1));
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(booking.Id)).ReturnsAsync(booking);
+
+            ReservationDetailResponse detail = await _sut.GetByIdAsync(booking.Id);
+
+            Assert.Equal(CleaningStatuses.TeSchoonmaken, detail.CleaningStatus);
+        }
+
+        [Fact]
+        public async Task GetById_Cancelled_HasNoCleaningStatus()
+        {
+            Booking booking = CreateBooking(Today.AddDays(-5), Today.AddDays(-1), booking => booking.DeletedAt = DateTime.UtcNow);
+            _bookingRepository.Setup(x => x.GetByIdWithDetailsAsync(booking.Id)).ReturnsAsync(booking);
+
+            ReservationDetailResponse detail = await _sut.GetByIdAsync(booking.Id);
+
+            Assert.Null(detail.CleaningStatus);
+        }
+
+        private static Cleaning CreateCleaning(Booking booking, CleaningStatus status)
+            => new Cleaning()
+            {
+                BookingId = booking.Id,
+                Status = status,
+                User = TestData.CreateUser(user => user.FullName = "Sam Schoonmaker"),
+            };
 
         private void ReturnForDay(DateOnly date, params Booking[] bookings)
             => _bookingRepository

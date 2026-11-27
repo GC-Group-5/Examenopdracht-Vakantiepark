@@ -57,7 +57,7 @@
                                         <strong class="fs-5">@unit.UnitCode</strong>
                                         <div class="small text-muted-du">@unit.TypeName · @unit.Zone</div>
                                     </div>
-                                    <span class="badge rounded-pill @StatusClass(unit.Status)">@unit.Status</span>
+                                    <span class="badge rounded-pill @CleaningStatusBadge.CssClass(unit.Status)">@unit.Status</span>
                                 </div>
 
                                 @if (unit.GuestsArriveToday)
@@ -166,13 +166,6 @@
         => unit.FinishedAt is DateTime finishedAt
             ? $"Schoongemaakt door {unit.CleanedBy} om {finishedAt.ToLocalTime().ToString(DateFormats.Time)}"
             : $"{unit.CleanedBy} is hiermee bezig";
-
-    private static string StatusClass(string status) => status switch
-    {
-        CleaningStatuses.Klaar => "text-bg-success",
-        CleaningStatuses.Bezig => "text-bg-warning",
-        _ => "text-bg-secondary",
-    };
 
     private async Task LogoutAsync()
     {

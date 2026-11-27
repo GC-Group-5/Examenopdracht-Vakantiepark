@@ -33,6 +33,19 @@
                         </div>
 
                         <BookingDetails Booking="reservation" BookedAt="reservation.CreatedAt" UnitCode="@reservation.UnitCode" ForStaff="true" />
+
+                        @if (reservation.CleaningStatus is not null)
+                        {
+                            @* US-32: after departure reception sees whether the unit is cleaned. *@
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                                <strong>Schoonmaak:</strong>
+                                <span class="badge rounded-pill @CleaningStatusBadge.CssClass(reservation.CleaningStatus)">@reservation.CleaningStatus</span>
+                                @if (reservation.CleanedBy is not null)
+                                {
+                                    <span class="small text-muted-du">@CleanedByText(reservation)</span>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -186,6 +199,11 @@
     private string? successMessage;
 
     private bool IsCancelled => reservation?.Status == BookingStatuses.Geannuleerd;
+
+    private static string CleanedByText(ReservationDetailResponse reservation)
+        => reservation.CleanedAt is DateTime cleanedAt
+            ? $"door {reservation.CleanedBy} op {cleanedAt.ToLocalTime().ToString(DateFormats.DateAndTime)}"
+            : $"{reservation.CleanedBy} is hiermee bezig";
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 

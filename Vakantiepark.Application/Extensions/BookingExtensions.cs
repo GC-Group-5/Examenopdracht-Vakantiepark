@@ -2,6 +2,7 @@ using Vakantiepark.Shared.DTOs.Booking;
 using Vakantiepark.Shared.DTOs.Price;
 using Vakantiepark.Shared.DTOs.Reservations;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using System.Security.Cryptography;
 using Vakantiepark.Application.Validations.Booking;
 using Vakantiepark.Shared.Constants;
@@ -111,13 +112,24 @@ namespace Vakantiepark.Application.Extensions
 
         // Needs AccommodationUnit with Type and Zone loaded. Reception walks the park zone by zone,
         // so both lists come sorted by zone and then unit.
-        public static DayOverviewResponse ToDayOverview(this List<Booking> bookings, DateOnly date)
-            => new DayOverviewResponse()
+        // The cleanings belong to the departures; arrivals get no cleaning status (US-32).
+        public static DayOverviewResponse ToDayOverview(this List<Booking> bookings, DateOnly date, List<Cleaning> cleanings)
+        {
+            List<DayOverviewItemResponse> departures = bookings.Where(booking => booking.DepartureDate == date).ToDayOverviewItems();
+            foreach (DayOverviewItemResponse departure in departures)
+            {
+                Cleaning? cleaning = cleanings.FirstOrDefault(cleaning => cleaning.BookingId == departure.Id);
+                departure.CleaningStatus = (cleaning?.Status ?? CleaningStatus.ToClean).ToText();
+                departure.CleanedBy = cleaning?.User?.FullName;
+            }
+
+            return new DayOverviewResponse()
             {
                 Date = date,
                 Arrivals = bookings.Where(booking => booking.ArrivalDate == date).ToDayOverviewItems(),
-                Departures = bookings.Where(booking => booking.DepartureDate == date).ToDayOverviewItems(),
+                Departures = departures,
             };
+        }
 
         private static List<DayOverviewItemResponse> ToDayOverviewItems(this IEnumerable<Booking> bookings)
             => bookings

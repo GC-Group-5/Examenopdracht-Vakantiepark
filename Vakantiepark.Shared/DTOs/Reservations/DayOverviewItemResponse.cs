@@ -11,5 +11,9 @@ namespace Vakantiepark.Shared.DTOs.Reservations
         public string Zone { get; set; } = string.Empty;
         public int NumberOfGuests { get; set; }
         public int NumberOfPets { get; set; }
+
+        // US-32: only filled for departures, so reception can see which units are ready for new guests.
+        public string? CleaningStatus { get; set; }
+        public string? CleanedBy { get; set; }
     }
 }

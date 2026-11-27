@@ -3,6 +3,7 @@ using Vakantiepark.Application.Helpers;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Application.Validations.Reservations;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Filters;
 using Vakantiepark.Domain.Paging;
 using Vakantiepark.Domain.Interfaces.Repositories;
@@ -16,11 +17,13 @@ namespace Vakantiepark.Application.Services
         public const string NotFoundMessage = "Deze reservering bestaat niet.";
 
         private readonly IBookingRepository BookingRepository;
+        private readonly ICleaningRepository CleaningRepository;
         private readonly TimeProvider TimeProvider;
 
-        public ReservationService(IBookingRepository bookingRepository, TimeProvider timeProvider)
+        public ReservationService(IBookingRepository bookingRepository, ICleaningRepository cleaningRepository, TimeProvider timeProvider)
         {
             BookingRepository = bookingRepository;
+            CleaningRepository = cleaningRepository;
             TimeProvider = timeProvider;
         }
 
@@ -48,7 +51,8 @@ namespace Vakantiepark.Application.Services
             Booking booking = await BookingRepository.GetByIdWithDetailsAsync(id)
                 ?? throw new KeyNotFoundException(NotFoundMessage);
 
-            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, TimeProvider.GetToday()));
+            DateOnly today = TimeProvider.GetToday();
+            ReservationDetailResponse response = booking.ToMyBookingResponse<ReservationDetailResponse>(BookingStatus.Get(booking, today));
             response.Id = booking.Id;
             response.UnitCode = booking.AccommodationUnit.Code;
             response.CreatedAt = booking.CreatedAt;
@@ -57,13 +61,28 @@ namespace Vakantiepark.Application.Services
                 .OrderByDescending(change => change.ChangedAt)
                 .Select(change => change.ToResponse())
                 .ToList();
+
+            // US-32: a cancelled booking or one whose guests are still there has nothing to clean yet.
+            Cleaning? cleaning = await CleaningRepository.GetByBookingIdAsync(booking.Id);
+            if (cleaning is not null || (booking.DeletedAt is null && booking.DepartureDate <= today))
+            {
+                response.CleaningStatus = (cleaning?.Status ?? CleaningStatus.ToClean).ToText();
+                response.CleanedBy = cleaning?.User?.FullName;
+                response.CleanedAt = cleaning?.FinishedAt;
+            }
+
             return response;
         }
 
         public async Task<DayOverviewResponse> GetDayOverviewAsync(DateOnly date)
         {
             List<Booking> bookings = await BookingRepository.GetArrivingOrDepartingOnAsync(date);
-            return bookings.ToDayOverview(date);
+            List<Guid> departureIds = bookings
+                .Where(booking => booking.DepartureDate == date)
+                .Select(booking => booking.Id)
+                .ToList();
+            List<Cleaning> cleanings = await CleaningRepository.GetByBookingIdsAsync(departureIds);
+            return bookings.ToDayOverview(date, cleanings);
         }
     }
 }

@@ -62,11 +62,11 @@
             <div class="row g-4 mt-1">
                 <div class="col-12 col-xl-6">
                     <h2 class="h4 mb-3">Aankomst</h2>
-                    @DayTable(Sorted(overview.Arrivals), "Er komt op deze dag niemand aan.")
+                    @DayTable(Sorted(overview.Arrivals), "Er komt op deze dag niemand aan.", false)
                 </div>
                 <div class="col-12 col-xl-6">
                     <h2 class="h4 mb-3">Vertrek</h2>
-                    @DayTable(Sorted(overview.Departures), "Er vertrekt op deze dag niemand.")
+                    @DayTable(Sorted(overview.Departures), "Er vertrekt op deze dag niemand.", true)
                 </div>
             </div>
         </LoadState>
@@ -123,7 +123,8 @@
     private static string PetsLabel(int numberOfPets)
         => numberOfPets == 0 ? "Geen" : numberOfPets.ToString();
 
-    private RenderFragment DayTable(List<DayOverviewItemResponse> items, string emptyText) =>
+    // US-32: only departures get a cleaning column; reception sees which units are ready for new guests.
+    private RenderFragment DayTable(List<DayOverviewItemResponse> items, string emptyText, bool showCleaning) =>
         @<div class="detail-meta-card p-0 overflow-hidden">
             @if (items.Count == 0)
             {
@@ -140,6 +141,10 @@
                                 <th scope="col">Personen</th>
                                 <th scope="col">Huisdieren</th>
                                 <th scope="col">Boekingsnummer</th>
+                                @if (showCleaning)
+                                {
+                                    <th scope="col">Schoonmaak</th>
+                                }
                             </tr>
                         </thead>
                         <tbody>
@@ -152,6 +157,16 @@
                                     <td>@PetsLabel(item.NumberOfPets)</td>
                                     @* stretched-link makes the whole row clickable while the row holds only one link. *@
                                     <td><a class="admin-link stretched-link" href="@DetailUrl(item.Id)">@item.BookingNumber</a></td>
+                                    @if (showCleaning)
+                                    {
+                                        <td>
+                                            <span class="badge rounded-pill @CleaningStatusBadge.CssClass(item.CleaningStatus)">@item.CleaningStatus</span>
+                                            @if (item.CleanedBy is not null)
+                                            {
+                                                <div class="small text-muted-du">@item.CleanedBy</div>
+                                            }
+                                        </td>
+                                    }
                                 </tr>
                             }
                         </tbody>
