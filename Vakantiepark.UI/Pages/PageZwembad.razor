@@ -54,6 +54,28 @@
     </div>
 </section>
 
+<section class="section-pad pt-0">
+    <div class="container">
+        <div class="eyebrow">Voorzieningen</div>
+        <h2 class="section-title mb-4">Alles voor een dag in het water.</h2>
+        <div class="row g-4">
+            @foreach ((string title, string text) in Facilities)
+            {
+                <div class="col-md-4">
+                    <div class="h-100 border rounded-4 overflow-hidden bg-white">
+                        @* Template photo until the client sends photos of the pool. *@
+                        <img src="img/placeholder-image.svg" alt="" class="pool-facility-photo" />
+                        <div class="p-4">
+                            <h3 class="h5">@title</h3>
+                            <p class="text-muted-du mb-0">@text</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
 <section class="section-soft section-pad">
     <div class="container">
         <div class="row g-5 align-items-center">
@@ -68,8 +90,18 @@
                         <li>Kies een dag tijdens je verblijf en een tijdslot waarin nog plek is.</li>
                         <li>Geef aan met hoeveel personen je komt, en klaar.</li>
                     </ol>
+                    <a class="btn btn-du mt-4" href="zwemmen">Zwemmoment kiezen</a>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+@code {
+    private static readonly (string Title, string Text)[] Facilities =
+    [
+        ("Glijbanen", "Glijbanen voor jong en oud, voor wie er snel en met een plons in wil."),
+        ("Kinderbaden", "Ondiepe, warme baden waarin de kleinsten veilig kunnen spetteren."),
+        ("Douches en kleedruimtes", "Douches en kleedruimtes om je om te kleden en op te frissen."),
+    ];
+}

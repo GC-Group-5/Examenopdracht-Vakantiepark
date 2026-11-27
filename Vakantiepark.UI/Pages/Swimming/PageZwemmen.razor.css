@@ -1,0 +1,77 @@
+/* Days scroll sideways on a phone, so a long stay never pushes the times off screen. */
+.swim-days {
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    padding-bottom: .25rem;
+}
+
+.swim-day {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 4.5rem;
+    padding: .6rem .8rem;
+    border: 1px solid var(--du-line);
+    border-radius: 1rem;
+    background: #fff;
+    color: var(--du-ink);
+}
+
+    .swim-day.active {
+        border-color: var(--du-green);
+        background: var(--du-green);
+        color: #fff;
+    }
+
+.swim-day-name {
+    font-size: .8rem;
+    text-transform: capitalize;
+}
+
+.swim-day-date {
+    font-weight: 600;
+}
+
+.swim-slots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: .75rem;
+}
+
+.swim-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25rem;
+    padding: 1rem;
+    border: 1px solid var(--du-line);
+    border-top: 4px solid var(--du-aqua);
+    border-radius: 1rem;
+    background: #fff;
+    color: var(--du-ink);
+    text-align: left;
+}
+
+    .swim-slot.active {
+        border-color: var(--du-green);
+        box-shadow: 0 0 0 2px var(--du-green);
+    }
+
+    .swim-slot:disabled {
+        border-top-color: var(--du-line);
+        background: var(--du-cream);
+        color: var(--du-muted);
+        cursor: not-allowed;
+    }
+
+.swim-slot-time {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.swim-slot-places {
+    color: var(--du-muted);
+    font-size: .9rem;
+}

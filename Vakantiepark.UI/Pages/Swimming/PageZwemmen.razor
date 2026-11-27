@@ -1,0 +1,108 @@
+@page "/zwemmen"
+@using Vakantiepark.Shared.DTOs.Swimming
+@inject ISwimSlotService SwimSlotService
+
+<PageTitle>Zwemmen | Vakantiepark D'r op Uut</PageTitle>
+
+<section class="page-head">
+    <div class="container">
+        <div class="eyebrow">Zwembad</div>
+        <h1 class="page-title mt-2">Kies je zwemmoment</h1>
+        <p class="page-intro mt-3 mb-0">Zwemmen kan alleen met een reservering. Kies een dag van je verblijf en zie welke tijden nog plek hebben.</p>
+    </div>
+</section>
+
+<section class="section-pad">
+    <div class="container">
+        @if (!isGuest)
+        {
+            <div class="p-4 p-md-5 border rounded-4 bg-white shadow-sm">
+                <p class="mb-3">Log in met je boekingsnummer en e-mailadres om de zwemmomenten tijdens je verblijf te zien.</p>
+                <a class="btn btn-du" href="mijn-boeking">Naar Mijn boeking</a>
+            </div>
+        }
+        else
+        {
+            <LoadState TValue="List<DateOnly>" Value="days" ErrorMessage="@daysError" IsEmpty="value => value.Count == 0" Context="stayDays"
+                       EmptyMessage="Er zijn geen zwemmomenten meer tijdens je verblijf." LoadingText="De dagen worden opgehaald…">
+                <h2 class="h5 mb-3">Dag</h2>
+                <div class="swim-days" role="group" aria-label="Kies een dag">
+                    @foreach (DateOnly day in stayDays)
+                    {
+                        <button type="button" class="swim-day @(day == selectedDay ? "active" : null)" aria-pressed="@(day == selectedDay)" @onclick="() => SelectDayAsync(day)">
+                            <span class="swim-day-name">@day.ToString("ddd")</span>
+                            <span class="swim-day-date">@day.ToString("d MMM")</span>
+                        </button>
+                    }
+                </div>
+
+                <h2 class="h5 mt-4 mb-3">Tijd op @selectedDay.ToString("dddd d MMMM")</h2>
+                <LoadState TValue="List<SwimSlotResponse>" Value="slots" ErrorMessage="@slotsError" IsEmpty="value => value.Count == 0" Context="daySlots"
+                           EmptyMessage="Op deze dag zijn geen zwemmomenten meer." LoadingText="De zwemmomenten worden opgehaald…">
+                    <div class="swim-slots" role="group" aria-label="Kies een tijd">
+                        @foreach (SwimSlotResponse slot in daySlots)
+                        {
+                            <button type="button" class="swim-slot @(slot.Id == selectedSlotId ? "active" : null)" disabled="@slot.IsFull"
+                                    aria-pressed="@(slot.Id == selectedSlotId)" @onclick="() => selectedSlotId = slot.Id">
+                                <span class="swim-slot-time">@slot.StartTime.ToString("HH:mm") – @slot.EndTime.ToString("HH:mm")</span>
+                                @if (slot.IsFull)
+                                {
+                                    <span class="badge rounded-pill text-bg-secondary">Vol</span>
+                                }
+                                else
+                                {
+                                    <span class="swim-slot-places">@PlacesLabel(slot.RemainingPlaces)</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </LoadState>
+            </LoadState>
+        }
+    </div>
+</section>
+
+@code {
+    private const string LoadFailedMessage = "De zwemmomenten konden niet worden opgehaald. Probeer het opnieuw.";
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private bool isGuest;
+    private List<DateOnly>? days;
+    private string? daysError;
+    private DateOnly selectedDay;
+    private List<SwimSlotResponse>? slots;
+    private string? slotsError;
+    private Guid? selectedSlotId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthenticationState;
+        isGuest = state.User.IsInRole(Roles.Gast);
+        if (!isGuest)
+            return;
+
+        ApiResponse<List<DateOnly>> response = await SwimSlotService.GetDaysAsync();
+        days = response.Succeeded ? response.Value ?? [] : null;
+        daysError = response.Succeeded ? null : response.Message ?? LoadFailedMessage;
+
+        if (days is { Count: > 0 })
+            await SelectDayAsync(days[0]);
+    }
+
+    private async Task SelectDayAsync(DateOnly day)
+    {
+        selectedDay = day;
+        selectedSlotId = null;
+        slots = null;
+        slotsError = null;
+
+        ApiResponse<List<SwimSlotResponse>> response = await SwimSlotService.GetByDateAsync(day);
+        slots = response.Succeeded ? response.Value ?? [] : null;
+        slotsError = response.Succeeded ? null : response.Message ?? LoadFailedMessage;
+    }
+
+    private static string PlacesLabel(int remainingPlaces)
+        => remainingPlaces == 1 ? "Nog 1 plek" : $"Nog {remainingPlaces} plekken";
+}

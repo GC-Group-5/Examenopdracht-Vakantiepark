@@ -719,10 +719,26 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("pet_cleaning_fee");
 
+                    b.Property<TimeOnly>("PoolClosesAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("pool_closes_at");
+
+                    b.Property<TimeOnly>("PoolOpensAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("pool_opens_at");
+
                     b.Property<decimal>("SecurityDeposit")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("security_deposit");
+
+                    b.Property<int>("SwimSlotDefaultCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("swim_slot_default_capacity");
+
+                    b.Property<int>("SwimSlotMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("swim_slot_minutes");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -783,6 +799,52 @@ namespace Vakantiepark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_seasons_start_date_end_date");
 
                     b.ToTable("seasons", (string)null);
+                });
+
+            modelBuilder.Entity("Vakantiepark.Domain.Entities.SwimSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_swim_slots");
+
+                    b.HasIndex("Date", "StartTime")
+                        .IsUnique()
+                        .HasDatabaseName("ix_swim_slots_date_start_time")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("swim_slots", (string)null);
                 });
 
             modelBuilder.Entity("Vakantiepark.Domain.Entities.TouristTaxRate", b =>

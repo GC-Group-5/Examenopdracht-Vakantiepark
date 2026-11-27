@@ -74,6 +74,11 @@ namespace Vakantiepark.Infrastructure.Persistence.Seeders
             DepositPercentage = 20m,
             FreeCancellationDaysBeforeArrival = 30,
             NoRefundDaysBeforeArrival = 7,
+            // Until the client answers (asked on 26 November): 09:00 to 21:00, slots of 1.5 hours, 80 people.
+            PoolOpensAt = new TimeOnly(9, 0),
+            PoolClosesAt = new TimeOnly(21, 0),
+            SwimSlotMinutes = 90,
+            SwimSlotDefaultCapacity = 80,
             CreatedAt = now,
         };
 
