@@ -323,6 +323,7 @@
                                             <thead>
                                                 <tr>
                                                     <th scope="col">Seizoen</th>
+                                                    <th scope="col">Periode</th>
                                                     <th scope="col">Prijs per nacht</th>
                                                 </tr>
                                             </thead>
@@ -331,6 +332,7 @@
                                                 {
                                                     <tr>
                                                         <th scope="row">@SeasonName(seasonPrice.SeasonId)</th>
+                                                        <td class="text-nowrap">@SeasonPeriod(seasonPrice.SeasonId)</td>
                                                         <td>
                                                             <label class="visually-hidden" for="@($"{selected.Slug}-{seasonPrice.SeasonId}")">Prijs per nacht voor @SeasonName(seasonPrice.SeasonId)</label>
                                                             <div class="input-group">
@@ -496,4 +498,10 @@
     }
 
     private string SeasonName(Guid seasonId) => settings!.Seasons.First(existing => existing.Id == seasonId).Name;
+
+    private string SeasonPeriod(Guid seasonId)
+    {
+        SeasonResponse found = settings!.Seasons.First(existing => existing.Id == seasonId);
+        return $"{found.StartDate?.ToString(DateFormats.Date)} t/m {found.EndDate?.ToString(DateFormats.Date)}";
+    }
 }
