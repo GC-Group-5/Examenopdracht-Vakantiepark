@@ -36,6 +36,15 @@ namespace Vakantiepark.API.Controllers
         public async Task<IActionResult> GetByIdAsync(Guid id)
             => await RunAsync(() => ReservationService.GetByIdAsync(id));
 
+        // US-51: the free units for the new dates (or other types when the own type is full), before saving.
+        [HttpGet("{id:guid}/ChangeOptions")]
+        public async Task<IActionResult> GetChangeOptionsAsync(
+            Guid id,
+            [FromQuery, BindRequired] DateOnly arrivalDate,
+            [FromQuery, BindRequired] DateOnly departureDate,
+            [FromQuery, BindRequired] int numberOfGuests)
+            => await RunAsync(() => BookingService.GetChangeOptionsAsync(id, arrivalDate, departureDate, numberOfGuests));
+
         // US-14: the same rules as for a guest, without the term; returns the updated reservation.
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> ChangeAsync(Guid id, StaffChangeBookingRequest request)

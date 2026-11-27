@@ -57,6 +57,38 @@ namespace Vakantiepark.IntegrationTests
             Assert.True(result);
         }
 
+        // US-51: two staff members move two bookings into the same free period at the same moment.
+        [Fact]
+        public async Task TryUpdateAsync_TwoChangesIntoTheSamePeriodAtTheSameTime_ExactlyOneSucceeds()
+        {
+            Guid unitId = await CreateUnitAsync();
+            Booking first = TestData.CreateBooking(unitId, new DateOnly(2027, 9, 1), new DateOnly(2027, 9, 5));
+            Booking second = TestData.CreateBooking(unitId, new DateOnly(2027, 9, 20), new DateOnly(2027, 9, 25));
+            await using (ApplicationDBContext context = Database.CreateContext())
+            {
+                context.Bookings.AddRange(first, second);
+                await context.SaveChangesAsync();
+            }
+
+            await using ApplicationDBContext firstContext = Database.CreateContext();
+            await using ApplicationDBContext secondContext = Database.CreateContext();
+            BookingRepository firstRepository = new BookingRepository(firstContext);
+            BookingRepository secondRepository = new BookingRepository(secondContext);
+            Booking firstChange = (await firstRepository.GetByIdWithDetailsAsync(first.Id))!;
+            Booking secondChange = (await secondRepository.GetByIdWithDetailsAsync(second.Id))!;
+            foreach (Booking booking in new[] { firstChange, secondChange })
+            {
+                booking.ArrivalDate = new DateOnly(2027, 9, 10);
+                booking.DepartureDate = new DateOnly(2027, 9, 17);
+            }
+
+            bool[] results = await Task.WhenAll(
+                firstRepository.TryUpdateAsync(firstChange, []),
+                secondRepository.TryUpdateAsync(secondChange, []));
+
+            Assert.Equal(1, results.Count(result => result));
+        }
+
         // A unit of its own per test, so the tests never share bookings.
         private async Task<Guid> CreateUnitAsync()
         {

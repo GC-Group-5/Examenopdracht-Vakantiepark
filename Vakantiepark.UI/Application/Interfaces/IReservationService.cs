@@ -14,7 +14,7 @@ namespace Vakantiepark.UI.Application.Interfaces
         Task<ApiResponse<List<AccommodationTypeResponse>>> GetTypesAsync();
 
         // US-14: staff changes or cancels a booking, without the guest's term.
-        Task<ApiResponse<List<AccommodationResponse>>> GetUnitsAsync();
+        Task<ApiResponse<ChangeOptionsResponse>> GetChangeOptionsAsync(Guid id, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests);
         Task<ApiResponse<ReservationDetailResponse>> ChangeAsync(Guid id, StaffChangeBookingRequest request);
         Task<ApiResponse<CancellationQuoteResponse>> GetCancellationQuoteAsync(Guid id);
         Task<ApiResponse<ReservationDetailResponse>> CancelAsync(Guid id, StaffCancelBookingRequest request);

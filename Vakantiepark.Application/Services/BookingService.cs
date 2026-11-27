@@ -265,6 +265,35 @@ namespace Vakantiepark.Application.Services
             return await BookingRepository.GetByIdWithDetailsAsync(booking.Id) ?? booking;
         }
 
+        // US-51: every unit of the booking's own type with whether it can take the change, before saving.
+        // When none of them can, the other types with at least one unit that can are added as alternatives.
+        public async Task<ChangeOptionsResponse> GetChangeOptionsAsync(Guid bookingId, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
+        {
+            Booking booking = await FindReservationAsync(bookingId);
+            AccommodationType currentType = booking.AccommodationUnit.Type;
+            CreateBookingRequestValidation.ValidateStay(currentType.Slug, arrivalDate, departureDate, numberOfGuests, booking.NumberOfPets, TimeProvider.GetToday());
+            await ValidateHighSeasonMinimumNightsAsync(arrivalDate, departureDate, await GetParkSettingsAsync());
+
+            List<Accommodation> allUnits = await AccommodationUnitRepository.GetAllWithDetailsAsync();
+            ChangeOptionTypeResponse ownType = await ToChangeOptionAsync(booking, currentType, allUnits, arrivalDate, departureDate, numberOfGuests);
+            if (ownType.Units.Any(unit => unit.Availability == UnitAvailability.Vrij))
+                return new ChangeOptionsResponse() { Types = [ownType] };
+
+            List<ChangeOptionTypeResponse> types = [ownType];
+            IEnumerable<AccommodationType> otherTypes = (await AccommodationTypeRepository.GetAllAsync())
+                .Where(type => type.Id != currentType.Id)
+                .OrderBy(type => type.Name);
+
+            foreach (AccommodationType type in otherTypes)
+            {
+                ChangeOptionTypeResponse option = await ToChangeOptionAsync(booking, type, allUnits, arrivalDate, departureDate, numberOfGuests);
+                if (option.Units.Any(unit => unit.Availability == UnitAvailability.Vrij))
+                    types.Add(option);
+            }
+
+            return new ChangeOptionsResponse() { CurrentTypeFull = true, Types = types };
+        }
+
         // US-14: the same rules as a guest (availability, price), but without the term. Staff may
         // also edit the main booker and pick the unit; every change is logged with who and when.
         public async Task ChangeByStaffAsync(Guid bookingId, StaffChangeBookingRequest request, Guid staffUserId)
@@ -275,13 +304,14 @@ namespace Vakantiepark.Application.Services
             UpdateMainBooker(booking, request);
 
             ParkSettings settings = await GetParkSettingsAsync();
-            ChangePlan plan = await PlanChangeAsync(booking, settings, request, request.AccommodationUnitCode);
+            AccommodationType type = await GetTypeOfChosenUnitAsync(booking, request.AccommodationUnitCode);
+            ChangePlan plan = await PlanChangeAsync(booking, settings, request, type, request.AccommodationUnitCode);
 
             // No Id: EF then sees a new row; a set Id on a tracked booking makes it try an UPDATE.
             booking.Changes.Add(new BookingChange()
             {
                 ChangedAt = DateTime.UtcNow,
-                Description = $"Gewijzigd: {request.ArrivalDate:dd-MM-yyyy} t/m {request.DepartureDate:dd-MM-yyyy}, {request.NumberOfGuests} personen, eenheid {plan.Unit.Code}",
+                Description = $"Gewijzigd: {request.ArrivalDate:dd-MM-yyyy} t/m {request.DepartureDate:dd-MM-yyyy}, {request.NumberOfGuests} personen, eenheid {plan.Unit.Code} ({plan.Type.Name})",
                 UserId = staffUserId,
             });
 
@@ -345,6 +375,83 @@ namespace Vakantiepark.Application.Services
             return booking;
         }
 
+        // Units of a type that are in service, fit the party and are not booked by anyone else in the
+        // period; the booking itself does not block its own unit.
+        private async Task<List<Accommodation>> GetFreeUnitsAsync(Booking booking, string accommodationTypeSlug, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
+        {
+            AccommodationUnitFilter filter = PartyFilter(booking, numberOfGuests);
+            List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(accommodationTypeSlug, arrivalDate, departureDate))
+                .Where(filter.Matches)
+                .ToList();
+            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(
+                units.Select(unit => unit.Id).ToList(), arrivalDate, departureDate, booking.Id);
+
+            return units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
+        }
+
+        // All units of the type with their availability, and the price of the new stay in that type.
+        private async Task<ChangeOptionTypeResponse> ToChangeOptionAsync(Booking booking, AccommodationType type, List<Accommodation> allUnits, DateOnly arrivalDate, DateOnly departureDate, int numberOfGuests)
+        {
+            List<Accommodation> units = allUnits.Where(unit => unit.Type.Id == type.Id).ToList();
+            HashSet<Guid> inServiceIds = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, arrivalDate, departureDate))
+                .Select(unit => unit.Id)
+                .ToHashSet();
+            HashSet<Guid> bookedIds = (await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(units.Select(unit => unit.Id).ToList(), arrivalDate, departureDate, booking.Id))
+                .ToHashSet();
+            AccommodationUnitFilter filter = PartyFilter(booking, numberOfGuests);
+
+            int childrenUnder12 = booking.Guests.ToCoTravellers().CountChildrenUnder12(arrivalDate);
+            PriceSpecificationResponse price = await PriceService.CalculateAsync(type.Slug, arrivalDate, departureDate, numberOfGuests, childrenUnder12, booking.NumberOfPets);
+
+            return new ChangeOptionTypeResponse()
+            {
+                TypeSlug = type.Slug,
+                TypeName = type.Name,
+                TotalPrice = price.TotalPrice,
+                Units = units
+                    .Select(unit => new ChangeOptionUnitResponse()
+                    {
+                        Code = unit.Code,
+                        Zone = unit.Zone.Name,
+                        IsCurrent = unit.Id == booking.AccommodationUnitId,
+                        Availability = Availability(unit, inServiceIds, bookedIds, filter),
+                    })
+                    .ToList(),
+            };
+        }
+
+        // Maintenance first, then other bookings, then whether the unit fits the party.
+        private static string Availability(Accommodation unit, HashSet<Guid> inServiceIds, HashSet<Guid> bookedIds, AccommodationUnitFilter filter)
+        {
+            if (!inServiceIds.Contains(unit.Id))
+                return UnitAvailability.Onderhoud;
+
+            if (bookedIds.Contains(unit.Id))
+                return UnitAvailability.Geboekt;
+
+            return filter.Matches(unit) ? UnitAvailability.Vrij : UnitAvailability.PastNiet;
+        }
+
+        // The new party size; pets and wheelchair access stay as they were booked.
+        private static AccommodationUnitFilter PartyFilter(Booking booking, int numberOfGuests) => new()
+        {
+            NumberOfGuests = numberOfGuests,
+            NumberOfPets = booking.NumberOfPets,
+            WheelchairAccessible = booking.WheelchairAccessible,
+        };
+
+        // No unit chosen: the booking keeps its type. A chosen unit brings its own type, which may differ (US-51).
+        private async Task<AccommodationType> GetTypeOfChosenUnitAsync(Booking booking, string? chosenUnitCode)
+        {
+            if (string.IsNullOrWhiteSpace(chosenUnitCode))
+                return booking.AccommodationUnit.Type;
+
+            Accommodation unit = await AccommodationUnitRepository.GetByCodeWithDetailsAsync(chosenUnitCode.Trim())
+                ?? throw new ArgumentException(ChosenUnitNotFreeMessage);
+
+            return unit.Type;
+        }
+
         // Staff may cancel on or after the arrival day, but not once the guest has left.
         private async Task<Booking> FindCancellableByStaffAsync(Guid bookingId)
         {
@@ -367,15 +474,14 @@ namespace Vakantiepark.Application.Services
             if (!CancellationPolicy.CanChange(booking, settings, TimeProvider.GetToday()))
                 throw new ArgumentException(CannotChangeMessage);
 
-            return await PlanChangeAsync(booking, settings, request, chosenUnitCode: null);
+            return await PlanChangeAsync(booking, settings, request, booking.AccommodationUnit.Type, chosenUnitCode: null);
         }
 
         // The rules a guest and staff share: valid stay and party, high season, and a free unit of
-        // the same type (the chosen one, else the current one when it is still free, else another).
-        private async Task<ChangePlan> PlanChangeAsync(Booking booking, ParkSettings settings, ChangeBookingRequest request, string? chosenUnitCode)
+        // the type (the chosen one, else the current one when it is still free, else another).
+        // A guest always keeps his type; staff may pick a unit of another type (US-51).
+        private async Task<ChangePlan> PlanChangeAsync(Booking booking, ParkSettings settings, ChangeBookingRequest request, AccommodationType type, string? chosenUnitCode)
         {
-            AccommodationType type = booking.AccommodationUnit.Type;
-
             CreateBookingRequestValidation.ValidateStay(type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests, booking.NumberOfPets, TimeProvider.GetToday());
 
             BookingGuest? mainBooker = booking.Guests.FirstOrDefault(guest => guest.IsMainBooker);
@@ -385,18 +491,7 @@ namespace Vakantiepark.Application.Services
             CreateBookingRequestValidation.ValidateCoTravellers(request.NumberOfGuests, request.CoTravellers, TimeProvider.GetToday());
             await ValidateHighSeasonMinimumNightsAsync(request.ArrivalDate, request.DepartureDate, settings);
 
-            AccommodationUnitFilter filter = new AccommodationUnitFilter()
-            {
-                NumberOfGuests = request.NumberOfGuests,
-                NumberOfPets = booking.NumberOfPets,
-                WheelchairAccessible = booking.WheelchairAccessible,
-            };
-            List<Accommodation> units = (await AccommodationUnitRepository.GetInServiceUnitsAsync(type.Slug, request.ArrivalDate, request.DepartureDate))
-                .Where(filter.Matches)
-                .ToList();
-            List<Guid> bookedUnitIds = await BookingRepository.GetUnitIdsWithOverlappingBookingAsync(
-                units.Select(unit => unit.Id).ToList(), request.ArrivalDate, request.DepartureDate, booking.Id);
-            List<Accommodation> freeUnits = units.Where(unit => !bookedUnitIds.Contains(unit.Id)).ToList();
+            List<Accommodation> freeUnits = await GetFreeUnitsAsync(booking, type.Slug, request.ArrivalDate, request.DepartureDate, request.NumberOfGuests);
 
             if (!string.IsNullOrWhiteSpace(chosenUnitCode))
             {
