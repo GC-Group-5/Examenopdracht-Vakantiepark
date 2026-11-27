@@ -13,6 +13,8 @@ namespace Vakantiepark.UnitTests
     public class CleaningServiceTests
     {
         private static readonly DateOnly Today = new DateOnly(2027, 7, 14);
+        private static readonly DateTime Now = Today.ToDateTime(new TimeOnly(9, 0));
+        private static readonly Guid CleanerId = Guid.NewGuid();
 
         private readonly Mock<IBookingRepository> _bookingRepository = new Mock<IBookingRepository>();
         private readonly Mock<ICleaningRepository> _cleaningRepository = new Mock<ICleaningRepository>();
@@ -25,7 +27,7 @@ namespace Vakantiepark.UnitTests
                 .Setup(x => x.GetByBookingIdsAsync(It.IsAny<List<Guid>>()))
                 .ReturnsAsync(new List<Cleaning>());
 
-            _sut = new CleaningService(_bookingRepository.Object, _cleaningRepository.Object, new FixedTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero)));
+            _sut = new CleaningService(_bookingRepository.Object, _cleaningRepository.Object, new FixedTimeProvider(new DateTimeOffset(Now, TimeSpan.Zero)));
         }
 
         [Fact]
@@ -124,6 +126,101 @@ namespace Vakantiepark.UnitTests
             Assert.Equal(CleaningStatuses.Klaar, unit.Status);
             Assert.Equal("Sam Schoonmaker", unit.CleanedBy);
             Assert.Equal(finishedAt, unit.FinishedAt);
+        }
+
+        [Fact]
+        public async Task StartAsync_UnitToClean_IsInProgressWithCleaner()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+            Cleaning? added = null;
+            _cleaningRepository
+                .Setup(x => x.AddAsync(It.IsAny<Cleaning>()))
+                .Callback<Cleaning>(cleaning => added = cleaning)
+                .ReturnsAsync((Cleaning cleaning) => cleaning);
+
+            await _sut.StartAsync(departure.Id, CleanerId);
+
+            Assert.NotNull(added);
+            Assert.Equal(CleaningStatus.InProgress, added.Status);
+            Assert.Equal(CleanerId, added.UserId);
+            Assert.Equal(Now, added.StartedAt);
+            Assert.Equal(departure.AccommodationUnitId, added.AccommodationUnitId);
+        }
+
+        [Fact]
+        public async Task StartAsync_GuestsLeaveTomorrow_Throws()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+            departure.DepartureDate = Today.AddDays(1);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.StartAsync(departure.Id, CleanerId));
+        }
+
+        [Fact]
+        public async Task StartAsync_SomeoneElseIsBusy_Throws()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+            ReturnCleaning(departure, CleaningStatus.InProgress);
+
+            ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() => _sut.StartAsync(departure.Id, CleanerId));
+
+            Assert.Contains("Sam Schoonmaker", exception.Message);
+        }
+
+        [Fact]
+        public async Task StartAsync_AlreadyClean_Throws()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+            ReturnCleaning(departure, CleaningStatus.Clean);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.StartAsync(departure.Id, CleanerId));
+        }
+
+        [Fact]
+        public async Task StartAsync_UnknownOrCancelledBooking_ThrowsNotFound()
+        {
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => _sut.StartAsync(Guid.NewGuid(), CleanerId));
+        }
+
+        [Fact]
+        public async Task FinishAsync_InProgress_IsCleanWithCleanerAndTime()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+            Cleaning cleaning = ReturnCleaning(departure, CleaningStatus.InProgress);
+
+            await _sut.FinishAsync(departure.Id, CleanerId);
+
+            Assert.Equal(CleaningStatus.Clean, cleaning.Status);
+            Assert.Equal(CleanerId, cleaning.UserId);
+            Assert.Equal(Now, cleaning.FinishedAt);
+            _cleaningRepository.Verify(x => x.UpdateAsync(cleaning), Times.Once);
+        }
+
+        [Fact]
+        public async Task FinishAsync_NotStarted_Throws()
+        {
+            Booking departure = ReturnBooking(Departure(Unit("BRK4-001")));
+
+            await Assert.ThrowsAsync<ArgumentException>(() => _sut.FinishAsync(departure.Id, CleanerId));
+        }
+
+        private Booking ReturnBooking(Booking booking)
+        {
+            _bookingRepository.Setup(x => x.GetByIdAsync(booking.Id)).ReturnsAsync(booking);
+            return booking;
+        }
+
+        private Cleaning ReturnCleaning(Booking booking, CleaningStatus status)
+        {
+            Cleaning cleaning = new Cleaning()
+            {
+                BookingId = booking.Id,
+                Status = status,
+                UserId = Guid.NewGuid(),
+                User = TestData.CreateUser(user => user.FullName = "Sam Schoonmaker"),
+            };
+            _cleaningRepository.Setup(x => x.GetByBookingIdAsync(booking.Id)).ReturnsAsync(cleaning);
+            return cleaning;
         }
 
         private void ReturnBookings(List<Booking> bookings)

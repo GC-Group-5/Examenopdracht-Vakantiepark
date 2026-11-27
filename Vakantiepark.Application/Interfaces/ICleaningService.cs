@@ -6,5 +6,9 @@ namespace Vakantiepark.Application.Interfaces
     {
         // Without a date the overview shows today.
         Task<CleaningDayResponse> GetDayAsync(DateOnly? date);
+
+        // The cleaner marks a unit as busy, and later as done. Both store who did it.
+        Task StartAsync(Guid bookingId, Guid userId);
+        Task FinishAsync(Guid bookingId, Guid userId);
     }
 }

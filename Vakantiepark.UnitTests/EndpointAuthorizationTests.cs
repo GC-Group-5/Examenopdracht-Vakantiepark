@@ -13,6 +13,9 @@ namespace Vakantiepark.UnitTests
         // A bare [Authorize] admits every logged-in user, guests and cleaners included; only these may use it.
         private static readonly string[] EndpointsForEveryLoggedInUser = [$"{nameof(AuthController)}.{nameof(AuthController.GetCurrentUser)}"];
 
+        // US-32: the cleaning overview is the only part of the API that is meant for cleaners.
+        private static readonly string[] EndpointsForCleaners = [nameof(CleaningController)];
+
         private static List<(string Endpoint, AuthorizeAttribute Attribute)> AuthorizeAttributes()
         {
             List<(string Endpoint, AuthorizeAttribute Attribute)> result = [];
@@ -36,6 +39,7 @@ namespace Vakantiepark.UnitTests
             List<string> admittingCleaners = AuthorizeAttributes()
                 .Where(entry => entry.Attribute.Roles is not null && entry.Attribute.Roles.Split(',').Contains(Roles.Schoonmaker))
                 .Select(entry => entry.Endpoint)
+                .Where(endpoint => !EndpointsForCleaners.Contains(endpoint))
                 .ToList();
 
             Assert.Empty(admittingCleaners);
@@ -75,6 +79,15 @@ namespace Vakantiepark.UnitTests
             AuthorizeAttribute? attribute = typeof(OccupancyController).GetCustomAttribute<AuthorizeAttribute>();
 
             Assert.Equal(Roles.Staff, attribute?.Roles);
+        }
+
+        // US-32: no other role may see or change the cleaning, not even staff.
+        [Fact]
+        public void Cleaning_OnlyForSchoonmaker()
+        {
+            AuthorizeAttribute? attribute = typeof(CleaningController).GetCustomAttribute<AuthorizeAttribute>();
+
+            Assert.Equal(Roles.Schoonmaker, attribute?.Roles);
         }
 
         // US-18: a medewerker may not change prices or park rules, so this controller is for the beheerder only.

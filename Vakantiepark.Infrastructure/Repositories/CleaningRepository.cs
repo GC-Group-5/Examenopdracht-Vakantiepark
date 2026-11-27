@@ -16,5 +16,10 @@ namespace Vakantiepark.Infrastructure.Repositories
                 .Where(x => x.DeletedAt == null && bookingIds.Contains(x.BookingId))
                 .Include(x => x.User)
                 .ToListAsync();
+
+        public async Task<Cleaning?> GetByBookingIdAsync(Guid bookingId)
+            => await Set
+                .Include(x => x.User)
+                .SingleOrDefaultAsync(x => x.DeletedAt == null && x.BookingId == bookingId);
     }
 }

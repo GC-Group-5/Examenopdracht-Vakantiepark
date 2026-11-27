@@ -1,6 +1,7 @@
 ﻿using Vakantiepark.Application.Extensions;
 using Vakantiepark.Application.Interfaces;
 using Vakantiepark.Domain.Entities;
+using Vakantiepark.Domain.Enums;
 using Vakantiepark.Domain.Interfaces.Repositories;
 using Vakantiepark.Shared.DTOs.Cleaning;
 
@@ -46,6 +47,71 @@ namespace Vakantiepark.Application.Services
                         unitsWithArrivals.Contains(booking.AccommodationUnitId)))
                     .ToList(),
             };
+        }
+
+        public async Task StartAsync(Guid bookingId, Guid userId)
+        {
+            // A cancelled booking is soft deleted, so it is not found either.
+            Booking booking = await BookingRepository.GetByIdAsync(bookingId)
+                ?? throw new KeyNotFoundException("Boeking niet gevonden.");
+
+            // Before the departure day the guests are still in the unit.
+            if (booking.DepartureDate > TimeProvider.GetToday())
+            {
+                throw new ArgumentException($"Dit huisje komt pas op {booking.DepartureDate:dd-MM-yyyy} leeg.");
+            }
+
+            Cleaning? cleaning = await CleaningRepository.GetByBookingIdAsync(bookingId);
+            if (cleaning?.Status == CleaningStatus.Clean)
+            {
+                throw new ArgumentException("Dit huisje is al schoongemaakt.");
+            }
+
+            if (cleaning is { Status: CleaningStatus.InProgress })
+            {
+                throw new ArgumentException($"{cleaning.User?.FullName ?? "Iemand"} is hier al mee bezig.");
+            }
+
+            if (cleaning is null)
+            {
+                await CleaningRepository.AddAsync(new Cleaning()
+                {
+                    BookingId = booking.Id,
+                    AccommodationUnitId = booking.AccommodationUnitId,
+                    Status = CleaningStatus.InProgress,
+                    StartedAt = TimeProvider.GetUtcNow().UtcDateTime,
+                    UserId = userId,
+                });
+                return;
+            }
+
+            cleaning.Status = CleaningStatus.InProgress;
+            cleaning.StartedAt = TimeProvider.GetUtcNow().UtcDateTime;
+            cleaning.UserId = userId;
+            await CleaningRepository.UpdateAsync(cleaning);
+        }
+
+        public async Task FinishAsync(Guid bookingId, Guid userId)
+        {
+            _ = await BookingRepository.GetByIdAsync(bookingId)
+                ?? throw new KeyNotFoundException("Boeking niet gevonden.");
+
+            Cleaning? cleaning = await CleaningRepository.GetByBookingIdAsync(bookingId);
+            if (cleaning?.Status == CleaningStatus.Clean)
+            {
+                throw new ArgumentException("Dit huisje is al schoongemaakt.");
+            }
+
+            if (cleaning is null || cleaning.Status != CleaningStatus.InProgress)
+            {
+                throw new ArgumentException("Begin eerst met schoonmaken.");
+            }
+
+            // Whoever finishes is stored, so a colleague can take over when the first cleaner had to leave.
+            cleaning.Status = CleaningStatus.Clean;
+            cleaning.FinishedAt = TimeProvider.GetUtcNow().UtcDateTime;
+            cleaning.UserId = userId;
+            await CleaningRepository.UpdateAsync(cleaning);
         }
     }
 }
